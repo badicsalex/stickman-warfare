@@ -1,0 +1,28 @@
+A--B
+|  |
+|  |
+D--C
+
+
+(C-A)x(B-A)+
+(D-B)x(C-B)+
+(A-C)x(D-C)+
+(B-D)x(A-D);
+
+Cx(B-A)=CxB-CxA
+-Ax(B-A)=AxA-AxB=-AxB 
+(C-A)x(B-A)=CxB-AxB-CxA
+
+CxB-AxB-CxA
+DxC-BxC-DxB
+AxD-CxD-AxC
+BxA-DxA-BxD
+
+CxB-AxB
+DxC-BxC
+AxD-CxD
+BxA-DxA
+
+2*(CxB+DxC+AxD+BxA)
+
+(CxB-CxD+AxD-AxB)=Cx(B-D)-Ax(B-D)= (C-A)x(B-D);
