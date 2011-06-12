@@ -1,0 +1,1 @@
+stickman.exe windowed
