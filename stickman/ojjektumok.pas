@@ -41,9 +41,6 @@ type
   betoltve:boolean;
   lghtind:integer;
   nincsrad:boolean;
-  portalind:integer;
-  portalmettol,portalmeddig:integer;
-  pmet2,pmed2:integer;
   filenev:string;
   constructor Create(fnev:string;a_d3ddevice:IDirect3DDevice9;scale,yscale:single;posok:array of TD3DXVector3;flags:cardinal;makebuffers:boolean);
   procedure Draw(g_pd3ddevice:IDirect3DDevice9;cp:TD3DXVector3;frust:TFrustum);
@@ -152,12 +149,9 @@ var
  oTPszam:integer=-1;
  otNszam:integer=-1;
  currenttriarr:Tacctriarr;
- portalhozert:boolean;
  posrads:array of Tposrad;
  lightmapbm:array [0..1023,0..1023,0..3] of byte;
- portalepulet:integer;
  panthepulet:integer;
- reactorepulet:integer;
  DNSvec:TD3DXVector3;
  DNSrad:single;
 
@@ -205,14 +199,10 @@ begin
 {$R-}
  inherited create;
   betoltve:=false;
-  portalmettol:=-1;
-  portalmeddig:=-1;
-  pmed2:=-1;
-  pmet2:=-1;
+  
 
   nincsrad:=((flags and OF_DONTFLATTEN)>0) or ((flags and OF_FITTOTERRAIN)>0);
 
-  portalind:=-1;
   filenev:=fnev;
 
   addfiletochecksum(fnev+'_lm.bmp');
@@ -262,7 +252,6 @@ begin
       inc(i);
       continue;
      end;
-      if mymesh.texturetable[i]='sg2.jpg' then portalind:=i;
      mystr:=ExtractFileDir(fnev)+'\'+string(mymesh.texturetable[i]);
      for j:=0 to otnszam do
       if ojjektumtextures[j].name=mystr then
@@ -341,19 +330,6 @@ with mymesh do begin
   j:=0;
   for i:=0 to trinum-1 do
   begin
-   if portalind>=0 then
-   if (i>=(attrtable[portalind].FaceStart)) and
-      (i< (attrtable[portalind].FaceStart)+(attrtable[portalind].FaceCount)) then
-   begin
-    mn:=min(min(indices[i*3+0],indices[i*3+1]),indices[i*3+0]);
-    mx:=max(max(indices[i*3+0],indices[i*3+1]),indices[i*3+0]);
-    if portalmettol<0 then portalmettol:=mn;
-    if portalmeddig<mx then portalmeddig:=mx;
-
-    if pmet2<0 then pmet2:=j;
-    if pmed2<j then pmed2:=j;
-
-   end;
 
    if lghtind>=0 then
     if (i>=(attrtable[lghtind].FaceStart)) and
@@ -1033,9 +1009,6 @@ begin
    bl:=tavPointTrisq(tmptri[miket[i]],poi,bz);
    if al>bl then
    begin
-    if portalind>=0 then
-     if (pmet2<=miket[i]) and (pmed2>=miket[i]) then
-      portalhozert:=true;
     al:=bl;
     az:=bz;
    end;
@@ -1145,9 +1118,7 @@ begin
 
    if attr='special' then
    begin
-    if val='stickportal' then  portalepulet:=i;
     if val='pantheon'    then   panthepulet:=i;
-    if val='reactor'     then reactorepulet:=i;
    end;
 
    if attr='terrain' then
@@ -1455,16 +1426,9 @@ begin
 
       facestart:=facecur;
 
-      if attrarr[j].AttribId=portalind then
-      begin
-       vertstart:=vertcurdyn;
-       if FAILED(g_pVBdyn.Lock(vertstart*sizeof(Tojjektumvertex2), vertcount*sizeof(Tojjektumvertex2),pointer(pVert) , CSICSA_LOCK_FLAG)) then exit;
-      end
-      else
-      begin
-       vertstart:=vertcur;
-       if FAILED(g_pVB.Lock(vertstart*sizeof(Tojjektumvertex2), vertcount*sizeof(Tojjektumvertex2),pointer(pVert) , CSICSA_LOCK_FLAG)) then exit;
-      end;
+      vertstart:=vertcur;
+      if FAILED(g_pVB.Lock(vertstart*sizeof(Tojjektumvertex2), vertcount*sizeof(Tojjektumvertex2),pointer(pVert) , CSICSA_LOCK_FLAG)) then exit;
+     
 
       if use32bitindices then
       begin
@@ -1510,14 +1474,7 @@ begin
       g_pIb.Unlock;
 
       inc(facecur,facecount*3);
-      if attrarr[j].AttribId=portalind then
-      begin
-       inc(vertcurdyn,vertcount);
-       portalstart:=vertstart;
-       portalvertcnt:=vertcount;
-      end
-      else
-       inc(vertcur,vertcount);
+      inc(vertcur,vertcount);
 
      end;
 

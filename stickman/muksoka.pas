@@ -80,7 +80,7 @@ type
   constructor Create(dev:Idirect3ddevice9);
   procedure Init;
   procedure Render(mit:integer;matworld:TD3DMatrix;normalized:boolean;cam:TD3DXVector3);overload;
-  procedure Render(mit:integer;kit:Tmukspos;cam:TD3DXVector3);overload;
+  procedure Render(mit:integer;pos:TD3DXVector3;irany:single;cam:TD3DXVector3); overload;
   procedure Updatetex(mire:integer;tech:boolean;forg:single);
   procedure Flush;
   destructor Destroy;reintroduce;
@@ -1125,14 +1125,14 @@ if IBwh2>35000 then
 
 end;
 
-procedure TFejcuccrenderer.Render(mit:integer;kit:Tmukspos;cam:TD3DXVector3);
+procedure TFejcuccrenderer.Render(mit:integer;pos:TD3DXVector3;irany:single;cam:TD3DXVector3);
 var
 amv:TD3DMatrix;
 begin
- D3DXmatrixRotationY(amv,kit.irany);
- amv._41:=kit.pos.x;
- amv._42:=kit.pos.y+1.5;
- amv._43:=kit.pos.z;
+ D3DXmatrixRotationY(amv,irany);
+ amv._41:=pos.x;
+ amv._42:=pos.y+1.5;
+ amv._43:=pos.z;
  render(mit,amv,false,cam);
 end;
 

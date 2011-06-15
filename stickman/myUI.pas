@@ -1,7 +1,7 @@
 unit myUI;
 
 interface
-uses  Windows, SysUtils, typestuff,Direct3D9,D3DX9,directinput,md5;
+uses  Windows, SysUtils, typestuff,Direct3D9,D3DX9,directinput,sha1;
 
 type
   Tmatteg= record
@@ -55,9 +55,9 @@ type
 
   T3DMIPasswordbox = class (T3DMITextbox)
   public
-   md5cnt:MD5Context;
-   md5hex:string;
-   constructor create(aminx,aminy,amaxx,amaxy,scala:single;szoveghossz:integer;maxs:integer;amd5hex:string);
+   sha1cnt:TSHA1Context;
+   sha1hex:string;
+   constructor create(aminx,aminy,amaxx,amaxy,scala:single;szoveghossz:integer;maxs:integer;asha1hex:string);
    procedure HandleChar(mit:char);override;
    function GetPasswordMD5:string;
   end;
@@ -214,11 +214,11 @@ begin
  ValueS:=ValueS+mit;
 end;
 
-constructor T3DMIPasswordBox.create(aminx,aminy,amaxx,amaxy,scala:single;szoveghossz:integer;maxs:integer;amd5hex:string);
+constructor T3DMIPasswordBox.create(aminx,aminy,amaxx,amaxy,scala:single;szoveghossz:integer;maxs:integer;asha1hex:string);
 begin
  inherited create(aminx,aminy,amaxx,amaxy,scala,stringofchar('*',szoveghossz),maxs);
- MD5Init(md5cnt);
- md5hex:=amd5hex;
+ SHA1Init(sha1cnt);
+ sha1hex:=asha1hex;
 end;
 
 procedure T3DMIPasswordBox.HandleChar(mit:char);
@@ -226,37 +226,37 @@ begin
  if mit=chr(VK_TAB) then exit;
 
 
- if (mit=chr(VK_BACK)) or (md5hex<>'') then
+ if (mit=chr(VK_BACK)) or (sha1hex<>'') then
  begin
   ValueS:='';
-   md5hex:='';
-  MD5Init(md5cnt);
+   sha1hex:='';
+  SHA1Init(sha1cnt);
   if mit=chr(VK_BACK) then exit;
  end;
  
  if length(ValueS)>=value then exit;
 
  ValueS:=ValueS+'*';
- MD5Update(md5cnt,@mit,1);
+ SHA1Update(sha1cnt,@mit,1);
 end;
 
 function T3DMIPasswordBox.GetPasswordMD5:string;
 var
-dig:MD5Digest;
+dig:TSHA1Digest;
 begin
- if md5hex<>'' then
-  result:=md5hex
+ if sha1hex<>'' then
+  result:=sha1hex
  else
  begin
   if valueS<>'' then
   begin
-   MD5Final(md5cnt,dig);
-   md5hex:=MD5GetHex(dig);
+   SHA1Final(sha1cnt,dig);
+   sha1hex:=SHA1GetHex(dig);
   end
   else
-   md5hex:='';
-  result:=md5hex;
- end; 
+   sha1hex:='';
+  result:=sha1hex;
+ end;
 end;
 
 

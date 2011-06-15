@@ -9,7 +9,7 @@ Direct3D9,
 perlinnoise,
 math,
 Zlibex,
-md5,
+sha1,
 winsock2;
 type
   Tnev=array [1..32] of char;
@@ -129,7 +129,7 @@ type
   TImposterVertexArray = array [0..100000] of TImposterVertex;
 
 
-  Tpackedpos = packed record
+  {Tpackedpos = packed record
    pos:Tmypackedvector;
    irany:byte;
    prior:byte;
@@ -152,7 +152,7 @@ type
    mtim,vtim,atim:word;             //különbözõ idõk a packetek közt
    amtim,avtim,aatim,amtim2:word;  //  --||-- autóval
    pkullov:array [1..15,1..2] of TD3DVector; //pontos lövések
-   kullov:array [1..15] of Tmypackedvector;  //paacked lövések
+   kullov:array [1..15] of Tmypackedvector;  //packed lövések
    klsz,pklsz:byte;                          // számuk
    lo:single;
    nev:Tnev;
@@ -175,7 +175,54 @@ type
    priormost: single; // szám, a legkisebb nyer, hozzáadódik a pplpls.priorneki és a pplpos.prior
    seesme:boolean;    //lat
    egyebetkapott:integer;    //no minden esetben amikor egyebet kap :) Fõként a seesme miatt.
+  end;}
+
+
+  { PRIVATE TYPEOK! }
+  Tplayerpos = record
+   pos:TD3DXVector3;
+   irany,irany2:single;
+   state:byte;
+   seb,vseb:TD3DXVector3;           //sebesség, volt sebesség
+   vpos,megjpos:TD3dxvector3;
   end;
+
+  Tplayernet = record
+   UID:integer;
+   prior:single;
+   overrideport:word;             // port dolog
+   mtim:word;             //legutóbbi packet óta eltelt századmásodpercek
+   vtim:word;             //legutóbbi packet ideje GetTickCountban
+   atim:word;
+   amtim,avtim,aatim,amtim2:word;  //  --||-- autóval
+   connected:boolean;     //3 way handshake kész
+  end;
+
+  Tplayerpls = record
+   lo:single;
+   nev:string;
+   fegyv:byte; //128 a csapat
+   fejcucc:byte;                 // headstuff
+   fejh:TD3DXVector3;             //feje hol van (headstuff)
+   utsocht:string;                // megejelnítendõ chat
+   chttim:integer;
+   visible:boolean;              // Viewport culling
+   kills:word;
+   lottram:integer;             //lõtt rám. visszaszámláló
+  end;
+
+  Tplayerauto = record
+   pos,opos,posx,oposx:TD3DXVector3;
+   axes,vaxes,vaxes2:array [0..2] of TD3DXVector3;
+  end;
+
+  Tplayer = record
+   pos:Tplayerpos;
+   net:Tplayernet;
+   pls:Tplayerpls;
+   auto:Tplayerauto
+  end;
+
 
   TTeleport = record
    vfrom,vto:TD3DXVector3;
@@ -186,11 +233,7 @@ type
   Pbinmsg = ^Tbinmsg;
   Tbinmsg =packed array [0..511] of byte;
 
-  Tloves = record
-   pos,v2:Td3DXvector3;
-   kilotte:integer;
-   fegyv:byte;
-  end;
+
 
   PVecArr2 =^TVecarr2;
   TVecarr2 =array [0..100000] of TD3DXVector3;
@@ -472,27 +515,11 @@ function point(ax,ay:integer):Tpoint;
 
 function packfloat(mit:single;range:single):word;
 function packvec(mit:TD3DXVector3;range:single):Tmypackedvector;
-function packpos(mit:Tmukspos):Tpackedpos;
 function packnormal(mit:TD3DXVector3):Tmypackednorm;
 function packseb(pos,opos:TD3DXVector3):Tmypackedvector;
-function unpackpos(mit:Tpackedpos):Tmukspos;
 function unpackfloat(mit:word;range:single):single;
 function unpackvec(mit:Tmypackedvector;range:single):TD3DXVector3;
 function unpacknormal(mit:Tmypackednorm):TD3DXVector3;
-
-procedure binarymsgadd(var msg:Tbinmsg;var lngt:integer;mit:byte);overload;
-procedure binarymsgadd(var msg:Tbinmsg;var lngt:integer;mit:word);overload;
-procedure binarymsgadd(var msg:Tbinmsg;var lngt:integer;mit:single);overload;
-procedure binarymsgadd(var msg:Tbinmsg;var lngt:integer;mit:TD3DVector);overload;
-procedure binarymsgadd(var msg:Tbinmsg;var lngt:integer;mit:Tmypackedvector);overload;
-procedure binarymsgadd(var msg:Tbinmsg;var lngt:integer;mit:Tpackedpos);overload;
-
-procedure binarymsgread(var msg:Tbinmsg;var lngt:integer;var mit:byte);overload;
-procedure binarymsgread(var msg:Tbinmsg;var lngt:integer;var mit:word);overload;
-procedure binarymsgread(var msg:Tbinmsg;var lngt:integer;var mit:single);overload;
-procedure binarymsgread(var msg:Tbinmsg;var lngt:integer;var mit:TD3DVector);overload;
-procedure binarymsgread(var msg:Tbinmsg;var lngt:integer;var mit:Tmypackedvector);overload;
-procedure binarymsgread(var msg:Tbinmsg;var lngt:integer;var mit:Tpackedpos);overload;
 
 function vec3add3(v1,v2,v3:TD3DXVector3):TD3DXVector3;
 function vec3add4(v1,v2,v3,v4:TD3DXVector3):TD3DXVector3;
@@ -534,7 +561,7 @@ procedure specialcopymem(dest,src:pointer;deststride,srcstride:integer;elements:
 
 function CommandLineOption(mi:string):boolean;
 
-function MD5GetHex(dig:MD5Digest):string;
+function SHA1GetHex(dig:TSha1Digest):string;
 
 procedure gethostbynamewrap(nam:string;hova:PinAddr;canwait:boolean);
 function sockaddrtoincim(sockaddr:sockaddr_in):Tincim;
@@ -1936,43 +1963,13 @@ begin
  result.lv:=mit.lv/256;
 end;
 
-function packpos(mit:Tmukspos):Tpackedpos;
-begin
- with result do
- begin
-  pos.x:=packfloat(mit.pos.x,2500);
-  pos.y:=packfloat(mit.pos.y,400);
-  pos.z:=packfloat(mit.pos.z,2500);
-  irany:=packfloatheavy(mit.irany,D3DX_PI);
-  prior:=round(mit.prior);
-  irany2:=packfloatheavy(mit.irany2,D3DX_PI);
-  state:=mit.state;
-  BG:=mit.BG;
- end;
-end;
-
-function unpackpos(mit:Tpackedpos):Tmukspos;
-begin
- with result do
- begin
-  pos.x:=unpackfloat(mit.pos.x,2500);
-  pos.y:=unpackfloat(mit.pos.y,400);
-  pos.z:=unpackfloat(mit.pos.z,2500);
-  irany:=unpackfloatheavy(mit.irany,D3DX_PI);
-  irany2:=unpackfloatheavy(mit.irany,D3DX_PI);
-  prior:=mit.prior;
-  state:=mit.state;
-  BG:=mit.BG;
- end;
-end;
-
 function packseb(pos,opos:TD3DXVector3):Tmypackedvector;
 begin
  d3dxvec3subtract(pos,pos,opos);
  result:=packvec(pos,1);
 end;
 
-
+{
 // BINMSG ADDOK
 procedure binarymsgadd(var msg:Tbinmsg;var lngt:integer;mit:byte);
 begin
@@ -2076,7 +2073,7 @@ begin
  binarymsgread(msg,lngt,mit.prior);
  binarymsgread(msg,lngt,mit.bg);
 end;
-
+        }
 function kbegyenlo(mi,mivel:TD3DXVector3;epsilon:single=0.001):boolean;
 begin
  result:=(abs(mi.x-mivel.x)<epsilon) and
@@ -3092,7 +3089,7 @@ tmp1,tmp2:cardinal;
 begin
  windows.Getvolumeinformation(nil,nil,0,@result,tmp1,tmp2,nil,0);
 end;
-
+   {
 function MD5Encode(mit:dword):string;overload;
 var
 cnt:MD5Context;
@@ -3118,6 +3115,17 @@ i:integer;
 begin
  result:='';
  for i:=0 to 15 do
+  result:=result+inttohex(dig[i],2);
+ result:=lowercase(result);
+end;
+        }
+
+function SHA1GetHex(dig:TSHA1Digest):string;
+var
+i:integer;
+begin
+ result:='';
+ for i:=0 to 19 do
   result:=result+inttohex(dig[i],2);
  result:=lowercase(result);
 end;
