@@ -177,6 +177,12 @@ type
    egyebetkapott:integer;    //no minden esetben amikor egyebet kap :) Fõként a seesme miatt.
   end;}
 
+  
+  Tloves = record
+   pos,v2:Td3DXvector3;
+   kilotte:integer;
+   fegyv:byte;
+  end;
 
   { PRIVATE TYPEOK! }
   Tplayerpos = record
@@ -188,14 +194,25 @@ type
   end;
 
   Tplayernet = record
+   ip:DWORD;
+   port:WORD;
+   overrideport:word;             // nat port dolog
    UID:integer;
-   prior:single;
-   overrideport:word;             // port dolog
+   kapottprior:single;     //én milyen fontos vagyok neki
+   nekemprior:single;      //õ milyen fontos nekem
+   prior:single;          //a kettõ összege, ezzel egyenesen arányos a kapott sávszél
+   priorbucket:single;    //ez töltõdik. Ha >0, lehet sendelni, akkor -=1
    mtim:word;             //legutóbbi packet óta eltelt századmásodpercek
    vtim:word;             //legutóbbi packet ideje GetTickCountban
    atim:word;
-   amtim,avtim,aatim,amtim2:word;  //  --||-- autóval
+   amtim,avtim,aatim,vamtim:word;  //  --||-- autóval
+   lasthandshake:integer;
+   gothandshake:boolean;
    connected:boolean;     //3 way handshake kész
+   lovesek:array [0..15]of Tloves; //elkuldendo lovesek
+   loveseksz:integer;
+   plovesek:array [0..7] of Tloves; //elkuldendo pontos lovesek
+   ploveseksz:integer;
   end;
 
   Tplayerpls = record
@@ -209,11 +226,13 @@ type
    visible:boolean;              // Viewport culling
    kills:word;
    lottram:integer;             //lõtt rám. visszaszámláló
+   autoban:boolean;
   end;
 
   Tplayerauto = record
-   pos,opos,posx,oposx:TD3DXVector3;
-   axes,vaxes,vaxes2:array [0..2] of TD3DXVector3;
+   enabled:boolean;
+   pos,seb,vpos,vseb:TD3DXVector3;
+   axes,vaxes:array [0..2] of TD3DXVector3;
   end;
 
   Tplayer = record
@@ -223,6 +242,9 @@ type
    auto:Tplayerauto
   end;
 
+  const uresplayer:Tplayer=();
+
+  type
 
   TTeleport = record
    vfrom,vto:TD3DXVector3;
@@ -286,7 +308,7 @@ type
    eletkor:integer;
    kilotte:integer;
   end;
-
+  
   TDbubble = record
    pos:TD3DXVector3;
    meret,erosseg:single;
@@ -376,7 +398,7 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20008;
+  PROG_VER=20100;
   datachecksum=$1ED51E69;
 var
   checksum:Dword=0;
@@ -514,10 +536,12 @@ procedure loadKDtree(nev:string; var KDTree:TKDTree; var KDData:TKDData);
 function point(ax,ay:integer):Tpoint;
 
 function packfloat(mit:single;range:single):word;
+function packfloatheavy(mit:single;range:single):byte;
 function packvec(mit:TD3DXVector3;range:single):Tmypackedvector;
 function packnormal(mit:TD3DXVector3):Tmypackednorm;
 function packseb(pos,opos:TD3DXVector3):Tmypackedvector;
 function unpackfloat(mit:word;range:single):single;
+function unpackfloatheavy(mit:byte;range:single):single;
 function unpackvec(mit:Tmypackedvector;range:single):TD3DXVector3;
 function unpacknormal(mit:Tmypackednorm):TD3DXVector3;
 

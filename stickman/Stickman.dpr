@@ -129,10 +129,10 @@ var
   DIne:TdinputEasy = nil;
   noobtoltpos:TD3DXVector3;
   
-  gazmsg:string;
-  epulethezert:integer;
+  kickmsg:string;
+  hardkick:boolean;
   
-  botszam:integer;
+  epulethezert:integer;
 
   cpx:Psingle;  ///FRÖCCCS
 
@@ -189,7 +189,8 @@ var
   kitlottemle:string;
   latszonaKL:integer;
   suicidevolt:integer;
-  
+  tauntvolt:boolean;
+
   HDRarr:array [0..7,0..7] of integer;
   HDRscanline:byte;
   HDRincit:single=8000;
@@ -1928,10 +1929,6 @@ label
 visszobj,visszfegyv;
 begin
 
-   {$IFDEF AIparancsok}
-   botlevel:=0.3;
-   invbotlevel:=1/botlevel;
-   {$ENDIF}
   Result:= E_FAIL;
   enableeffects:=true;
   laststate:='Initializing';
@@ -2498,7 +2495,7 @@ begin
   multisc.Killed(kimiatt);
   multip2p.Killed(apos,vpos,szogx,mstat,animstat,mlgmb,gmbvec,kimiatt);
  end;
- 
+
  if rbszam>=20 then exit;
  inc(rbszam);
 
@@ -2710,32 +2707,13 @@ begin
    ojjektumrenderer.Destroy;
    ojjektumrenderer:=T3DORenderer.Create(G_pd3ddevice);
   {$ENDIF}
-
-
-  {$IFDEF AIparancsok}
-  if aimode>1 then
-  begin
-   setlength(AIplrs,length(AIplrs)+1);
-   AIplrs[high(AIplrs)]:=TAIplr.Create(v2,random(2));
-   if random(20)=0 then AIplrs[high(AIplrs)].fegyv:=2;
-   if aimode=3 then
-   inc(AIplrs[high(AIplrs)].fegyv,128);
-   if AIplrs[high(AIplrs)].fegyv=FEGYV_X72 then AIplrs[high(AIplrs)].fegyv:=FEGYV_MPG;
-
-   AIplrs[high(AIplrs)].halal:=0;
-   if random(2)>0 then
-    inc(AIplrs[high(AIplrs)].state,MSTAT_CSIPO);
-  // if random(2)>0 then inc(AIplrs[high(AIplrs)].state,MSTAT_GUGGOL);
-   AIplrs[high(AIplrs)].fegyv:=FEGYV_QUAD;
-  // AIplrs[high(AIplrs)].fejcucc:=5;
-
-
-   setlength(Aitaroltpos,length(AIplrs));
-   AItaroltpos[high(AIplrs)]:=v2;
-  end;
-  {$ENDIF}
   
-  multip2p.Loves(hollo,v2,myfegyv);
+  multip2p.Loves(hollo,v2);
+  setlength(lovesek,length(lovesek)+1);
+  lovesek[high(lovesek)].pos:=hollo;
+  lovesek[high(lovesek)].v2:=v2;
+  lovesek[high(lovesek)].kilotte:=-1;
+  lovesek[high(lovesek)].fegyv:=myfegyv;
 end;
 
 procedure lojjranged;
@@ -2783,7 +2761,12 @@ begin
   d3dxvec3subtract(v2,hollo,v2);
   {$ENDIF}
 
-  multip2p.Loves(hollo,v2,myfegyv);
+  multip2p.Loves(hollo,v2);
+  setlength(lovesek,length(lovesek)+1);
+  lovesek[high(lovesek)].pos:=hollo;
+  lovesek[high(lovesek)].v2:=v2;
+  lovesek[high(lovesek)].kilotte:=-1;
+  lovesek[high(lovesek)].fegyv:=myfegyv;
   inc(zeneintensity,3000);
 end;
 
@@ -4686,7 +4669,6 @@ begin
    begin
     halal:=1;
     autoban:=false;
-    //!TODO submarine
     addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^),d3dxvector3(0.00,-0.1,0),myfegyv,10,0,-1);
    end;
   end
@@ -4837,7 +4819,7 @@ begin
   begin
   if ppl[i].net.mtim<300 then
    inc(ppl[i].net.mtim);
-  if ppl[i].net.amtim<200 then
+  if ppl[i].net.amtim<500 then
    inc(ppl[i].net.amtim);
   end;
 
@@ -4899,7 +4881,6 @@ begin
   begin
     halal:=1;
     setupmymuksmatr;
-    //!TODO tried to exit
     addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3((cpox^+cpx^)/2,cpy^-0.5,(cpoz^+cpz^)/2),d3dxvector3(-sin(szogx)*0.3,-0.1,-cos(szogx)*0.3),myfegyv,0,0,-1);
   end;
   cooldown:=3;
@@ -5254,7 +5235,7 @@ begin
   //0  TECH //12 killing spreek   //18 GUN //32 killing spreek
   //Haláli rádiók :P
 
-  if opt_taunts then
+  if opt_taunts and tauntvolt then
    begin
    if myfegyv>127 then
    begin
@@ -5291,7 +5272,7 @@ begin
     PlayStrm(   i,123,-400);
     PlayStrm(18+1,123,-400);
    end;
-
+   tauntvolt:=false;
   end;
 
   if mp5ptl>0 then
@@ -5568,38 +5549,20 @@ end;
 
 procedure handleMMO;
 begin
-
-{  if (halal=0) and (not autoban) then
-  begin
-   MMO.mypos.pos:=posokvoltak[0]; //D3DXVector3(cpx^,cpy^,cpz^);
-   MMO.myopos   :=D3DXVector3(cpox^,cpoy^,cpoz^);
-   d3dxvec3lerp(MMO.myopos,posokvoltak[0],posokvoltak[high(posokvoltak)],1/high(posokvoltak));
-   if length(chats[0])=0 then
-   MMO.mypos.state:=mstat
-   else
-    MMO.mypos.state:=0;
-  end
+  multisc.Update(round(cpx^),round(cpy^));
+  if halal>0 then
+   multip2p.Update(0,0,0,0,0,0,0,0,0,campos,false,not tegla.disabled,tegla.pos,tegla.vpos,tegla.axes)
   else
+   multip2p.Update(cpx^,cpy^,cpz^,cpox^,cpoy^,cpoz^,szogx,szogy,mstat,campos,autoban,not tegla.disabled,tegla.pos,tegla.vpos,tegla.axes);
+
+  if multisc.kicked<>'' then
   begin
-   MMO.mypos.pos:=D3DXVector3(cpox^,-50,cpoz^);
-   MMO.myopos   :=D3DXVector3(cpox^,-50,cpoz^);
-   MMO.mypos.state:=0;
+   gobacktomenu:=true;
+   kickmsg:=multisc.kicked;
+   hardkick:=multisc.kickedhard;
   end;
-
-  MMO.mypos.irany:=szogx;
-  MMO.mypos.irany2:=szogy;
-  MMO.getdatafromcar(tegla.pos,tegla.vpos,tegla.axes,autoban,tegla.disabled);
-  if kuldd+1000<timegettime then
-   kuldd:=timegettime;
-
-  MMO.mynez1:=campos;
-  d3dxvec3add(MMO.mynez2,campos,D3DXVector3(sin(szogx)*cos(szogy)*200,sin(szogy)*200,cos(szogx)*cos(szogy)*200));
- }
-  //!TODO update
-  //!TODO kick
   //!TODO weather
   //!TODO medal
-  //!TODO kill
 end;
 
 procedure handleMMOcars;
@@ -5617,17 +5580,21 @@ begin
  begin
 
   if ppl[i].net.avtim=0 then ppl[i].net.avtim:=10;
-  disabled:=ppl[i].auto.pos.y<2;
+  disabled:=not ppl[i].auto.enabled;
 
   if disabled then continue;
-  d3dxvec3lerp(axes[0],ppl[i].auto.vaxes[0],ppl[i].auto.axes[0],min(ppl[i].net.amtim*10/ppl[i].net.avtim,1));
-  d3dxvec3lerp(axes[1],ppl[i].auto.vaxes[1],ppl[i].auto.axes[1],min(ppl[i].net.amtim*10/ppl[i].net.avtim,1));
-  d3dxvec3lerp(axes[2],ppl[i].auto.vaxes[2],ppl[i].auto.axes[2],min(ppl[i].net.amtim*10/ppl[i].net.avtim,1));
+  d3dxvec3lerp(axes[0],ppl[i].auto.vaxes[0],ppl[i].auto.axes[0],min(ppl[i].net.amtim/ppl[i].net.avtim,1));
+  d3dxvec3lerp(axes[1],ppl[i].auto.vaxes[1],ppl[i].auto.axes[1],min(ppl[i].net.amtim/ppl[i].net.avtim,1));
+  d3dxvec3lerp(axes[2],ppl[i].auto.vaxes[2],ppl[i].auto.axes[2],min(ppl[i].net.amtim/ppl[i].net.avtim,1));
 
-  d3dxvec3lerp(pos1,ppl[i].auto.opos ,ppl[i].auto.pos ,1+ppl[i].net.amtim/10);
-  d3dxvec3lerp(pos2,ppl[i].auto.oposx,ppl[i].auto.posx,1+(ppl[i].net.amtim+ppl[i].net.amtim2)/10);
-  vpos:=pos;
-  d3dxvec3lerp(pos,pos2,pos1,max((ppl[i].net.amtim)/500,1));
+  d3dxvec3scale(pos1,ppl[i].auto.seb,ppl[i].net.amtim);
+  d3dxvec3add(pos1,pos1,ppl[i].auto.pos);
+  d3dxvec3scale(pos2,ppl[i].auto.vseb,(ppl[i].net.amtim+ppl[i].net.vamtim));
+  d3dxvec3add(pos2,pos2,ppl[i].auto.vpos);
+
+  d3dxvec3lerp(pos,pos2,pos1,min((ppl[i].net.amtim)/ppl[i].net.avtim,1));
+  d3dxvec3subtract(vpos,pos,ppl[i].auto.seb);
+  
   agx:=ppl[i].pls.fegyv>127;
   initkerekek;
  end;
@@ -5666,8 +5633,6 @@ begin
  hol:=campos;
  if gugg then hol.y:=hol.y-0.5;
   PlaceListener(hol,szogx,szogy);
-
-
 
  if ((mstat and  MSTAT_MASK)>0) and (halal=0) then
  begin
@@ -6330,13 +6295,20 @@ begin
  for i:=0 to high(hullak) do
  with hullak[i] do
  begin
+  if enlottemle then
+  begin
+   tauntvolt:=true;
+   LatszonaKL:=200;
+   kitlottemle:=lang[59]+ppl[index].pls.nev+lang[60];
+  end;
+
   D3DXMatrixRotationY(matWorld2,irany+d3dx_pi);
   D3DXMatrixTranslation(matWorld,apos.x,apos.y,apos.z);
   D3DXMatrixMultiply(matWorld,matWorld2,matWorld);
   mat_world:=matworld;
 
-  muks.jkez:=fegyv.jkez(fegyver,state);
-  muks.bkez:=fegyv.bkez(fegyver,state);
+  muks.jkez:=fegyv.jkez(ppl[index].pls.fegyv,state);
+  muks.bkez:=fegyv.bkez(ppl[index].pls.fegyv,state);
 
      case state and MSTAT_MASK of
       0:muks.stand((state and MSTAT_GUGGOL)>0);
@@ -6346,7 +6318,7 @@ begin
       4:muks.SideWalk(1-animstate,(state and MSTAT_GUGGOL)>0);
       5:muks.Runn(animstate,true);
      end;
-  addrongybaba(apos,vpos,gmbvec,fegyver,mlgmb,random(20000)+1,-1);
+  addrongybaba(apos,vpos,gmbvec,ppl[index].pls.fegyv,mlgmb,random(20000)+1,-1);
  end;
  setlength(hullak,0);
 end;
@@ -6439,7 +6411,7 @@ begin
    remakelvl(x);
    if timegettime>(kuldd+50) then
    begin
-    //!TODO MMO.Update(0,0,0,0,0,0...)
+    
     kuldd:=timegettime;
    end;
  end;
@@ -6755,8 +6727,8 @@ begin
  begin
   ar[i]:='';
   ac[i]:='';
-     if (ppl[i].pos.pos.y<0.1) then
-   if (ppl[i].auto.pos.y<0.1) then
+  if (ppl[i].pos.pos.y<0.1) or ppl[i].pls.autoban then
+   if (not ppl[i].auto.enabled) then
    begin
     if ppl[i].pos.pos.y=0 then continue;
     ap[i]:=D3DXVector3(1,1,2);
@@ -6766,7 +6738,7 @@ begin
    else
     vec:=tobbiekautoi[i].pos
    else
-  vec:=ppl[i].pos.megjpos;
+    vec:=ppl[i].pos.megjpos;
   if abs(ppl[i].pos.pos.y-cpy^)>150  then
   begin
     if ppl[i].pos.megjpos.y<10 then continue;
@@ -6875,7 +6847,7 @@ begin
 
  txt:=txt+' - '+lang[37]+': '+inttostr(gunsz)+' / '+inttostr(techsz);
 
- txt:=txt+' - '+lang[38]+':'+inttostr(length(ppl)+1-gunsz-techsz);
+ txt:=txt+' - '+lang[38]+':'+inttostr(length(ppl)-gunsz-techsz-1);
  menu.DrawText(txt,0,0,0.4,0.05,0,$FF000000+betuszin);
 
  txt:=formatdatetime('hh:nn',time);
@@ -6926,7 +6898,7 @@ begin
  if length(chatmost)>0 then
   menu.DrawText('Chat:'+chatmost ,0,0.03,0.4,0.3,0,$FF000000+aszin);
 
- for i:=1 to 8 do
+ for i:=0 to 7 do
  begin
   //!TODO szines csodacset
 
@@ -6937,11 +6909,11 @@ begin
    else
     cghash:=StringHash(copy(multisc.chats[i],1,pos(':',multisc.chats[i])));
 
-   menu.DrawChatGlyph(cghash,0.005,0.06+(i-1)*0.02,$1F*(9-i));
-   menu.DrawText(multisc.chats[i],0.015,0.05+(i-1)*0.02,0.4,0.2+(i-1)*0.02,0,$1F000000*(9-i)+aszin);
+   menu.DrawChatGlyph(cghash,0.005,0.06+(i)*0.02,$1F*(8-i));
+   menu.DrawText(multisc.chats[i],0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,0,$1F000000*(8-i)+aszin);
   end
   else
-   menu.DrawText(multisc.chats[i],0.000,0.05+(i-1)*0.02,0.4,0.2+(i-1)*0.02,0,$1F000000*(9-i)+aszin);
+   menu.DrawText(multisc.chats[i],0.000,0.05+(i)*0.02,0.4,0.2+(i)*0.02,0,$1F000000*(8-i)+aszin);
  end;
 
  {$IFDEF palyszerk}
@@ -7032,13 +7004,7 @@ begin
 
 // for i:=0 to 12 do
  // menu.drawtext(inttostr(kic[i]),0.3,0.1+i/20,0.5,0.2+i/20,true,$FFFF0000);
- {$IFDEF hudcoord}
- menu.drawtext(floattostr(cpx^) ,0.1,0.5,0.55,1,0,$FFFF00FF);
-  menu.drawtext(floattostr(cpy^) ,0.1,0.55,0.6,1,0,$FFFF00FF);
-  menu.drawtext(floattostr(cpz^) ,0.1,0.6,0.65,1,0,$FFFF00FF);
-  menu.drawtext(floattostr(szogx),0.1,0.65,0.7,1,0,$FFFF00FF);
-  menu.drawtext(floattostr(szogy),0.1,0.7,0.75,1,0,$FFFF00FF);
- {$ENDIF}
+
  //menu.drawtext(floattostr(
    //                  sqrt(sqr(cpx^-cpox^)+sqr(cpy^-cpoy^)+sqr(cpz^-cpoz^))
      //                ),0.2,0.9,0.8,1,2,$70000000+betuszin);
@@ -7101,8 +7067,7 @@ begin
   for i:=0 to high(rendezve) do
    if ppl[rendezve[i]].pls.fegyv>=128 then
    begin
-    //!TODO mutasson a tab lista
-    if ((length(ppl[rendezve[i]].pls.nev)>1) and (ppl[rendezve[i]].net.connected)) then
+    if (length(ppl[rendezve[i]].pls.nev)>1) and (ppl[rendezve[i]].net.connected or (ppl[rendezve[i]].net.UID=0)) then
     begin
 
      if killtmutat then
@@ -7114,7 +7079,7 @@ begin
    end
    else
    begin
-    if ((length(ppl[rendezve[i]].pls.nev)>1) and (ppl[rendezve[i]].net.connected))  then
+    if (length(ppl[rendezve[i]].pls.nev)>1) and (ppl[rendezve[i]].net.connected or (ppl[rendezve[i]].net.UID=0))  then
     begin
 
      if killtmutat then
@@ -7378,7 +7343,7 @@ end;
 
 
 
-procedure rendermuks(i:integer;pos:TD3DXVector3;astate,afegyv:byte);
+procedure rendermuks(i:integer;astate,afegyv:byte);
 begin
 
  SetupMuksmatr(i);
@@ -7732,13 +7697,20 @@ end;    }
 procedure dopplvisibility;
 var
  i:integer;
+ pos:TD3DXVector3;
 begin
  for i:=0 to high(ppl) do
- if (ppl[i].pos.pos.y<3) or (not ppl[i].net.connected) then
+ if (ppl[i].pos.pos.y<3) or (not ppl[i].net.connected) or ppl[i].pls.autoban then
   ppl[i].pls.visible:=false
  else
-  ppl[i].pls.visible:=spherevsfrustum(D3DXVector3(ppl[i].pos.pos.x,ppl[i].pos.pos.y+0.8,ppl[i].pos.pos.z),1,frust);
+ begin
+  if ppl[i].net.vtim>0 then
+   pos:=ppl[i].pos.megjpos
+  else
+   pos:=ppl[i].pos.pos;
 
+  ppl[i].pls.visible:=spherevsfrustum(D3DXVector3(pos.x,pos.y+0.8,pos.z),1,frust);
+ end;
 end;
 
 
@@ -8167,7 +8139,7 @@ begin
     if ppl[i].pls.visible then
      if tavpointpointsq(ppl[i].pos.pos,campos)<sqr(300) then
      begin
-      Rendermuks(i,ppl[i].pos.pos,ppl[i].pos.state,ppl[i].pls.fegyv);
+      Rendermuks(i,ppl[i].pos.state,ppl[i].pls.fegyv);
      end;
 
     muks.Flush;
@@ -8666,7 +8638,6 @@ begin
  end;
  try
   write(fil2,menufi[MI_MOUSE_SENS].elx);
-  write(fil2,menufi[MI_BOT_NUM].elx);
   write(fil2,menufi[MI_VOL].elx);
   write(fil2,menufi[MI_MP3_VOL].elx);
 
@@ -8739,8 +8710,6 @@ begin
  //mouse 4:txt, 5:csusz; bot:7:txt; 8:csusz
  mousesens:=power(10,menufi[MI_MOUSE_SENS].elx*2-1);
  menufi[MI_MOUSE_SENS_LAB].valueS:=floattostrf(mousesens,fffixed,6,2);
- botszam:=round(menufi[MI_BOT_NUM].elx*25);
- menufi[MI_BOT_NUM_LAB].valueS:=inttostr(botszam);
 
  savemenumisc;
  for i:=0 to 6 do
@@ -9079,37 +9048,8 @@ end;
 procedure handleparancsok(var mit:string);
 var
 i:integer;
-str:string;
+
 begin
-{$IFDEF AIparancsok}
- if pos('/ai ',mit)>0 then
- begin
-  if pos('/ai disable',mit)>0 then aimode:=1;
-  if pos('/ai enable',mit)>0 then aimode:=0;
-  if pos('/ai clear',mit)>0 then
-  begin
-   for i:=0 to high(AIplrs) do
-    AIplrs[i].free;
-   setlength(AIplrs,0);
-   aimode:=1;
-  end;
-  if pos('/ai addgun',mit)>0 then aimode:=2;
-  if pos('/ai addtech',mit)>0 then aimode:=3;
-  if pos('/ai reset',mit)>0 then
-  begin
-   aimode:=1;
-   for i:=0 to high(AIplrs) do
-   begin
-    AIplrs[i].pos:=AItaroltpos[i];
-    AIplrs[i].celmegvan:=true;
-     AIplrs[i].halal:=0;
-     AIplrs[i].lovok:=false;
-   end;
-  end;
- end;
-  {$ENDIF}
-
-
 
   if pos(' /practice',mit)=1 then
    mit:=' /join Practice-'+inttohex(random(35536),4);
@@ -9235,15 +9175,9 @@ begin
  //Menü lap 2 --- Options
  menu.Addteg(0.5,0.3,0.9,0.8,2,$C0000000);
 
- menu.AddText(0.5,0.350,0.63,0.400,0.5,2,lang[11],false);
- menu.AddText(0.84,0.350,0.9,0.400,0.5,2,'5',false);         menufi[MI_BOT_NUM_LAB]:=menu.items[2,4];
- menu.Addcsuszka(0.63,0.350,0.84,0.400,1,2,'',0.5);          menufi[MI_BOT_NUM]:=menu.items[2,5];
-
- menu.AddText(0.55,0.45,0.85,0.55,1,2,lang[12],true);      menufi[MI_GRAPHICS]:=menu.items[2,6];
- menu.AddText(0.55,0.55,0.85,0.65,1,2,lang[13],true);         menufi[MI_SOUND]:=menu.items[2,7];
- menu.AddText(0.55,0.65,0.85,0.75,1,2,lang[14],true);      menufi[MI_CONTROLS]:=menu.items[2,8];
-
-
+ menu.AddText(0.55,0.45,0.85,0.55,1,2,lang[12],true);      menufi[MI_GRAPHICS]:=menu.items[2,3];
+ menu.AddText(0.55,0.55,0.85,0.65,1,2,lang[13],true);         menufi[MI_SOUND]:=menu.items[2,4];
+ menu.AddText(0.55,0.65,0.85,0.75,1,2,lang[14],true);      menufi[MI_CONTROLS]:=menu.items[2,5];
 
  //Menü lap 3 --- Exit
  menu.Addteg(0.5,0.3,0.9,0.8,3,$C0000000);
@@ -9323,7 +9257,6 @@ begin
   assignfile(fil2,'data\cfg\misc.cfg');
   reset(fil2);
   read(fil2,menufi[MI_MOUSE_SENS].elx);
-  read(fil2,menufi[MI_BOT_NUM].elx);
   read(fil2,menufi[MI_VOL].elx);
   read(fil2,menufi[MI_MP3_VOL].elx);
 
@@ -9362,7 +9295,6 @@ begin
  else
  begin
   menufi[MI_MOUSE_SENS].elx:=0.5;
-  menufi[MI_BOT_NUM].elx:=0;
   menufi[MI_VOL].elx:=1;
   menufi[MI_MP3_VOL].elx:=1;
   opt_detail:=DETAIL_MAX;
@@ -9423,15 +9355,14 @@ i:integer;
 begin
  gobacktomenu:=false;
  menu.lap:=0;
- //!TODO kick!
- if false  then
+ if kickmsg<>'' then
  begin
   menufi[MI_GAZMSG].visible:=true;
-  menufi[MI_GAZMSG].valueS:=gazmsg;
+  menufi[MI_GAZMSG].valueS:=kickmsg;
   menu.tegs[0,1].visible:=true;
 
   //hardkick
-  if false then
+  if hardkick then
   for i:=0 to 6 do
   begin
    menu.items[i,0].focusable:=false;
@@ -9733,11 +9664,12 @@ try
      multisc.Free;
     if multip2p<>nil then
      multisc.Free;
-    multisc:=TMMOServerClient.Create(servername,
+
+    multisc:=TMMOServerClient.Create(servername,25252+random(1024),
                                     copy(menufi[MI_NEV].valueS,1,15),
                                     menufipass.GetPasswordMD5,
                                     myfegyv,myfejcucc);
-    multip2p:=TMMOPeerToPeer.Create;
+    multip2p:=TMMOPeerToPeer.Create(multisc.myport,myfegyv);
     writeln(logfile,'Network initialized');
 
     laststate:='Initialzing game 3';
