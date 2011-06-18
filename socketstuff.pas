@@ -40,6 +40,17 @@ type
     procedure SendFrame(var mit:TSocketFrame);
   end;
 
+  TUDPSocket=class
+  private
+    sock:TSocket;
+  public
+    error:integer;
+    constructor Create(port:integer);
+    destructor Destroy;override;
+    function Recv(var hova:TDynByteArray;var ip:DWORD;var port:WORD):boolean;
+    procedure Send(mit:TDynByteArray;n:integer;ip:DWORD;port:WORD);
+  end;
+
   function SelectForRead(sock:TSocket):integer;
   function SelectForWrite(sock:TSocket):integer;
   function SelectForError(sock:TSocket):integer;
@@ -327,6 +338,87 @@ begin
  FD_SET(sock,csillamvaltozo);
  result:=select(1,nil,nil,@csillamvaltozo,@csodavaltozo);
 end;
+
+
+constructor TUDPSocket.Create(port:integer);
+var
+srvc:sockaddr_in;
+hiba:integer;
+amode:DWORD;
+begin
+ inherited Create;
+ error:=0;
+ sock:=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+ if sock=0 then
+ begin
+  error:=1;
+  exit;
+ end;
+ zeromemory(@srvc,sizeof(srvc));
+ Srvc.sin_family := AF_INET;
+ Srvc.sin_addr.S_addr := htonl(INADDR_ANY);
+ Srvc.sin_port := htons(port);
+ hiba:=bind(sock,@srvc,sizeof(srvc));
+ if hiba=SOCKET_ERROR then
+ begin
+  error:=2;
+  exit;
+ end;
+ amode:=1;
+ ioctlsocket(sock, FIONBIO, amode);
+end;
+
+destructor TUDPSocket.Destroy;
+begin
+ closesocket(sock);
+ inherited Destroy;
+end;
+
+function TUDPSocket.Recv(var hova:TDynByteArray;var ip:DWORD;var port:WORD):boolean;
+var
+ recvbuf:array[0..1500] of byte;
+ jott:integer;
+ fraddr:TSockaddr;
+ frlen:integer;
+ err:integer;
+ i:integer;
+begin
+ result:=false;
+ zeromemory(@fraddr,sizeof(fraddr));
+ frlen:=sizeof(fraddr);
+ jott:=recvfrom(sock,recvbuf,sizeof(recvbuf),0,@fraddr,@frlen);
+ if jott>0 then
+ begin
+  result:=true;
+  setlength(hova,jott);
+  for i:=0 to jott-1 do
+   hova[i]:=recvbuf[i];
+  ip:=fraddr.sin_addr.S_addr;
+  port:=ntohs(fraddr.sin_port);
+ end
+ else
+ if jott=SOCKET_ERROR then
+ begin
+  err:=WSAGetLastError();
+  if err<>WSAEWOULDBLOCK then
+   error:=err;
+ end;
+end;
+
+procedure TUDPSocket.Send(mit:TDynByteArray;n:integer;ip:DWORD;port:WORD);
+var
+ toaddr:TSockaddr;
+ tolen:integer;
+begin
+ zeromemory(@toaddr,sizeof(toaddr));
+ tolen:=sizeof(toaddr);
+ toaddr.sin_family := AF_INET;
+ toaddr.sin_addr.S_addr := ip;
+ toaddr.sin_port := htons(port);
+ if SOCKET_ERROR=sendto(sock,mit[0],length(mit),0,@toaddr,tolen) then
+  error:=WSAGetLastError;
+end;
+
 
 initialization
  InitWinsock;
