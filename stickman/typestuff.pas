@@ -462,6 +462,7 @@ function CustomVertex(pos:TD3DXVector3;nx,ny,nz:single;acolor:longword;au,av,au2
 function SkyVertex(px,py,pz,au,av:single):TSkyVertex;
 
 function ARGB(a,r,g,b:byte):cardinal;
+function PaletteToRGB(palette_index:byte;alpha:integer):cardinal;
 function colorlerp(mit1,mit2:cardinal;mennyivel:single):cardinal;
 
 function SingletoDword(mit:single):Dword;
@@ -701,6 +702,14 @@ end;
 function ARGB(a,r,g,b:byte):cardinal;
 begin
  result:=RGB(r,g,b) or (a shl 24);
+end;
+
+function PaletteToRGB(palette_index:byte;alpha:integer):cardinal;
+begin
+ result:=(alpha shl 24) or
+         ((palette_index and $E0) shl 16) or
+         ((palette_index and $1C) shl 11) or
+         ((palette_index and 3) shl 6);
 end;
 
 function CustomVertex(x,y,z,nx,ny,nz:single;acolor:longword;au,av,au2,av2:single):TCustomVertex;

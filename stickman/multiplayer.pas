@@ -4,8 +4,8 @@ interface
 
 uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1;
 const
- servername = 'stickman.hu';
- //servername = 'localhost';
+ //servername = 'stickman.hu';
+ servername = 'localhost';
  TOKEN_RATE=10; //ezredmásodpercenkénti tokenek száma
  TOKEN_LIMIT=2000; //bucket max mérete
  PRIOR_NINCSPLOVES=0.5; //nem lõttem rá pontosat
@@ -31,7 +31,7 @@ type
   procedure ReceivePlayerlist(frame:TSocketFrame);
   procedure ReceiveChat(frame:TSocketFrame);
   procedure ReceiveKick(frame:TSocketFrame);
-
+  procedure ReceiveWeather(frame:TSocketFrame);
  public
   myport:integer; //általam kijelölt port
   myUID:integer;
@@ -43,6 +43,7 @@ type
   kills:integer;
   killscamping:integer; //readwrite
   killswithoutdeath:integer; // readwrite
+  weather:single;
   constructor Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
   destructor Destroy;reintroduce;
   procedure Update(posx,posy:integer);
@@ -90,6 +91,8 @@ type
   procedure CalculatePriorities(campos,lookatpos:TD3DXVector3);
   procedure SendFrame(frame:TUDPFrame;kinek:integer);
  public
+  lovesek:array of Tloves; //kilotte: Index, kívülrõl olvasandó és törlendõ
+  hullak:array of Thulla; //rongybabák. Detto.
   constructor Create(port,fegyv:integer);
   destructor Destroy; override;
   procedure Update(posx,posy,posz,oposx,oposy,oposz,iranyx,iranyy:single;state:integer;
@@ -106,9 +109,6 @@ var
  ppl:array of Tplayer;
  multisc:TMMOServerClient=nil;
  multip2p:TMMOPeerToPeer=nil;
-
- lovesek:array of Tloves; //kilotte: Index, a multip2p ezen keresztül kommunikálja le a lövéseket.
- hullak:array of Thulla; //ezen pedig a keletkezett rongybabákat.
 
 implementation
 
@@ -174,6 +174,11 @@ const
  SERVERMSG_CHAT=4;
  {
 	string uzenet
+ }
+
+ SERVERMSG_WEATHER=5;
+ {
+	byte mi
  }
 
  P2PMSG_HANDSHAKE=1;
@@ -337,6 +342,12 @@ begin
  kicked:=frame.ReadString;
 end;
 
+procedure TMMOServerClient.ReceiveWeather(frame:TSocketFrame);
+begin
+ kickedhard:=frame.ReadChar=1;
+ weather:=frame.ReadChar;
+end;
+
 constructor TMMOServerClient.Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
 begin
  inherited Create;
@@ -353,6 +364,7 @@ begin
  playersonserver:=0;
  kicked:='';
  kickedhard:=false;
+ weather:=12;
 end;
 
 destructor TMMOServerClient.Destroy;
@@ -401,6 +413,7 @@ begin
    SERVERMSG_CHAT: ReceiveChat(frame);
    SERVERMSG_KICK: ReceiveKick(frame);
    SERVERMSG_PLAYERLIST: ReceivePlayerList(frame);
+   SERVERMSG_WEATHER: ReceiveWeather(frame);
   end;
  end;
  frame.Free;
