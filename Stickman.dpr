@@ -2709,11 +2709,11 @@ begin
   {$ENDIF}
   
   multip2p.Loves(hollo,v2);
-  setlength(lovesek,length(lovesek)+1);
-  lovesek[high(lovesek)].pos:=hollo;
-  lovesek[high(lovesek)].v2:=v2;
-  lovesek[high(lovesek)].kilotte:=-1;
-  lovesek[high(lovesek)].fegyv:=myfegyv;
+  setlength(multip2p.lovesek,length(multip2p.lovesek)+1);
+  multip2p.lovesek[high(multip2p.lovesek)].pos:=hollo;
+  multip2p.lovesek[high(multip2p.lovesek)].v2:=v2;
+  multip2p.lovesek[high(multip2p.lovesek)].kilotte:=-1;
+  multip2p.lovesek[high(multip2p.lovesek)].fegyv:=myfegyv;
 end;
 
 procedure lojjranged;
@@ -2762,11 +2762,11 @@ begin
   {$ENDIF}
 
   multip2p.Loves(hollo,v2);
-  setlength(lovesek,length(lovesek)+1);
-  lovesek[high(lovesek)].pos:=hollo;
-  lovesek[high(lovesek)].v2:=v2;
-  lovesek[high(lovesek)].kilotte:=-1;
-  lovesek[high(lovesek)].fegyv:=myfegyv;
+  setlength(multip2p.lovesek,length(multip2p.lovesek)+1);
+  multip2p.lovesek[high(multip2p.lovesek)].pos:=hollo;
+  multip2p.lovesek[high(multip2p.lovesek)].v2:=v2;
+  multip2p.lovesek[high(multip2p.lovesek)].kilotte:=-1;
+  multip2p.lovesek[high(multip2p.lovesek)].fegyv:=myfegyv;
   inc(zeneintensity,3000);
 end;
 
@@ -5561,7 +5561,13 @@ begin
    kickmsg:=multisc.kicked;
    hardkick:=multisc.kickedhard;
   end;
-  //!TODO weather
+
+  if multisc.weather<>felho.coverage then
+  begin
+   felho.coverage:=multisc.weather;
+   felho.makenew;
+  end;
+
   //!TODO medal
 end;
 
@@ -6171,9 +6177,9 @@ snd:byte;
 begin
  SetupMyMuksmatr;
  gtc:=timegettime;
- for i:=0 to high(lovesek) do
+ for i:=0 to high(multip2p.lovesek) do
  begin
-  aloves:=lovesek[i];
+  aloves:=multip2p.lovesek[i];
   constraintvec(aloves.pos);
   constraintvec(aloves.v2);
   {for j:=0 to bunker.hvszam-1 do
@@ -6283,7 +6289,7 @@ begin
    {$ENDIF}
  end;
  
- setlength(lovesek,0);
+ setlength(multip2p.lovesek,0);
 end;
 
 procedure handledoglodesek;
@@ -6292,8 +6298,8 @@ var
 //  pos:TD3DVector;
   i:integer;
 begin
- for i:=0 to high(hullak) do
- with hullak[i] do
+ for i:=0 to high(multip2p.hullak) do
+ with multip2p.hullak[i] do
  begin
   if enlottemle then
   begin
@@ -6320,7 +6326,7 @@ begin
      end;
   addrongybaba(apos,vpos,gmbvec,ppl[index].pls.fegyv,mlgmb,random(20000)+1,-1);
  end;
- setlength(hullak,0);
+ setlength(multip2p.hullak,0);
 end;
 
 
@@ -6893,27 +6899,22 @@ begin
 
  {$ENDIF}
  aszin:=$FF;
-
-
+ 
  if length(chatmost)>0 then
-  menu.DrawText('Chat:'+chatmost ,0,0.03,0.4,0.3,0,$FF000000+aszin);
+  menu.DrawSzinesChat('Chat:'+chatmost ,0,0.03,0.4,0.3,$FF000000+aszin);
 
  for i:=0 to 7 do
  begin
   //!TODO szines csodacset
-
-  if (aszin<>0) and (pos(':',multisc.chats[i])>0) then
+  if (pos(':',multisc.chats[i])>0) then
   begin
-   if aszin=$FF0000 then
-    cghash:=(((13)*16+12)*16+14)*16+15   {szin}+29*65536
-   else
-    cghash:=StringHash(copy(multisc.chats[i],1,pos(':',multisc.chats[i])));
-
+    //cghash:=(((13)*16+12)*16+14)*16+15   {szin}+29*65536
+   cghash:=StringHash(copy(multisc.chats[i],1,pos(':',multisc.chats[i])));
    menu.DrawChatGlyph(cghash,0.005,0.06+(i)*0.02,$1F*(8-i));
-   menu.DrawText(multisc.chats[i],0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,0,$1F000000*(8-i)+aszin);
+   menu.DrawSzinesChat(multisc.chats[i],0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$1F000000*(8-i)+aszin);
   end
   else
-   menu.DrawText(multisc.chats[i],0.000,0.05+(i)*0.02,0.4,0.2+(i)*0.02,0,$1F000000*(8-i)+aszin);
+   menu.DrawSzinesChat(multisc.chats[i],0.000,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$1F000000*(8-i)+aszin);
  end;
 
  {$IFDEF palyszerk}
@@ -9596,6 +9597,7 @@ try
 
     //Enter the menu message loop
     men:
+    mp3menu:='data\usiiis_short.mp3';
         laststate:='Init Menu Scene';
     initmenuScene;
         laststate:='Init Menu FC';
@@ -9620,8 +9622,10 @@ try
           DispatchMessage(msg);
         end else
         begin
-         if getactivewindow<>hwindow then sleep(100);
+         if getactivewindow<>hwindow then sleep(10);
          MenuLoop;
+         zenefresh(@(menufi[MI_MP3_VOL].elx));
+         CommitDeferredSoundStuff;
          //DinE.Update;
          if menu.lap=1 then
          fejcuccrenderer.Updatetex(myfejcucc,myfegyv>=128,pi+sin(((timegettime mod 5000)/5000)*2*pi));
@@ -9653,6 +9657,8 @@ try
     menu.DeFinishCreate;
     if msg.message=WM_QUIT then goto vege;
     jatek:
+    zenecleanup;
+    mp3menu:='';
     lostdevice:=false;
     menu.DrawLoadScreen(200);
     AFquit;
@@ -9669,6 +9675,7 @@ try
                                     copy(menufi[MI_NEV].valueS,1,15),
                                     menufipass.GetPasswordMD5,
                                     myfegyv,myfejcucc);
+    multisc.weather:=felho.coverage; //ehh, ennyit a csodálatos OOP-rõl.
     multip2p:=TMMOPeerToPeer.Create(multisc.myport,myfegyv);
     writeln(logfile,'Network initialized');
 

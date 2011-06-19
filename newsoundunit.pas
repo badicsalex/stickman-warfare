@@ -146,7 +146,8 @@ var
  mp3strmpvalts:boolean;
  mp3action,mp3ambient,mp3car:boolean;
  mp3stationname:string;
-
+ mp3menu:string;
+ 
  mp3pos:integer;
  lastsoundaction:string;
  bufPlaying:array of TCombinedSoundBuffer;
@@ -214,7 +215,7 @@ begin
  if DS=nil then exit;
 
 
- if high(mp3filelist)<0 then exit;
+ if (high(mp3filelist)<0) and (mp3menu='') then exit;
 
  for i:=0 to high(mp3filelist) do
  begin
@@ -224,7 +225,10 @@ begin
   mp3filelist[rnd]:=tmp;
  end;
  mp3pos:=0;
- zene2:= Tmp3file.create(mp3filelist[random(length(mp3filelist))]);
+ if mp3menu='' then
+  zene2:= Tmp3file.create(mp3filelist[random(length(mp3filelist))])
+ else
+  zene2:= Tmp3file.create(mp3menu);
  zenestrm:=gettickcount;
  setlength(zenebuffer,0);
 end;
@@ -232,8 +236,11 @@ end;
 procedure zenecleanup;
 begin
  if DS=nil then exit;
-   if high(mp3filelist)<0 then exit;
- zene2.destroy;
+   if (high(mp3filelist)<0) and (mp3menu='') then exit;
+ stopstream(zenestrm);
+ setlength(zenebuffer,0);
+ zene2.free;
+ zene2:=nil;
 end;
 
 var
@@ -250,7 +257,7 @@ begin
  result:=1;
  if DS=nil then exit;
 
- if high(mp3filelist)<0 then
+ if (high(mp3filelist)<0) and (mp3menu='')then
  begin
   if ((mp3strmp2=1) and mp3action) or
      ((mp3strmp2=0) and mp3ambient) or
@@ -301,9 +308,14 @@ begin
    end;
 
   end;
+ end
+ else
+ begin
+  stopstream(zenestrm);
+  setlength(zenebuffer,0);
  end;
  setlength(tmpbuffer,0);
- 
+
  end
  else
  begin
@@ -327,14 +339,21 @@ begin
  setlength(tmpbuffer,0);
  if zene2.iseof then
  begin
-  setlength(zenebuffer,0);
-  rnd:=random(length(mp3filelist));
-  tmp:=mp3filelist[mp3pos];
-  mp3filelist[mp3pos]:=  mp3filelist[rnd];
-  mp3filelist[rnd]:=tmp;
-  if mp3pos<high(mp3filelist) then inc(mp3pos) else mp3pos:=0;
   zene2.destroy;
-  zene2:= Tmp3file.create(mp3filelist[mp3pos]);
+  setlength(zenebuffer,0);
+  if mp3menu='' then
+  begin
+   rnd:=random(length(mp3filelist));
+   tmp:=mp3filelist[mp3pos];
+   mp3filelist[mp3pos]:=  mp3filelist[rnd];
+   mp3filelist[rnd]:=tmp;
+   if mp3pos<high(mp3filelist) then inc(mp3pos) else mp3pos:=0;
+
+   zene2:= Tmp3file.create(mp3filelist[mp3pos]);
+  end
+  else
+   zene2:= Tmp3file.create(mp3menu);
+
   zenestrm:=gettickcount+random(1000);
  end;
  end;
@@ -354,8 +373,6 @@ begin
 
  if DS=nil then exit;
 
- //if high(mp3filelist)<0 then exit;                                 
-
  if not zenethdvege then exit;
 
  vol:=Psingle(volp)^;
@@ -367,9 +384,9 @@ begin
  else
  if zene3<>nil then
    begin
-   if mp3strmp2=0 then mire:=mire-500;
-   WritetostreamSmallAmounts(zenestrm,zenebuffer,zene3.samplerate,round(mire),2);
-  end;
+    if mp3strmp2=0 then mire:=mire-500;
+    WritetostreamSmallAmounts(zenestrm,zenebuffer,zene3.samplerate,round(mire),2);
+   end;
 
  if length(zenebuffer)<22000 then
  begin
@@ -704,7 +721,7 @@ end;
                                                                                                                                           //ha megtelt, true
 function WriteToStream(aid:integer;hely:TD3DXVector3;const mit:Tsmallintdynarr;samplerate:integer = 0;vol:integer =0;channels:integer = 0):boolean;
 var
- i:integer;
+ i,n:integer;
  hol:integer;
  desc:_DSBufferDesc;
  writepos,playpos:cardinal;
@@ -786,8 +803,8 @@ begin
    result:=true;
    exit;
   end; //}
-
-  if korbekozott(lastwrite,(lastwrite+length(mit)*2) mod bufferbytes,playpos)
+  n:=length(mit);
+  if korbekozott(lastwrite,(lastwrite+n*2) mod bufferbytes,playpos)
   or  korbekozott(lastwrite,(lastwrite+length(mit)*2) mod bufferbytes,lastpos)
       then
   begin
@@ -867,7 +884,8 @@ begin
    i:=min(length(mit),samplerate div 4);
   setlength(tmp,i);
   copymemory(@tmp[0],@mit[0],length(tmp)*sizeof(smallint));
-  if writetostream(aid,d3dxvector3zero,tmp,samplerate,vol,channels) then exit;
+  if writetostream(aid,d3dxvector3zero,tmp,samplerate,vol,channels) then
+  exit;
 
   for i:=0 to high(mit)-length(tmp) do
   // if (i+length(tmp))<=high(mit) then

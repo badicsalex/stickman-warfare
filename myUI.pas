@@ -101,6 +101,7 @@ type
    procedure DrawChatsInGame(texts:array of string;pos:array of TD3DXVector3; alpha:array of single);
    procedure DrawChatGlyph(hash:cardinal;posx,posy:single;alpha:byte);
    procedure DrawText(mit:string;posx,posy,posx2,posy2:single;meret:byte;color:cardinal);
+   procedure DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal);
    procedure DrawRect(ax1,ay1,ax2,ay2:single;color:cardinal);
    destructor Destroy;reintroduce;
   protected
@@ -575,6 +576,7 @@ begin
 
    g_pSprite.SetTransform(identmatr);
 
+   Drawtext('Music: Unreal Superhero III Symphonic version by Jaakko Takalo',0.005,0.98,1,0.9,0,$FF000000);
    Drawtext('v2.'+inttostr((PROG_VER div 100) mod 100)+'.'+inttostr(PROG_VER  mod 100)+'.',0.8,0.85,1,0.9,1,$FF000000);
    mat._22:=a;
    g_pSprite.SetTransform(mat);
@@ -737,16 +739,55 @@ end;
 
 procedure T3DMenu.DrawText(mit:string;posx,posy,posx2,posy2:single;meret:byte;color:cardinal);
 var
-rect:TRect;
+ rect:TRect;
 begin
-if mit='' then exit;
-rect.Top:=round(posy*SCheight); rect.Bottom:=round(posy2*SCheight);
-rect.Left:=round(posx*SCwidth); rect.Right:=round(posx2*SCwidth);
-case meret of
- 0:g_pfontchat.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_NOCLIP,color);
- 1:g_pfontmini.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
- 2:g_pfont.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
+ if mit='' then exit;
+ rect.Top:=round(posy*SCheight); rect.Bottom:=round(posy2*SCheight);
+ rect.Left:=round(posx*SCwidth); rect.Right:=round(posx2*SCwidth);
+ case meret of
+  0:g_pfontchat.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_NOCLIP,color);
+  1:g_pfontmini.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
+  2:g_pfont.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
+ end;
 end;
+
+procedure T3DMenu.DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal);
+var
+rect,crect:TRect;
+str:string;
+escapepos:integer;
+nextcolor:integer;
+begin
+ rect.Top:= round(posy*SCheight); rect.Bottom:=round(posy2*SCheight);
+ rect.Left:=round(posx*SCwidth);  rect.Right:= round(posx2*SCwidth);
+ nextcolor:=color;
+ while length(mit)>0 do
+ begin
+  escapepos:=pos(chr(17),mit);
+  if escapepos>0 then
+  begin
+   str:=copy(mit,1,escapepos-1);
+   if length(mit)>=escapepos+1 then
+    nextcolor:=Palettetorgb(ord(mit[escapepos+1]),color shr 24);
+   mit:=copy(mit,escapepos+2,1000);
+  end
+  else
+  begin
+   str:=mit;
+   mit:='';
+  end;
+
+  if length(str)>0 then
+  begin
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect,DT_NOCLIP,color);
+   zeromemory(@crect,sizeof(crect));
+   if str[length(str)]=' ' then
+    str[length(str)]:='l';//lol trailing space hack
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@crect,DT_NOCLIP+DT_CALCRECT,color);
+   rect.Left:=rect.Left+crect.Right;
+  end;
+  color:=nextcolor;
+ end;
 
 end;
 
