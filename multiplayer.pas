@@ -5,6 +5,7 @@ interface
 uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1;
 const
  servername = 'stickman.hu';
+ //servername = 'localhost';
  TOKEN_RATE=10; //ezredmásodpercenkénti tokenek száma
  TOKEN_LIMIT=2000; //bucket max mérete
  PRIOR_NINCSPLOVES=0.5; //nem lõttem rá pontosat
@@ -332,7 +333,7 @@ end;
 
 procedure TMMOServerClient.ReceiveKick(frame:TSocketFrame);
 begin
- kickedhard:=frame.ReadChar=0;
+ kickedhard:=frame.ReadChar=1;
  kicked:=frame.ReadString;
 end;
 
