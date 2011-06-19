@@ -214,10 +214,15 @@ begin
  ValueS:=ValueS+mit;
 end;
 
+const
+ sha1so:string='luke, en vagyok az apad';
+ sha1bors:string='mert ez egy jo hosszu salt';
 constructor T3DMIPasswordBox.create(aminx,aminy,amaxx,amaxy,scala:single;szoveghossz:integer;maxs:integer;asha1hex:string);
+
 begin
  inherited create(aminx,aminy,amaxx,amaxy,scala,stringofchar('*',szoveghossz),maxs);
  SHA1Init(sha1cnt);
+ SHA1Update(sha1cnt,@sha1so[1],length(sha1so));
  sha1hex:=asha1hex;
 end;
 
@@ -231,6 +236,7 @@ begin
   ValueS:='';
    sha1hex:='';
   SHA1Init(sha1cnt);
+  SHA1Update(sha1cnt,@sha1so[1],length(sha1so));
   if mit=chr(VK_BACK) then exit;
  end;
  
@@ -250,6 +256,7 @@ begin
  begin
   if valueS<>'' then
   begin
+   SHA1Update(sha1cnt,@sha1bors[1],length(sha1bors));
    SHA1Final(sha1cnt,dig);
    sha1hex:=SHA1GetHex(dig);
   end
