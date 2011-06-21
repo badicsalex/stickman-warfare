@@ -194,9 +194,9 @@ var
     flHFReference: 5000;           // [20.0, 20000.0]  default: 5000.0 Hz)
   );
   //zene
-  zene2:Tmp3file;
-  zene3:Tmp3stream;
-  zenestrm:cardinal;
+  zene2:Tmp3file=nil;
+  zene3:Tmp3stream=nil;
+  zenestrm:cardinal=0;
 
 function korbekozott(a,b,x:cardinal):boolean;
 begin
@@ -233,18 +233,26 @@ begin
  setlength(zenebuffer,0);
 end;
 
+var
+ zenethdvege:boolean=true;
+
 procedure zenecleanup;
 begin
  if DS=nil then exit;
    if (high(mp3filelist)<0) and (mp3menu='') then exit;
+
+ while not zenethdvege do;
  stopstream(zenestrm);
  setlength(zenebuffer,0);
- zene2.free;
+ if zene2<>nil then
+  zene2.free;
  zene2:=nil;
+ if zene3<>nil then
+   zene3.free;
+ zene3:=nil;
 end;
 
-var
- zenethdvege:boolean=true;
+
 
 function zenefreshthd(nulla:Pointer):integer;
 var
@@ -339,7 +347,7 @@ begin
  setlength(tmpbuffer,0);
  if zene2.iseof then
  begin
-  zene2.destroy;
+  zene2.free;
   setlength(zenebuffer,0);
   if mp3menu='' then
   begin

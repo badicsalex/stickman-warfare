@@ -399,7 +399,7 @@ type
 const
  //STICKMAN
   PROG_VER=20100;
-  datachecksum=$1ED51E69;
+  datachecksum=3774825658;
 var
   checksum:Dword=0;
 const
@@ -2206,14 +2206,14 @@ begin
  if lktp<=lktm then
  begin
   for i:=0 to 7 do
-   boxbol[i]:= boxbol[i] and (mik2[i]<mx);
+   boxbol[i]:={ boxbol[i] and }(mik2[i]<mx);
   d3dxvec3scale(vec,vec,lktp/(d3dxvec3lengthsq(vec)));
   result:=d3dxvec3lengthsq(vec);
  end
  else
  begin
   for i:=0 to 7 do
-   boxbol[i]:= boxbol[i] and (mik2[i]>mn);
+   boxbol[i]:={ boxbol[i] and }(mik2[i]>mn);
   d3dxvec3scale(vec,vec,-lktm/(d3dxvec3lengthsq(vec)));
   result:=d3dxvec3lengthsq(vec);
  end;
