@@ -407,7 +407,7 @@ end;
 
 function Ttegla.SATtri(tri:Tacctri):boolean;
 var
-tmp:TD3DXVector3;
+tmp,tmp2:TD3DXVector3;
 tmpbb:T7pboxbol;
 mst:single;
 min:single;
@@ -416,7 +416,7 @@ i:integer;
 bolbox:T7pboxbol;
 oszt:integer;
 const
-olsc=0.2;
+olsc=1;
 osztlookup:array [0..8] of single = (olsc,olsc,olsc/2,olsc/3,olsc/4,olsc/5,olsc/6,olsc/7,olsc/8);
 begin
  kim:=0;
@@ -440,47 +440,32 @@ begin
  end;
 
 
- tmp:=axes[0];
- mst:=doSAT(pontok,tmpbb,tri,tmp);
- if mst<min then
-  if mst=0 then exit else
- begin min:=mst; bolbox:=tmpbb; minv:=tmp; end;
-
-
- tmp:=axes[1];
- mst:=doSAT(pontok,tmpbb,tri,tmp);
- if mst<min then
-  if mst=0 then exit else
- begin min:=mst; bolbox:=tmpbb; minv:=tmp; end;
- 
-
- tmp:=axes[2];
- mst:=doSAT(pontok,tmpbb,tri,tmp);
- if mst<min then
-  if mst=0 then exit else
- begin min:=mst; bolbox:=tmpbb; minv:=tmp; end;
- 
-
  for i:=0 to 2 do
  begin
-  d3dxvec3subtract(tmp,tri.v1,tri.v2);
-  d3dxvec3cross(tmp,tmp,axes[i]);
+  tmp:=axes[i];
+  mst:=doSAT(pontok,tmpbb,tri,tmp);
+  if mst<min then
+   if mst<=0 then exit else
+   begin min:=mst; bolbox:=tmpbb; minv:=tmp; end;
+
+  d3dxvec3subtract(tmp2,tri.v1,tri.v2);
+  d3dxvec3cross(tmp,tmp2,axes[i]);
   mst:=doSAT(pontok,tmpbb,tri,tmp);
   if mst<min then
    if mst=0 then exit else
   begin min:=mst; bolbox:=tmpbb; minv:=tmp; end;
-  
 
-  d3dxvec3subtract(tmp,tri.v2,tri.v0);
-  d3dxvec3cross(tmp,tmp,axes[i]);
+
+  d3dxvec3subtract(tmp2,tri.v2,tri.v0);
+  d3dxvec3cross(tmp,tmp2,axes[i]);
   mst:=doSAT(pontok,tmpbb,tri,tmp);
   if mst<min then
    if mst=0 then exit else
   begin min:=mst; bolbox:=tmpbb; minv:=tmp; end;
-  
 
-  d3dxvec3subtract(tmp,tri.v0,tri.v1);
-  d3dxvec3cross(tmp,tmp,axes[i]);
+
+  d3dxvec3subtract(tmp2,tri.v0,tri.v1);
+  d3dxvec3cross(tmp,tmp2,axes[i]);
   mst:=doSAT(pontok,tmpbb,tri,tmp);
   if mst<min then
    if mst=0 then exit else
@@ -498,7 +483,15 @@ begin
 
  for i:=0 to 7 do
   if bolbox[i] then
+  begin
    d3dxvec3add(pontok[i],pontok[i],minv);
+  end;
+
+ for i:=0 to 7 do
+  if bolbox[i] then
+  begin
+   d3dxvec3lerp(vpontok[i],vpontok[i],pontok[i],0.1);
+  end;
 end;
 
 {function SATray(v1,v2:TD3DXVector3):boolean;

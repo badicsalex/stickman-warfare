@@ -455,9 +455,9 @@ begin
    end;
  end
  else
- if (mit=VK_RETURN) and (lap=1) then menufi[MI_CONNECT].clicked:=true
+ if (mit=VK_RETURN) and (lap=1) and menufi[MI_CONNECT].focusable then menufi[MI_CONNECT].clicked:=true
  else
- if (mit=VK_RETURN) and (lap=0) then items[0,0].clicked:=true // Connect! gomb
+ if (mit=VK_RETURN) and (lap=0) and items[0,0].focusable  then items[0,0].clicked:=true // Connect! gomb
  else
  for i:=0 to high(items[lap]) do
   if items[lap,i].clicked and items[lap,i].handleschar then

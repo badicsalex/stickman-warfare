@@ -1080,8 +1080,10 @@ begin
 
 //if tavpointpointsq(D3DXvector3(matworld._41,matworld._42,matworld._43),cam)>sqr(50) then exit;
 
-
-lockmode:=D3DLOCK_DISCARD;
+if IBwh2=0 then
+ lockmode:=D3DLOCK_DISCARD
+else
+ lockmode:=D3DLOCK_NOOVERWRITE;
 
 with hatarok[mit] do
 begin

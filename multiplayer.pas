@@ -4,8 +4,8 @@ interface
 
 uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1;
 const
- //servername = 'stickman.hu';
- servername = 'localhost';
+ servername = 'stickman.hu';
+ //servername = 'localhost';
  TOKEN_RATE=10; //ezredmásodpercenkénti tokenek száma
  TOKEN_LIMIT=2000; //bucket max mérete
  PRIOR_NINCSPLOVES=0.5; //nem lõttem rá pontosat
@@ -14,10 +14,17 @@ const
  PRIOR_KAPOTT_CSAPATTARS=0.2;//az õ .kapottprior-ja szorzódik ezzel
  PRIOR_KAPOTT_ELLENSEG=0.5;//az õ .kapottprior-ja szorzódik ezzel
 type
+
+ TChat = record
+  uzenet:string;
+  glyph:integer;
+ end;
+ 
  TMMOServerClient = class(TObject)
  private
   host,nev,jelszo:string;
   fegyver,fejcucc:integer;
+  reconnect:integer;
   sock:TBufferedSocket;
   crypto:array [0..19] of byte; //kill csodacryptocucc
 
@@ -37,7 +44,7 @@ type
   myUID:integer;
   loggedin:boolean; //read only
   playersonserver:integer;
-  chats:array [0..8] of string; //detto
+  chats:array [0..8] of TChat; //detto
   kicked:string;
   kickedhard:boolean;
   kills:integer;
@@ -113,7 +120,7 @@ var
 implementation
 
 const
- shared_key:array [0..19] of byte=(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19);
+ shared_key:array [0..19] of byte=($25,$25,$25,$25,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19);
 
  CLIENT_VERSION=PROG_VER;
 
@@ -333,7 +340,8 @@ i:integer;
 begin
  for i:=high(chats) downto 1 do
   chats[i]:=chats[i-1];
- chats[0]:=frame.ReadString;
+ chats[0].uzenet:=frame.ReadString;
+ chats[0].glyph:=frame.ReadInt;
 end;
 
 procedure TMMOServerClient.ReceiveKick(frame:TSocketFrame);
@@ -344,7 +352,6 @@ end;
 
 procedure TMMOServerClient.ReceiveWeather(frame:TSocketFrame);
 begin
- kickedhard:=frame.ReadChar=1;
  weather:=frame.ReadChar;
 end;
 
@@ -365,6 +372,7 @@ begin
  kicked:='';
  kickedhard:=false;
  weather:=12;
+ reconnect:=0;
 end;
 
 destructor TMMOServerClient.Destroy;
@@ -385,11 +393,11 @@ i:integer;
 begin
  if sock=nil then
  begin
-  sock:=TBufferedSocket.Create(CreateClientSocket(servername,25252));
-  SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
-  for i:=high(chats) downto 1 do
-   chats[i]:=chats[i-1];
-  chats[0]:='Login sent';
+  if reconnect<GetTickCount then
+  begin
+   sock:=TBufferedSocket.Create(CreateClientSocket(servername,25252));
+   SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
+  end;
   exit;
  end;
 
@@ -398,10 +406,12 @@ begin
  begin
   for i:=high(chats) downto 1 do
    chats[i]:=chats[i-1];
-  chats[0]:='Error''d';
+  chats[0].uzenet:='Cannot connect to server';
+  chats[0].glyph:=0;
   sock.Free;
   sock:=nil;
   loggedin:=false;
+  reconnect:=GetTickCount+30000;
   exit;
  end;
 
@@ -427,15 +437,13 @@ end;
 
 procedure TMMOServerClient.Chat(mit:string);
 begin
- SendChat(mit);
+ SendChat(copy(mit,2,256));
 end;
 
 procedure TMMOServerClient.Killed(kimiatt:integer); //ez nem UID, hanem ppl index
 begin
  if kimiatt>-1 then
-  SendKill(ppl[kimiatt].net.UID)
- else
-  SendChat('/me has somehow killed himself');
+  SendKill(ppl[kimiatt].net.UID);
 end;
 
 {

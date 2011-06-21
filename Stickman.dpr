@@ -10,7 +10,7 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{.$DEFINE undebug}
+{$DEFINE undebug}
 {.$DEFINE speedhack}
 {.$DEFINE repkedomod}
 {.$DEFINE godmode}
@@ -6905,16 +6905,14 @@ begin
 
  for i:=0 to 7 do
  begin
-  //!TODO szines csodacset
-  if (pos(':',multisc.chats[i])>0) then
+  if (multisc.chats[i].glyph<>0) then
   begin
     //cghash:=(((13)*16+12)*16+14)*16+15   {szin}+29*65536
-   cghash:=StringHash(copy(multisc.chats[i],1,pos(':',multisc.chats[i])));
-   menu.DrawChatGlyph(cghash,0.005,0.06+(i)*0.02,$1F*(8-i));
-   menu.DrawSzinesChat(multisc.chats[i],0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$1F000000*(8-i)+aszin);
+   menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.02,$1F*(8-i));
+   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$1F000000*(8-i)+aszin);
   end
   else
-   menu.DrawSzinesChat(multisc.chats[i],0.000,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$1F000000*(8-i)+aszin);
+   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.000,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$1F000000*(8-i)+aszin);
  end;
 
  {$IFDEF palyszerk}
@@ -9060,13 +9058,16 @@ begin
    for i:=high(multisc.chats) downto 3 do
     multisc.chats[i]:=multisc.chats[i-3];
 
-   multisc.chats[1]:='Coords: ('+copy(mit,pos(' /coords',mit)+length(' /coords')+1,100000)+')';
-   multisc.chats[2]:='x: '+FloatToStrF(cpx^,ffFixed,7,2)+
+   multisc.chats[0].uzenet:='Coords: ('+copy(mit,pos(' /coords',mit)+length(' /coords')+1,100000)+')';
+   multisc.chats[1].uzenet:='x: '+FloatToStrF(cpx^,ffFixed,7,2)+
            '  y: '+FloatToStrF(cpy^,ffFixed,7,2)+
            '  z: '+FloatToStrF(cpz^,ffFixed,7,2);
-   multisc.chats[3]:='angleH: '+FloatToStrF(szogx,ffFixed,7,2)+
+   multisc.chats[2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2)+
            '  angleV: '+FloatToStrF(szogy,ffFixed,7,2);
-   writeln(logfile,multisc.chats[1],' ',multisc.chats[2],' ',multisc.chats[3]);
+   multisc.chats[0].glyph:=0;
+   multisc.chats[1].glyph:=0;
+   multisc.chats[2].glyph:=0;
+   writeln(logfile,multisc.chats[1].uzenet,' ',multisc.chats[2].uzenet,' ',multisc.chats[3].uzenet);
   end;
 end;
 
@@ -9176,8 +9177,8 @@ begin
  //Menü lap 2 --- Options
  menu.Addteg(0.5,0.3,0.9,0.8,2,$C0000000);
 
- menu.AddText(0.55,0.45,0.85,0.55,1,2,lang[12],true);      menufi[MI_GRAPHICS]:=menu.items[2,3];
- menu.AddText(0.55,0.55,0.85,0.65,1,2,lang[13],true);         menufi[MI_SOUND]:=menu.items[2,4];
+ menu.AddText(0.55,0.35,0.85,0.45,1,2,lang[12],true);      menufi[MI_GRAPHICS]:=menu.items[2,3];
+ menu.AddText(0.55,0.50,0.85,0.60,1,2,lang[13],true);         menufi[MI_SOUND]:=menu.items[2,4];
  menu.AddText(0.55,0.65,0.85,0.75,1,2,lang[14],true);      menufi[MI_CONTROLS]:=menu.items[2,5];
 
  //Menü lap 3 --- Exit
