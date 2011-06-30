@@ -30,7 +30,7 @@ type
   FX:IDirectSoundFXI3DL2Reverb;
   FXdesc:DSEFFECTDESC;
   FXhibaszar:cardinal;
-  id:cardinal;
+  id:integer;
   typ:integer;
   pos:TD3DXVector3;
   tav:single;
@@ -43,10 +43,10 @@ type
  T3DSoundStream = record
   DSbuf:IDirectSoundBuffer;
   DS3D:IDirectSound3DBuffer8;
-  id:cardinal;
+  id:integer;
   played:cardinal;
   playing:boolean;
-  bufferbytes:integer;
+  bufferbytes:cardinal;
   lastwrite,lastpos:cardinal;
   buffered:Tsmallintdynarr;
  end;
@@ -102,10 +102,10 @@ type
  end;
 
 function InitSound(hwindow:HWND):Hresult;
-procedure PlaySound(mit:integer;loop:boolean;aid:cardinal;effects:boolean;hol:TD3DXVector3);
+procedure PlaySound(mit:integer;loop:boolean;aid:integer;effects:boolean;hol:TD3DXVector3);
                                                        //1,1, ha nem érdekes...            Vec3Zero ha nem érdekes
-procedure SetSoundProperties(mit:integer; aid:cardinal;vol:longint;freq:cardinal;effects:boolean;hol:TD3DXVector3);
-procedure SetSoundVelocity(mit:integer; aid:cardinal;vel:TD3DXVector3);
+procedure SetSoundProperties(mit:integer; aid:integer;vol:longint;freq:cardinal;effects:boolean;hol:TD3DXVector3);
+procedure SetSoundVelocity(mit:integer; aid:integer;vel:TD3DXVector3);
 
 procedure WriteToStreamBuffered(aid:integer;const mit:Tsmallintdynarr;samplerate:integer = 0;vol:integer =0);
 function  WriteToStream(aid:integer;hely:TD3DXVector3;const mit:Tsmallintdynarr;samplerate:integer = 0;vol:integer =0;channels:integer = 0):boolean;
@@ -115,7 +115,7 @@ function StopStream(aid:integer):boolean;
 procedure LoadStrm(fnev:string);
 procedure PlayStrm(mit:integer;aid:integer;vol:integer=0;onlycreate:boolean=false);
 
-procedure StopSound(mit:integer; aid:cardinal);
+procedure StopSound(mit:integer; aid:integer);
 procedure LoadSound(fnev:string;haromd,freq,effects:boolean;mindistance:single);
 procedure PlaceListener(vec:TD3DXvector3;szogx,szogy:single);
 procedure StopAll;
@@ -362,7 +362,7 @@ begin
   else
    zene2:= Tmp3file.create(mp3menu);
 
-  zenestrm:=gettickcount+random(1000);
+  zenestrm:=gettickcount+cardinal(random(1000));
  end;
  end;
  result:=0;
@@ -415,7 +415,7 @@ mfile:Cwavefile;
 pwfx:PWaveFormatex;
 plb2: PChar;
 dwWavDataRead: DWORD;
-osszread:integer;
+osszread:cardinal;
 begin
  Result:= E_FAIL;
  if DS=nil then exit;
@@ -606,7 +606,7 @@ begin
 end;
 
                                                 //1, ha nem érdekel  itt meg 0
-procedure SetSoundProperties(mit:integer; aid:cardinal;vol:longint;freq:cardinal;effects:boolean;hol:TD3DXVector3);
+procedure SetSoundProperties(mit:integer; aid:integer;vol:longint;freq:cardinal;effects:boolean;hol:TD3DXVector3);
 var
 mi:integer;
 i:integer;
@@ -660,7 +660,7 @@ lastsoundaction:='SetSoundProperties('+inttostr(mit)+','+inttostr(aid)+')';
  end;
 end;
 
-procedure SetSoundVelocity(mit:integer; aid:cardinal;vel:TD3DXVector3);
+procedure SetSoundVelocity(mit:integer; aid:integer;vel:TD3DXVector3);
 var
 mi:integer;
 i:integer;
@@ -729,7 +729,7 @@ end;
                                                                                                                                           //ha megtelt, true
 function WriteToStream(aid:integer;hely:TD3DXVector3;const mit:Tsmallintdynarr;samplerate:integer = 0;vol:integer =0;channels:integer = 0):boolean;
 var
- i,n:integer;
+ i:integer;
  hol:integer;
  desc:_DSBufferDesc;
  writepos,playpos:cardinal;
@@ -811,9 +811,8 @@ begin
    result:=true;
    exit;
   end; //}
-  n:=length(mit);
-  if korbekozott(lastwrite,(lastwrite+n*2) mod bufferbytes,playpos)
-  or  korbekozott(lastwrite,(lastwrite+length(mit)*2) mod bufferbytes,lastpos)
+  if korbekozott(lastwrite,(lastwrite+cardinal(length(mit))*2) mod bufferbytes,playpos)
+  or  korbekozott(lastwrite,(lastwrite+cardinal(length(mit))*2) mod bufferbytes,lastpos)
       then
   begin
    //lastwrite:=writepos;
@@ -1000,7 +999,7 @@ WritetostreamBuffered(aid,tmp,strmLoaded[mit].format.nSamplesPerSec,vol);
 end;
 
                                       //1, ha nem érdekel  itt meg 0
-procedure PlaySound(mit:integer;loop:boolean;aid:cardinal;effects:boolean;hol:TD3DXVector3);
+procedure PlaySound(mit:integer;loop:boolean;aid:integer;effects:boolean;hol:TD3DXVector3);
 var
 i:integer;
 atav:single;
@@ -1122,7 +1121,7 @@ begin
 
 end;
 
-procedure StopSound(mit:integer; aid:cardinal);
+procedure StopSound(mit:integer; aid:integer);
 var
 mi:integer;
 i:integer;
@@ -1339,7 +1338,7 @@ end;
 procedure TDSCapture.update;
 var
 status,readnow:cardinal;
-hov:integer;
+hov:cardinal;
 LB1,LB2:Psmallintarray;
 lbs1,lbs2:cardinal;
 mennyit:integer;
@@ -1359,8 +1358,8 @@ begin
   if FAILED(buf.Lock(lastread,mennyit,@LB1,@lbs1,@lb2,@lbs2,0)) then exit;
   if (lbs1>0) then
   begin
-   hov:=length(captured);
-   setlength(captured,length(captured)+(lbs1+lbs2) shr 1);
+   hov:=cardinal(length(captured));
+   setlength(captured,cardinal(length(captured))+(lbs1+lbs2) shr 1);
    if lb1<>nil then
    copymemory(@(captured[hov]),LB1,lbs1);
    if lb2<>nil then   

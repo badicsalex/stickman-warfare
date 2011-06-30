@@ -5,9 +5,8 @@ uses  Windows, SysUtils, typestuff,Direct3D9,D3DX9,directinput,sha1;
 
 type
   Tmatteg= record
-   mat,matbal,matjobb:D3DMatrix;
-   p1,p2,p3,p4:TD3DXVector3;
-   Color:cardinal;
+   mats:array [0..8] of D3DMatrix;
+   //Color:cardinal;
    visible:boolean;
   end;
 
@@ -92,7 +91,7 @@ type
    procedure AddTextBox(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;maxs:integer);
    procedure AddPasswordBox(aminx,aminy,amaxx,amaxy,scala:single;alap:integer;szoveghossz:integer;maxs:integer;amd5hex:string);
    procedure AddCsuszka(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;valu:single);
-   procedure Addteg(aminx,aminy,amaxx,amaxy:single;alap:integer;szin:Cardinal);
+   procedure Addteg(aminx,aminy,amaxx,amaxy:single;alap:integer);
    procedure Draw;
    procedure DrawKerekitett(mit:Tmatteg);
    procedure DrawLoadScreen(szazalek:byte);
@@ -148,17 +147,26 @@ begin
  ValueS:=szoveg;
  focusable:=fable;
  handleschar:=false;
- color:=$FF70C0FF;
+ color:=$FFF45E1B;
  visible:=true;
 end;
 
 procedure T3DMIText.Draw(font:ID3DXFont;sprit:ID3DXSprite);
+var
+rect2:TRect;
 begin
  if not visible then exit; visible:=true;
  if focused then
   font.DrawTextA(sprit,Pchar(ValueS),length(values),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,$FFFFC070)
  else
-  font.DrawTextA(sprit,Pchar(ValueS),length(values),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,color);
+ begin
+  font.DrawTextA(sprit,Pchar(ValueS),length(values),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,$A0000000);
+  rect2.Left:=Rect.Left-2;
+  rect2.Top:=Rect.Top-2;
+  rect2.Right:=Rect.Right-2;
+  rect2.Bottom:=Rect.Bottom-2;
+  font.DrawTextA(sprit,Pchar(ValueS),length(values),@rect2,DT_CENTER or DT_VCENTER or DT_WORDBREAK,color);
+ end;
 end;
 
 constructor T3DMITextBox.create(aminx,aminy,amaxx,amaxy,scala:single;szoveg:string;maxs:integer);
@@ -241,9 +249,8 @@ begin
   if mit=chr(VK_BACK) then exit;
  end;
  
- if length(ValueS)>=value then exit;
-
- ValueS:=ValueS+'*';
+ if length(ValueS)<value then
+  ValueS:=ValueS+'*';
  SHA1Update(sha1cnt,@mit,1);
 end;
 
@@ -299,7 +306,7 @@ begin
   if focused then
    sprit.Draw(csusztex,nil,nil,@hely,$FFFFC007)
   else
-   sprit.Draw(csusztex,nil,nil,@hely,$FF07C0FF)
+   sprit.Draw(csusztex,nil,nil,@hely,$FFF45E1B)
 end;
 
 
@@ -313,11 +320,15 @@ begin
  zeromemory(@keyb,sizeof(keyb));
  zeromemory(@lastkeyb,sizeof(lastkeyb));
  g_pd3ddevice:=aDevice;
- if FAILED(D3DXCreateFont(g_pD3dDevice, 50, 0, FW_BOLD  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH or FF_DONTCARE, 'Courier New', g_pFont )) then
+ write(logfile,'Loading csicsafont...');flush(logfile);
+ if (AddFontResource('data\eurostar.ttf')=0) then
+  writeln(logfile,'unsuccesful...');flush(logfile);
+ if FAILED(D3DXCreateFont(g_pD3dDevice, 32, 0, FW_NORMAL  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Eurostar Black Extended', g_pFont )) then
    Exit;
- if FAILED(D3DXCreateFont(g_pD3dDevice, 25, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_DONTCARE, 'Arial', g_pFontmini )) then
+ writeln(logfile,'done');flush(logfile);
+ if FAILED(D3DXCreateFont(g_pD3dDevice, 25, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontmini )) then
    Exit;
- if FAILED(D3DXCreateFont(g_pD3dDevice, 12, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_DONTCARE, 'Arial', g_pFontchat )) then
+ if FAILED(D3DXCreateFont(g_pD3dDevice, 12, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontchat )) then
    Exit;
  if FAILED(D3DXCreateSprite(g_pd3dDevice,g_pSprite)) then
    Exit;
@@ -331,7 +342,7 @@ begin
    Exit;
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash)) then
    Exit;
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/sarok.bmp',32,32,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,sarok)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/circ2.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil,sarok)) then
    Exit;
  loaded:=true;
 end;
@@ -510,23 +521,27 @@ end;
 
 procedure T3DMenu.DrawKerekitett(mit:Tmatteg);
 const
- tegs:array [1..4] of Trect =
-  ((Left:0 ;Top:0 ;Right:16;Bottom:16),
-   (Left:16;Top:0 ;Right:32;Bottom:16),
-   (Left:0 ;Top:16;Right:16;Bottom:32),
-   (Left:16;Top:16;Right:32;Bottom:32));
+ tegs:array [0..8] of Trect =
+  ((Left:0 ;Top:0 ;Right:8;Bottom:8),
+   (Left:7 ;Top:0 ;Right:8;Bottom:8),
+   (Left:8 ;Top:0 ;Right:16;Bottom:8),
+
+   (Left:0 ;Top:7 ;Right:8;Bottom:8),
+   (Left:7 ;Top:7 ;Right:8;Bottom:8),
+   (Left:8 ;Top:7 ;Right:16;Bottom:8),
+
+   (Left:0 ;Top:8 ;Right:8;Bottom:16),
+   (Left:7 ;Top:8 ;Right:8;Bottom:16),
+   (Left:8 ;Top:8 ;Right:16;Bottom:16));
+var
+ i:integer;
 begin
- g_pSprite.SetTransform(mit.mat);
- g_psprite.draw(feh,nil,nil,nil,mit.color);
- g_pSprite.SetTransform(mit.matbal);
- g_psprite.draw(feh,nil,nil,nil,mit.color);
- g_pSprite.SetTransform(mit.matjobb);
- g_psprite.draw(feh,nil,nil,nil,mit.color);
+ for i:=0 to 8 do
+ begin
+  g_pSprite.SetTransform(mit.mats[i]);
+  g_psprite.draw(sarok,@(tegs[i]),nil,nil,$FFFFFFFF);
+ end;
  g_pSprite.SetTransform(identmatr);
- g_psprite.draw(sarok,@(tegs[1]),nil,@(mit.p1),mit.color);
- g_psprite.draw(sarok,@(tegs[2]),nil,@(mit.p2),mit.color);
- g_psprite.draw(sarok,@(tegs[3]),nil,@(mit.p3),mit.color);
- g_psprite.draw(sarok,@(tegs[4]),nil,@(mit.p4),mit.color);
 end;
 
 procedure T3DMenu.Draw;
@@ -746,8 +761,20 @@ begin
  rect.Left:=round(posx*SCwidth); rect.Right:=round(posx2*SCwidth);
  case meret of
   0:g_pfontchat.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_NOCLIP,color);
-  1:g_pfontmini.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
-  2:g_pfont.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
+  1:
+  begin
+
+   g_pfontmini.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
+  end;
+  2:
+  begin
+   g_pfont.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,$A0000000);
+   rect.Left:=Rect.Left-2;
+   rect.Top:=Rect.Top-2;
+   rect.Right:=Rect.Right-2;
+   rect.Bottom:=Rect.Bottom-2;
+   g_pfont.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
+  end;
  end;
 end;
 
@@ -814,12 +841,12 @@ begin
    end;
    d3dxmatrixtranslation(mat,-20,-15,0);
    g_pSprite.SetTransform(mat);
-   Drawtext(lang[32],0.4,0.4,0.6,0.5,2,$FF70C0FF);
+   Drawtext(lang[32],0.4,0.42,0.6,0.52,2,$FFF45E1B);
    if szazalek<=100 then
-   Drawtext(inttostr(szazalek)+'%',0.47,0.5,0.6,0.6,2,$FF70C0FF);
-   txt:='['+stringofchar('#',szazalek)+stringofchar('_',(100-szazalek))+']';
+   Drawtext(inttostr(szazalek)+'%',0.45,0.5,0.6,0.6,2,$FFF45E1B);
+   txt:='['+stringofchar('|',szazalek)+stringofchar('-',(100-szazalek))+']';
    if szazalek<=100 then
-   Drawtext(txt,0.2,0.6,0.8,0.7,0,$FF70C0FF);
+   Drawtext(txt,0.2,0.6,0.8,0.7,0,$FFF45E1B);
 
  //  Drawtext(inttostr(g_pd3ddevice.GetAvailableTextureMem div (1024*1024)),0.4,0.7,0.6,0.8,1,$FF70C0FF);
    g_pSprite._End;
@@ -869,39 +896,53 @@ begin
  items[alap,high(items[alap])]:=T3DMICsuszka.create(aminx,aminy,amaxx,amaxy,valu);
 end;
 
-procedure T3DMenu.AddTeg(aminx,aminy,amaxx,amaxy:single;alap:integer;szin:Cardinal);
+procedure T3DMenu.AddTeg(aminx,aminy,amaxx,amaxy:single;alap:integer);
+var
+ i:integer;
 begin
+
  setlength(tegs[alap],length(tegs[alap])+1);
- with tegs[alap,high(tegs[alap])].mat do
- begin
-  _11:=(amaxx-aminx)*SCwidth/2-16;_12:=0;_13:=0;_14:=0;
-  _21:=0;_22:=(amaxy-aminy)*SCHeight/2;_23:=0;_24:=0;
-  _31:=0;_32:=0;              _33:=1;_34:=0;
-  _41:=aminx*SCWidth+16;_42:=aminy*SCHeight;      _43:=0;_44:=1;
- end;
- with tegs[alap,high(tegs[alap])].matbal do
- begin
-  _11:=8;_12:=0;_13:=0;_14:=0;
-  _21:=0;_22:=(amaxy-aminy)*SCHeight/2-16;_23:=0;_24:=0;
-  _31:=0;_32:=0;              _33:=1;_34:=0;
-  _41:=aminx*SCWidth;_42:=aminy*SCHeight+16;      _43:=0;_44:=1;
- end;
- with tegs[alap,high(tegs[alap])].matjobb do
- begin
-  _11:=8;_12:=0;_13:=0;_14:=0;
-  _21:=0;_22:=(amaxy-aminy)*SCHeight/2-16;_23:=0;_24:=0;
-  _31:=0;_32:=0;              _33:=1;_34:=0;
-  _41:=amaxx*SCWidth-16;_42:=aminy*SCHeight+16;      _43:=0;_44:=1;
- end;
+
  with tegs[alap,high(tegs[alap])] do
  begin
-  p1:=D3DXVector3(aminx*SCWidth   ,aminy*SCHeight   ,0);
-  p2:=D3DXVector3(amaxx*SCWidth-16,aminy*SCHeight   ,0);
-  p3:=D3DXVector3(aminx*SCWidth   ,amaxy*SCHeight-16,0);
-  p4:=D3DXVector3(amaxx*SCWidth-16,amaxy*SCHeight-16,0);
- end;
 
- tegs[alap,high(tegs[alap])].color:=szin;
+  for i:=0 to 8 do
+  with mats[i] do
+  begin
+          _12:=0;_13:=0;_14:=0;
+   _21:=0;       _23:=0;_24:=0;
+   _31:=0;_32:=0;_33:=1;_34:=0;
+                 _43:=0;_44:=1;
+
+   if (i=1) or (i=4) or (i=7) then
+    _11:=(amaxx-aminx)*SCwidth
+   else
+    _11:=1;
+
+   if (i=3) or (i=4) or (i=5) then
+    _22:=(amaxy-aminy)*SCHeight
+   else
+    _22:=1;
+
+   if (i=2) or (i=5) or (i=8) then
+    _41:=amaxx*SCWidth
+   else
+   if (i=1) or (i=4) or (i=7) then
+    _41:=aminx*SCWidth
+   else
+    _41:=aminx*SCWidth-8;
+
+   if (i=6) or (i=7) or (i=8) then
+    _42:=amaxy*SCHeight
+   else
+   if (i=3) or (i=4) or (i=5) then
+    _42:=aminy*SCHeight
+   else
+    _42:=aminy*SCHeight-8;
+
+
+  end;
+ end;
  tegs[alap,high(tegs[alap])].visible:=true;
 end;
 

@@ -958,7 +958,7 @@ end;
   dec(ido);
   d3dxvec3add(v1,v1,v2);
   v2.y:=v2.y-GRAVITACIO/3;
-  particlesystem_add(ExpsebparticleCreate(v1,d3dxvector3((random(100)-50)/100000,(random(50)+50)/10000,(random(100)-50)/100000),1,0,1.01,$FF0000FF+$100*(150+random(100)),$A0000000,ido shr 2+ 10+random(50)));
+  particlesystem_add(ExpsebparticleCreate(v1,d3dxvector3((random(100)-50)/100000,(random(50)+50)/10000,(random(100)-50)/100000),1,0,1.01,$FF0000FF+cardinal($100*(150+random(100))),$A0000000,word(ido shr 2+ 10+random(50))));
   end;
  end;
 

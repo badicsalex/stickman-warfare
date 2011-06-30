@@ -398,10 +398,11 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20100;
-  datachecksum=3774825658;
+  PROG_VER=20101;
+  datachecksum=$35FC077A;
 var
   checksum:Dword=0;
+  nyelv:integer;
 const
   GRAVITACIO=0.003;
   fav3DPOOL=D3DPOOL_DEFAULT;
@@ -588,10 +589,10 @@ function CommandLineOption(mi:string):boolean;
 
 function SHA1GetHex(dig:TSha1Digest):string;
 
-procedure gethostbynamewrap(nam:string;hova:PinAddr;canwait:boolean);
+procedure gethostbynamewrap2(nam:string;hova:PinAddr;canwait:boolean);
 function sockaddrtoincim(sockaddr:sockaddr_in):Tincim;
 function incimtosockaddr(incim:Tincim):sockaddr_in;
-function recvall(sck:cardinal;var buffer;length,timeout:integer):integer;
+function recvall(sck:cardinal;var buffer;length,timeout:cardinal):integer;
 function connectwithtimeout(sck:cardinal;name:PSockAddr; namelen:integer; timeout:integer):integer;
 
 function readm3urecord(nam:string):string;
@@ -866,8 +867,9 @@ function tavLineLine(p1,p2,p3,p4:TD3DXVector3;out pa,pb:TD3DXVector3;out Distanc
 var
 dst:single;
 begin
- result:=tavlineline(p1,p2,p3,p4,pa,pb,dst);
- distance:=sqrt(dst);
+ result:=tavlinelinesq(p1,p2,p3,p4,pa,pb,dst);
+ if result then
+  distance:=sqrt(dst);
 end;
 
 function tavLineLinesq(p1,p2,p3,p4:TD3DXVector3;out pa,pb:TD3DXVector3;out Distance:single):boolean;
@@ -2478,10 +2480,10 @@ end;
 
 procedure addfiletochecksum(nev:string);
 var
- i:integer;
+ i:cardinal;
  fil:file;
  arr:array [0..127] of DWORD;
- tov:integer;
+ tov:cardinal;
  vegul:integer;
 begin
  if not fileexists(nev) then exit;
@@ -3199,7 +3201,7 @@ begin
  dispose(cucc);
 end;
 
-procedure gethostbynamewrap(nam:string;hova:PinAddr;canwait:boolean);
+procedure gethostbynamewrap2(nam:string;hova:PinAddr;canwait:boolean);
 var
 hste:Phostent;
 az:cardinal;
@@ -3226,11 +3228,11 @@ begin
    hova^ := Pinaddr(hste.h_addr^ )^;
   end;
 end;
-
-function recvall(sck:cardinal;var buffer;length,timeout:integer):integer;
+            
+function recvall(sck:cardinal;var buffer;length,timeout:cardinal):integer;
 var
  tbtop:pbyte;
- most:integer;
+ most:cardinal;
  a:integer;
 begin
  result:=-1;
@@ -3250,7 +3252,7 @@ begin
   sleep(20);
  until (most>=length) or (a<=0) or (timeout<gettickcount);
 
- if a>=0 then result:=most;
+ if a>=0 then result:=integer(most);
 end;
                                                                          //másodperc
 function connectwithtimeout(sck:cardinal;name:PSockAddr; namelen:integer; timeout:integer):integer;
@@ -3333,7 +3335,7 @@ i:integer;
 begin
  with grid do
  begin
-  cim:=pointer(cardinal(elemek)+(meret*hy+hx)*Sizeof(TgridElem));
+  cim:=pointer(integer(elemek)+(meret*hy+hx)*Sizeof(TgridElem));
   if cim.top>=cim.meret then
   begin
    getmem(uj,(cim.meret+grid.bufstep)*4);
@@ -3355,7 +3357,7 @@ begin
    cim.meret:=cim.meret+grid.bufstep;
   end;
 
-  dwcim1:=pointer(dword(cim.elemek)+cim.top*4);
+  dwcim1:=pointer(integer(cim.elemek)+cim.top*4);
   dwcim1^:=mit;
   inc(cim.top);
  end;
@@ -3371,7 +3373,7 @@ begin
  with grid do
  begin
 
-  cim:=pointer(cardinal(elemek)+(meret*hy+hx)*Sizeof(TgridElem));
+  cim:=pointer(integer(elemek)+(meret*hy+hx)*Sizeof(TgridElem));
 
   dwcim2:=pointer(dword(cim.elemek)+mit*4);
   dwcim1:=dwcim2;
@@ -3412,7 +3414,7 @@ begin
  with grid do
  begin
 
-  cim:=pointer(cardinal(elemek)+(meret*hy+hx)*Sizeof(TgridElem));
+  cim:=pointer(integer(elemek)+(meret*hy+hx)*Sizeof(TgridElem));
   dwcim1:= cim.elemek;
   mit:=0;
   for i:=0 to cim.top-1 do
@@ -3425,7 +3427,7 @@ begin
    inc(dwcim1);
   end;
 
-  dwcim2:=pointer(dword(cim.elemek)+mit*4);
+  dwcim2:=pointer(integer(cim.elemek)+mit*4);
   dwcim1:=dwcim2;
   inc(dwcim1);
    for i:=mit to cim.top-2 do
@@ -3461,7 +3463,7 @@ begin
  setlength(itms,0);
  with grid do
  begin
-  cim:=pointer(cardinal(elemek)+(meret*hy+hx)*Sizeof(TgridElem));
+  cim:=pointer(integer(elemek)+(meret*hy+hx)*Sizeof(TgridElem));
   setlength(itms,cim.top);
   copymemory(@(itms[0]),cim.elemek,cim.top*4);
  end;

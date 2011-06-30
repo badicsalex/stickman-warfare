@@ -2,10 +2,8 @@ unit multiplayer;
 
 interface
 
-uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1;
+uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1, winsock2;
 const
- servername = 'stickman.hu';
- //servername = 'localhost';
  TOKEN_RATE=10; //ezredmásodpercenkénti tokenek száma
  TOKEN_LIMIT=2000; //bucket max mérete
  PRIOR_NINCSPLOVES=0.5; //nem lõttem rá pontosat
@@ -19,16 +17,17 @@ type
   uzenet:string;
   glyph:integer;
  end;
- 
+
  TMMOServerClient = class(TObject)
  private
+  szerveraddr:TSockaddrIn;
   host,nev,jelszo:string;
   fegyver,fejcucc:integer;
-  reconnect:integer;
+  reconnect:cardinal;
   sock:TBufferedSocket;
   crypto:array [0..19] of byte; //kill csodacryptocucc
 
-  laststatus:integer; //idõ amikor utoljára lett státuszüzenet küldve
+  laststatus:cardinal; //idõ amikor utoljára lett státuszüzenet küldve
   procedure SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
   procedure SendChat(uzenet:string);
   procedure SendStatus(x,y:integer);
@@ -39,6 +38,7 @@ type
   procedure ReceiveChat(frame:TSocketFrame);
   procedure ReceiveKick(frame:TSocketFrame);
   procedure ReceiveWeather(frame:TSocketFrame);
+  procedure ReceiveSendUDP(frame:TSocketFrame);
  public
   myport:integer; //általam kijelölt port
   myUID:integer;
@@ -52,7 +52,7 @@ type
   killswithoutdeath:integer; // readwrite
   weather:single;
   constructor Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
-  destructor Destroy;reintroduce;
+  destructor Destroy;override;
   procedure Update(posx,posy:integer);
   procedure Chat(mit:string);
   procedure Killed(kimiatt:integer); //ez nem UID, hanem ppl index
@@ -90,7 +90,7 @@ type
   myfegyv:integer;
   sock:TUDPSocket;
   bucket:integer;
-  lastsend:integer; //GTC
+  lastsend:cardinal; //GTC
   roundrobinindex:integer;
   procedure ReceiveHandshake(port:word;frame:TUDPFrame);
   procedure ReceivePos(kitol:integer;frame:TUDPFrame);
@@ -101,7 +101,7 @@ type
   lovesek:array of Tloves; //kilotte: Index, kívülrõl olvasandó és törlendõ
   hullak:array of Thulla; //rongybabák. Detto.
   constructor Create(port,fegyv:integer);
-  destructor Destroy; override;
+  destructor Destroy;override;
   procedure Update(posx,posy,posz,oposx,oposy,oposz,iranyx,iranyy:single;state:integer;
                    campos:TD3DXvector3;//a prioritásokhoz
                    autoban:boolean; vanauto:boolean;
@@ -110,9 +110,11 @@ type
                    mlgmb:byte;gmbvec:TD3DXVector3;
                    kimiatt:integer);
   procedure Loves(v1,v2:TD3DXVector3);
+  procedure SendUDPToServer(frame:TUDPFrame);   //ez valójában a multiscs, multip2p közötti együttmûködéshez kell.
  end;
 
 var
+ servername:string = 'stickman.hu';
  ppl:array of Tplayer;
  multisc:TMMOServerClient=nil;
  multip2p:TMMOPeerToPeer=nil;
@@ -133,6 +135,7 @@ const
 	int fejrevaló
 	char[2] port
 	int checksum
+  int langid
  }
 
  CLIENTMSG_STATUS=2;
@@ -188,6 +191,11 @@ const
 	byte mi
  }
 
+ SERVERMSG_SENDUDP=6;
+ {
+  int auth
+ }
+
  P2PMSG_HANDSHAKE=1;
  {
 	byte latlak
@@ -207,6 +215,7 @@ begin
  frame:=TSocketFrame.Create;
  frame.WriteChar(CLIENTMSG_LOGIN);
  frame.WriteInt(CLIENT_VERSION);
+ frame.WriteInt(nyelv);
  frame.WriteString(nev);
  frame.WriteString(jelszo);
  frame.WriteInt(fegyver);
@@ -301,12 +310,20 @@ begin
   port:=frame.ReadChar+
         (frame.ReadChar shl 8);
   uid:=frame.ReadInt;
-  if uid=myuid then
-   uid:=0;
   nev:=frame.ReadString;
 	fegyver:=frame.ReadInt;
   fejrevalo:=frame.ReadInt;
   killek:=frame.ReadInt;
+
+  if uid=myuid then
+  begin
+   uid:=0;
+   kills:=killek;
+   if killswithoutdeath=0 then
+    killswithoutdeath:=kills;
+   if killscamping=0 then
+    killscamping:=kills;
+  end;
 
   volt:=false;
   for j:=0 to high(ppl) do
@@ -355,6 +372,18 @@ begin
  weather:=frame.ReadChar;
 end;
 
+procedure TMMOServerClient.ReceiveSendUDP(frame:TSocketFrame);
+var
+frame2:TUDPFrame;
+begin
+ frame2:=TUDPFrame.Create;
+ frame2.WriteInt(ord('S') or (ord('T') shl 8) or (ord('C')  shl 16) or (ord('K') shl 24));
+ frame2.WriteInt(myUID);
+ frame2.WriteInt(frame.ReadInt);
+ multip2p.SendUDPToServer(frame2);
+ frame2.Free;
+end;
+
 constructor TMMOServerClient.Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
 begin
  inherited Create;
@@ -373,6 +402,9 @@ begin
  kickedhard:=false;
  weather:=12;
  reconnect:=0;
+ kills:=0;
+ killscamping:=0;
+ killswithoutdeath:=0;
 end;
 
 destructor TMMOServerClient.Destroy;
@@ -395,18 +427,22 @@ begin
  begin
   if reconnect<GetTickCount then
   begin
-   sock:=TBufferedSocket.Create(CreateClientSocket(servername,25252));
+   szerveraddr.sin_family := AF_INET;
+   szerveraddr.sin_addr:=gethostbynamewrap(servername);
+   szerveraddr.sin_port := htons(25252);
+   sock:=TBufferedSocket.Create(CreateClientSocket(szerveraddr));
    SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
   end;
   exit;
  end;
+
 
  sock.Update;
  if sock.error<>0 then
  begin
   for i:=high(chats) downto 1 do
    chats[i]:=chats[i-1];
-  chats[0].uzenet:='Cannot connect to server';
+  chats[0].uzenet:='Cannot connect to server '+inttostr(sock.error);
   chats[0].glyph:=0;
   sock.Free;
   sock:=nil;
@@ -424,6 +460,7 @@ begin
    SERVERMSG_KICK: ReceiveKick(frame);
    SERVERMSG_PLAYERLIST: ReceivePlayerList(frame);
    SERVERMSG_WEATHER: ReceiveWeather(frame);
+   SERVERMSG_SENDUDP: ReceiveSendUDP(frame);
   end;
  end;
  frame.Free;
@@ -741,10 +778,14 @@ end;
 procedure TMMOPeerToPeer.SendFrame(frame:TUDPFrame;kinek:integer);
 begin
  if ppl[kinek].net.overrideport=0 then
-  sock.Send(frame.data,frame.cursor,ppl[kinek].net.ip,ppl[kinek].net.port)
+  sock.Send(frame.data,ppl[kinek].net.ip,ppl[kinek].net.port)
  else
-  sock.Send(frame.data,frame.cursor,ppl[kinek].net.ip,ppl[kinek].net.overrideport);
+  sock.Send(frame.data,ppl[kinek].net.ip,ppl[kinek].net.overrideport);
+end;
 
+procedure TMMOPeerToPeer.SendUDPToServer(frame:TUDPFrame);
+begin
+ sock.Send(frame.data,multisc.szerveraddr.sin_addr.S_addr,25252);
 end;
 
 
@@ -806,9 +847,10 @@ begin
 
  D3DXVec3Scale(lookatpos,D3DXVector3(sin(iranyx)*cos(iranyy),sin(iranyy),cos(iranyx)*cos(iranyy)),300);
  D3DXVec3Add(lookatpos,lookatpos,campos);
+ D3DXVec3Subtract(autoopos,autopos,autoopos);
 
  CalculatePriorities(campos,lookatpos);
- bucket:=bucket+(GetTickCount-lastsend)*TOKEN_RATE;
+ bucket:=bucket+integer(GetTickCount-lastsend)*TOKEN_RATE;
  lastsend:=GetTickCount;
  if bucket<-TOKEN_LIMIT then //valami WTF történt
   bucket:=0;
@@ -865,7 +907,7 @@ begin
 
    ppl[i].net.ploveseksz:=0;
    ppl[i].net.loveseksz:=0;
-   
+
    if vanauto then
    begin
     autobyte:=0;
@@ -873,7 +915,6 @@ begin
      autobyte:=autobyte or 1;
     frame.WriteChar(autobyte);
     frame.WritePackedPos(autopos);
-    D3DXVec3Subtract(autoopos,autopos,autoopos);
     frame.WritePackedVector(autoopos,1);
     for j:=0 to 2 do
      frame.WritePackedVector(autoaxes[j],20);
