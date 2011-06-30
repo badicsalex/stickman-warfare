@@ -1163,7 +1163,7 @@ begin
  end;
 
  if phs=7 then
-  particlesystem_add(simpleparticlecreate(kivec,randomvec(gettickcount mod 100000,0.5),25-phstim/4,20-phstim/4,$FF000000+$010101*5*phstim,0,1));
+  particlesystem_add(simpleparticlecreate(kivec,randomvec(gettickcount mod 100000,0.5),25-phstim/4,20-phstim/4,$FF000000+$010101*5*cardinal(phstim),0,1));
  if phs=8 then
   particlesystem_add(simpleparticlecreate(kivec,randomvec(gettickcount mod 100000,0.5),5,4,$FFFFFFFF,0,1));
 

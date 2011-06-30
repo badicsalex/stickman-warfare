@@ -232,7 +232,7 @@ begin
  strhost:=copy(strhost,1,pos(':',strhost)-1);
 
 
- gethostbynamewrap(strhost,@(incim.sin_addr),false);
+ gethostbynamewrap2(strhost,@(incim.sin_addr),false);
  incim.sin_port:=htons(strtoint(strport));
 
  sck:=socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
@@ -289,7 +289,7 @@ begin
    mit:='';
    elsostr:=false;
   end;
-  if headwait+maxwait<gettickcount then begin recvd:=0; break; end;
+  if headwait+maxwait<integer(gettickcount) then begin recvd:=0; break; end;
   if headsiz>maxheadsiz then break;
  until recvd<=0;
 

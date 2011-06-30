@@ -31,6 +31,7 @@ type
     recvbuf:TDynByteArray;
     sendbuf:TDynByteArray;
   public
+    addr:Tsockaddrin;
     error:integer;
     closeaftersend:boolean;
     constructor Create(asock:Tsocket);
@@ -48,13 +49,14 @@ type
     constructor Create(port:integer);
     destructor Destroy;override;
     function Recv(var hova:TDynByteArray;var ip:DWORD;var port:WORD):boolean;
-    procedure Send(mit:TDynByteArray;n:integer;ip:DWORD;port:WORD);
+    procedure Send(mit:TDynByteArray;ip:DWORD;port:WORD);
   end;
 
   function SelectForRead(sock:TSocket):integer;
   function SelectForWrite(sock:TSocket):integer;
   function SelectForError(sock:TSocket):integer;
-  function CreateClientSocket(hostname:string;port:integer):TSocket;
+  function CreateClientSocket(srvc:sockaddr_in):TSocket;
+  function gethostbynamewrap(nam:string):Tinaddr;
 implementation
 
 procedure InitWinsock;
@@ -73,14 +75,9 @@ begin
   result := Pinaddr(hste.h_addr^ )^;
 end;
 
-function CreateClientSocket(hostname:string;port:integer):TSocket;
-var
-srvc:sockaddr_in;
+function CreateClientSocket(srvc:sockaddr_in):TSocket;
 begin
-  result:=socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
-  Srvc.sin_family := AF_INET;
-  Srvc.sin_addr:=gethostbynamewrap(hostname);
-  Srvc.sin_port := htons(port);
+ result:=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
   connect(result,@srvc,sizeof(srvc));
 end;
 
@@ -405,7 +402,7 @@ begin
  end;
 end;
 
-procedure TUDPSocket.Send(mit:TDynByteArray;n:integer;ip:DWORD;port:WORD);
+procedure TUDPSocket.Send(mit:TDynByteArray;ip:DWORD;port:WORD);
 var
  toaddr:TSockaddr;
  tolen:integer;

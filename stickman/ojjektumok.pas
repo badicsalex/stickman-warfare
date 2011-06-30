@@ -93,16 +93,14 @@ type
   imposarr:array of array of TimposterData;
   imposrects:Tojjrectarr;
   g_pIB:IDirect3DIndexBuffer9;
-  g_pVB,g_pVBdyn:IDirect3DVertexBuffer9;
+  g_pVB:IDirect3DVertexBuffer9;
   g_pd3ddevice:IDirect3DDevice9;
   osszvert,osszind:integer;
-  portalstart,portalvertcnt,portalVbuf:integer;
   drawtable:array of T3DOR_DrawData;
 
   constructor Create(ad3ddevice:IDirect3DDevice9);
   procedure Draw(frust:TFrustum;g_pEffect:ID3DXEffect;matView,matProj:TD3DMatrix;fogstart,fogend:single;renderimposters:boolean);
   procedure DrawOne(ind1,ind2:integer);
-  procedure portalmozgas;
   procedure RefreshImposters(mhk:TD3DXVector3);
   Destructor Destroy; reintroduce;
  end;
@@ -145,7 +143,6 @@ var
 
 
  ojjektumTextures:array [0..100] of TojjektumTexture;
- portalindGLOB:integer;
  oTPszam:integer=-1;
  otNszam:integer=-1;
  currenttriarr:Tacctriarr;
@@ -259,7 +256,6 @@ begin
      if akarmi=10000 then
      begin
       inc(otnszam);
-       if mymesh.texturetable[i]='sg2.jpg' then portalindGLOB:=otnszam;
       ojjektumtextures[otnszam].name:=mystr;
       ojjektumTextures[otnszam].tex:=nil;
       if not LTFF(a_d3dDevice,mystr,ojjektumTextures[otnszam].tex) then exit;
@@ -332,8 +328,8 @@ with mymesh do begin
   begin
 
    if lghtind>=0 then
-    if (i>=(attrtable[lghtind].FaceStart)) and
-      (i<(attrtable[lghtind].FaceStart)+(attrtable[lghtind].FaceCount)) then
+    if (i>=integer(attrtable[lghtind].FaceStart)) and
+      (i<integer(attrtable[lghtind].FaceStart)+integer(attrtable[lghtind].FaceCount)) then
      continue;
 
 
@@ -512,23 +508,6 @@ begin
  else
   tav:=1-sqr((tav-tav2)/(tav-rad2))*2;
 
-end;
-
-
-procedure T3dorenderer.portalmozgas;
-var
-i:integer;
-pVert:Pojjektumvertex2array;
-gtc:single;
-begin
- gtc:=gettickcount*0.0005;
-if FAILED(g_pVBdyn.Lock(portalstart*sizeof(Tojjektumvertex2),portalvertcnt*sizeof(Tojjektumvertex2),pointer(pvert),D3DLOCK_NOOVERWRITE)) then exit;
- for i:=0 to portalvertcnt-1 do
- begin
-  pvert[i].tu:=perlin.noise(gtc+i,0.5,0.5);
-  pvert[i].tv:=perlin.noise(gtc+i,20.5,0.5);
- end;
- g_pVBdyn.unlock;
 end;
 
 procedure T3dojjektum.Draw(g_pd3ddevice:IDirect3DDevice9;cp:TD3DXVector3;frust:TFrustum);
@@ -1173,9 +1152,10 @@ const
     (Stream:0  ; Offset:13*4; _Type:D3DDECLTYPE_FLOAT3; Method:D3DDECLMETHOD_DEFAULT; Usage:D3DDECLUSAGE_BINORMAL; UsageIndex:0),
     (Stream:$FF; Offset:0   ; _Type:D3DDECLTYPE_UNUSED; Method:TD3DDeclMethod(0)    ; Usage:TD3DDeclUsage(0)     ; UsageIndex:0));
 var
-i,j,k,l,ii,jj:integer;
+i,j,k,ii,jj:integer;
+l:cardinal;
 attrarr:TD3DXAttributerangearr;
-attrszam:Dword;
+attrszam:integer;
 facecnt,vertcnt:integer;
 facecur,vertcur,vertcurdyn:integer;
 indlckd,vertlckd:integer;
@@ -1350,8 +1330,8 @@ begin
   // writeln(logfile,ojjektumnevek[i],':');
     for k:=0 to attrszam-1 do
     begin
-     inc(facecnt,attrarr[k].FaceCount*hvszam*3);
-     inc(vertcnt,attrarr[k].vertexCount*hvszam);
+     inc(facecnt,integer(attrarr[k].FaceCount)*hvszam*3);
+     inc(vertcnt,integer(attrarr[k].vertexCount)*hvszam);
      //write(logfile,attrarr[k].FaceCount,'/',attrarr[k].VertexCount,'---');
     end;
   end;
@@ -1370,17 +1350,7 @@ begin
    Exit;
   end;
 
- // messagebox(0,PCHAR(inttostr(vertcnt)),'lo',0);
-  lasterror:=g_pd3dDevice.CreateVertexBuffer(1000*sizeof(Tojjektumvertex2),
-                                            D3DUSAGE_WRITEONLY+D3DUSAGE_DYNAMIC, 0,
-                                            D3DPOOL_DEFAULT, g_pVBdyn, nil);
 
-  if FAILED(lasterror)
-  then
-  begin
-   writeln(logfile,'Failed creating dynamic buffer of ',1000,' size (',lasterror,')');flush(logfile);
-   Exit;
-  end;
   write(logfile,'IBuffer...');flush(logfile);
 
   
@@ -1439,7 +1409,7 @@ begin
        if FAILED(g_pIB.Lock(facestart*SizeOf(word)            , facecount*SizeOf(word)           ,pointer(pind16), CSICSA_LOCK_FLAG)) then exit;
       end;
       
-      if attrarr[j].AttribId=lghtind then begin facecount:=0; vertcount:=0; continue; end;
+      if attrarr[j].AttribId=cardinal(lghtind) then begin facecount:=0; vertcount:=0; continue; end;
       tex:=textures[attrarr[j].AttribId];
       for l:=0 to facecount*3-1 do
       begin
@@ -1757,7 +1727,6 @@ end;
 procedure T3DORenderer.Draw(frust:TFrustum;g_pEffect:ID3DXEffect;matView,matProj:TD3DMatrix;fogstart,fogend:single;renderimposters:boolean);
 var
 i,j,jj,k:integer;
-ott:integer;
 aabb:TAABB;
 tmplw:longword;
 matViewProj:TD3DMatrix;
@@ -1765,10 +1734,6 @@ trukkproj:TD3Dmatrix;
 hdrszorzo:single;
 vec:TD3DXVector3;
 begin
- //g_pd3dDevice.SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
- portalmozgas;
-  //exit;
-//  g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
  g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iFalse);
  g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
  g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue);
@@ -1837,8 +1802,7 @@ begin
    for j:=0 to ojjektumarr[i].hvszam-1 do
    if drawtable[i]. visible[j] and drawtable[i].RenderZ[j] then
     for k:=0 to drawtable[i].xasz-1 do
-    if (drawtable[i].DIPdata[j+k].tex<>portalindGLOB) and
-       (drawtable[i].DIPdata[j+k].tex>=0) then
+    if (drawtable[i].DIPdata[j+k].tex>=0) then
      with drawtable[i].DIPdata[j+k] do
        g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,vertstart,0,vertcount,facestart,facecount);    //}
    end;
@@ -1849,15 +1813,6 @@ begin
  //Aztán a color és a POM
  for k:=0 to OTnSzam do
  begin
-
-  if k=portalindGLOB then
-  begin
-   g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
-
-    g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
-   g_pd3dDevice.SetRenderState(D3DRS_ZWRITEENABLE, iFalse);
-   g_pd3ddevice.SetStreamSource(0,g_pVBdyn,0,sizeof(Tojjektumvertex2));
-  end;
 
   g_pd3ddevice.SetTexture(0,ojjektumtextures[k].tex);
 
@@ -1903,15 +1858,6 @@ begin
    g_peffect.Endpass;
    g_peffect._end;
   end;
-
-  if k=portalindGLOB then
-  begin
-   g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
-    g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue);
-   g_pd3dDevice.SetRenderState(D3DRS_ZWRITEENABLE, iTrue);
-    g_pd3ddevice.SetStreamSource(0,g_pVB,0,sizeof(Tojjektumvertex2));
-  end;
-
 
  end;
  //g_pd3dDevice.SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
