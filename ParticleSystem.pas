@@ -330,13 +330,13 @@ begin
    d3dxvec3lerp(tmp,honnan,hova,honhov);
    honhov:=honhov+invhossz*tavpointpointkock(campos,tmp)*0.3;
    seb:=randomvec(seed+i*1000+honhov*hossz*0.2,0.01);
-   Particlesystem_add(Fenycsikubercreate(tmpe,tmp,sebe,seb,0.005,0.01,$00FFA040,0,50));
+   Particlesystem_add(Fenycsikubercreate(tmpe,tmp,sebe,seb,0.005,0.01,$0040A0FF,0,50));
   end;
-  Particlesystem_add(Fenycsikubercreate(tmp,hova,seb,d3dxvector3zero,0.005,0.01,$00FFA040,0,50));
+  Particlesystem_add(Fenycsikubercreate(tmp,hova,seb,d3dxvector3zero,0.005,0.01,$0040A0FF,0,50));
 
  end;
 
- Particlesystem_add(Fenycsikcreate(honnan,hova,0.1,$A0F0A040,40));
+ Particlesystem_add(Fenycsikcreate(honnan,hova,0.1,$A040A0F0,40));
  Particlesystem_add(Fenycsikcreate(honnan,hova,0.02,$FFFFFFFF,60));
  //Particlesystem_add(MPGcreate(aloves.pos,aloves.v2,0.255*1.5,$FFA000));
 
