@@ -790,7 +790,7 @@ begin
    tmp.z:=-(pvert[i].position.x-vmi.x)*0.9/scl;
    tmp.y:=(pvert[i].position.y-vma.y)/scl;
    tmp.x:=(pvert[i].position.z-vma.z)/scl+fc;
-   pvert[i].color:=RGB(200,200,200);
+   pvert[i].color:=ARGB(0,200,200,200);
    pvert[i].position:=tmp;
    pvert[i].u2:=pvert[i].u;
    pvert[i].v2:=pvert[i].v;
@@ -807,12 +807,12 @@ end;
 
 procedure TF_MPG.makemuzzle(alpha:byte);
 begin
- muzz[0]:=CustomVertex(-0.5,-0.5,   0,0,0,0,ARGB(alpha,250,50,0),0,0,0,0);
- muzz[1]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,250,50,0),1,0,0,0);
- muzz[2]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,250,50,0),0,1,0,0);
- muzz[3]:=CustomVertex( 0.5, 0.5,   0,0,0,0,ARGB(alpha,250,50,0),1,1,0,0);
- muzz[4]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,250,50,0),1,0,0,0);
- muzz[5]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,250,50,0),0,1,0,0);
+ muzz[0]:=CustomVertex(-0.5,-0.5,   0,0,0,0,ARGB(alpha,0,50,250),0,0,0,0);
+ muzz[1]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,50,250),1,0,0,0);
+ muzz[2]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,50,250),0,1,0,0);
+ muzz[3]:=CustomVertex( 0.5, 0.5,   0,0,0,0,ARGB(alpha,0,50,250),1,1,0,0);
+ muzz[4]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,50,250),1,0,0,0);
+ muzz[5]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,50,250),0,1,0,0);
 end;
 
 procedure TF_MPG.draw;

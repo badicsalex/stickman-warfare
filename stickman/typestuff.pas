@@ -10,7 +10,8 @@ perlinnoise,
 math,
 Zlibex,
 sha1,
-winsock2;
+winsock2,
+qjson;
 type
   Tnev=array [1..32] of char;
   Tjelszo=array [1..32] of char;
@@ -398,8 +399,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20101;
-  datachecksum=$35FC077A;
+  PROG_VER=20102;
+  datachecksum=$D685FCB1;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -619,6 +620,7 @@ procedure loadlang(honnan:string;id:integer);
 
 var
 perlin:Tperlinnoise;
+stuffjson:TQJSON;
 animstat: single;
 logfile:Textfile;  //ez fontos
 laststate: string;
@@ -654,7 +656,7 @@ begin
  R:=round(R*mennyivel);
  G:=round(G*mennyivel);
  B:=round(B*mennyivel);
- result:=RGB(R,G,B);
+ result:=ARGB(0,R,G,B);
 end;
 
 function colorlerp(mit1,mit2:cardinal;mennyivel:single):cardinal;
@@ -679,7 +681,7 @@ begin
 
  A1:=round(A1-(A1-A2)*mennyivel);
 
- result:=A1 shl 24 + RGB(R1,g1,b1);// (R1 shl 16) and (G1 shl 8) and B1;
+ result:=(A1 shl 24) or (R1 shl 16) or (G1 shl 8) or B1;
 end;
 
 
@@ -702,7 +704,7 @@ end;
 
 function ARGB(a,r,g,b:byte):cardinal;
 begin
- result:=RGB(r,g,b) or (a shl 24);
+ result:=(a shl 24) or (r shl 16) or (g shl 8) or b;
 end;
 
 function PaletteToRGB(palette_index:byte;alpha:integer):cardinal;

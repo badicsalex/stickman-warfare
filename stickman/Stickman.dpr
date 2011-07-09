@@ -40,6 +40,7 @@ uses
   ojjektumok,
   ParticleSystem,
   PerlinNoise,
+  qjson,
   sky,
   Sysutils,
   SyncObjs,
@@ -54,7 +55,6 @@ lvlsiz=32;  //Ennek is :(
 lvlsizp=lvlsiz+1;
 farlvl=4;
 fuszam=10;
-//fuszin=$0079E433;
 fuszin=$00FFFFFF;
 koszin=$FFFFFFFE;
 lvmi=lvlsiz div 4; //lvlsiz div 4
@@ -91,6 +91,9 @@ var
   g_pIB:IDirect3DIndexBuffer9 = nil;
   g_pIBlvl2:IDirect3DIndexBuffer9 = nil;
   homtex:IDirect3DTexture9 = nil;
+  hoszin:cardinal;
+  vizszin:cardinal;
+  ambientszin:cardinal;
    futex:IDirect3DTexture9 = nil;
   futexa:IDirect3DTexture9 = nil;
    kotex:IDirect3DTexture9 = nil;
@@ -175,6 +178,7 @@ var
   mstat:byte;
   myfegyv:byte;
   csipo,rblv,gugg,spc,iranyithato,objir:boolean;
+  tulnagylokes:boolean;
   lovok:single;
   cooldown:single;
 
@@ -207,14 +211,15 @@ var
   mapmode:single;
   kulsonezet:boolean=false;
   autoban:boolean=false;
-  bunkerkozelben:boolean;
-  melyikbunkerkozelben:integer;
+  autobaszallhat:boolean;
+  autobaszallhatpos:TD3DXVector3;
   recovercar,vanishcar,kiszallas:integer;
   latszonazF,latszonazR:byte;
   volthi,voltspeeder,voltbasejump:boolean;
 
 
   tegla:Tauto;
+  gunautoeffekt,techautoeffekt:boolean;
   tobbiekautoi:array of Tauto;
   flipcount,voltflip:integer;
   flipbol:boolean;
@@ -690,22 +695,20 @@ ux,uz,u2x,u2z:single;
 begin
  yandnorm(xx,yy,zz,norm,scalfac);
  //zz:=zz+(round(xx)mod 2)*scalfac/2;
- {szin:=RGB(round((1+perlin.noise(xx+1000,yy,zz))*100)+100,
-           round((1+perlin.noise(xx,yy+1000,zz))*50)+180,
-           round((1+perlin.noise(xx,yy,zz+1000))*100)+100);   }
+
  szin:=fuszin;
  if (norm.y)<0.83 then szin:=koszin;
- if yy<15 then szin:=RGB(200,200,250)+$FF000000;
+ if yy<15 then szin:=hoszin+$FF000000;
 
  if yy<0 then yy:=0;
- if yy<10 then szin:=RGB(250-round(yy*4),100+round(yy*8),round(yy*20))+$FF000000;
+ if yy<10 then szin:=colorlerp(vizszin,hoszin,yy/15)+$FF000000;
 
  if  scalfac<pow2[farlvl] then
  for j:=0 to high(ojjektumnevek) do
   for i:=0 to ojjektumarr[j].hvszam-1 do
   if ojjektumarr[j].raytestbol(D3DXVector3(xx,yy,zz),D3DXVector3(xx-ojjektumarr[j].rad*2,yy+ojjektumarr[j].rad*2,zz),i) then
   begin
-   norm:=D3DXVector3(sqrt(2),sqrt(2),0);
+   norm:=D3DXVector3(0.8,0.8,0);
    break;
   end;
 
@@ -1162,75 +1165,33 @@ begin
  end;
 end;
 
-procedure loadspecials(honnan:string);
+procedure loadspecials;
 var
-fil:textfile;
-str:string;
-attr,val:string;
-flt:Tarrayofstring;
-categ:string;
+i,n:integer;
 begin
- assignfile(fil,honnan);
- reset(fil);
- repeat
-  readln(fil,str);
-  if str='' then continue;
-  if str[1]='[' then
+ n:=stuffjson.GetNum(['teleports']);
+ setlength(teleports,n);
+ for i:=0 to n-1 do
+  with teleports[i] do
   begin
-   if pos('[SPECIAL:',str)>0 then
-    categ:=lowercase(copy(str,length('[SPECIAL:')+1,length(str)-length('[SPECIAL:')-1))
-   else
-    categ:='';
-   if categ='teleport' then
+   with vfrom do
    begin
-    setlength(teleports,length(teleports)+1);
-    with teleports[high(teleports)] do
-    begin
-      vfrom:=D3DXVector3Zero;
-      vto:=D3DXVector3Zero;
-      rad:=5;
-      vis:=20;
-    end;
+    x:=stuffjson.GetFloat(['teleports',i,'from','x']);
+    y:=stuffjson.GetFloat(['teleports',i,'from','y']);
+    z:=stuffjson.GetFloat(['teleports',i,'from','z']);
    end;
-  end
-  else
-  begin
-   attr:=lowercase(copy(str,1,pos('=',str)-1));
-   val :=copy(str,pos('=',str)+1,1000);
 
-   if categ='teleport' then
-    with teleports[high(teleports)] do
-    begin
-     if attr='radius' then
-      rad:=strtofloat(val);
-     if attr='visible' then
-      vis:= strtofloat(val);
-
-     if attr='from' then
-     begin
-      explode(val,' ',flt);
-      if high(flt)<2 then
-      begin
-       writeln(logfile,'Bad position value in specials file at a [teleport]');
-       continue;
-      end;
-      vfrom:=D3DXVector3(strtofloat(flt[0]),strtofloat(flt[1]),strtofloat(flt[2]));
-     end;
-
-     if attr='to' then
-     begin
-      explode(val,' ',flt);
-      if high(flt)<2 then
-      begin
-       writeln(logfile,'Bad position value in specials file at a [teleport]');
-       continue;
-      end;
-      vto:=D3DXVector3(strtofloat(flt[0]),strtofloat(flt[1]),strtofloat(flt[2]));
-     end;
-    end;
+   with vto do
+   begin
+    x:=stuffjson.GetFloat(['teleports',i,'to','x']);
+    y:=stuffjson.GetFloat(['teleports',i,'to','y']);
+    z:=stuffjson.GetFloat(['teleports',i,'to','z']);
    end;
- until eof(fil);
- closefile(fil);
+
+   rad:=stuffjson.GetFloat(['teleports',i,'radius']);
+   vis:=stuffjson.GetFloat(['teleports',i,'visible_range']);
+  end;
+
 end;
 
 function loadojjektumok:boolean;
@@ -1243,8 +1204,7 @@ begin
   result:=false;
  setlength(ures,0);
 
- addfiletochecksum('data\map.ini');
- loadojjektumini('data\map.ini');
+ loadojjektumokfromjson;
 
  setlength(ojjektumarr,length(ojjektumnevek));
  for i:=0 to high(ojjektumnevek) do
@@ -1327,7 +1287,7 @@ cmap1:array [0..255,0..255] of array4ofbyte;
 xx,yy,zz:single;
 tmp:single;
 n:TD3DXVector3;
-fucol,hocol,kocol:TD3DXColor;
+fucol,hocol,wacol,kocol:TD3DXColor;
 col,lght1,lght2,ossz,veg:TD3DXColor;
 l1,l2:TD3DXVector3;
 fil:file of array4ofbyte;
@@ -1339,10 +1299,17 @@ begin
  if Failed(g_pd3dDevice.CreateTexture( 256, 256, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt1, nil)) then Exit;
  if Failed(g_pd3dDevice.CreateTexture( 256, 256, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt2, nil)) then Exit;
 
- fucol:=D3DXColor(116/255,178/255,67/255,0);
+ ;
+ fucol:=D3DXColorFromDWord(stuffjson.GetInt(['color_grass']));
+ fucol.a:=0;
+ kocol:=D3DXColorFromDWord(stuffjson.GetInt(['color_rock']));
+ kocol.a:=1;
+ hocol:=D3DXColorFromDWord(stuffjson.GetInt(['color_sand']));
+ hocol.a:=0;
+ wacol:=D3DXColorFromDWord(stuffjson.GetInt(['color_water']));
+ wacol.a:=0;
+ //D3DXColor(116/255,178/255,67/255,0);
  kocol:=D3DXColor(110/255,110/255,108/255,1);
- D3DXColormodulate(hocol,D3DXColor(239/255,239/255,239/255,0),
-                         D3DXColor(250/255,200/255,200/255,0));
  hocol:= D3DXColor(250/255,200/255,200/255,0);
  if fileexists('data\cmap.raw') then
  begin
@@ -1373,16 +1340,11 @@ begin
       break;
      end;
  //zz:=zz+(round(xx)mod 2)*scalfac/2;
- {szin:=RGB(round((1+perlin.noise(xx+1000,yy,zz))*100)+100,
-           round((1+perlin.noise(xx,yy+1000,zz))*50)+180,
-           round((1+perlin.noise(xx,yy,zz+1000))*100)+100);   }
    col:=fucol;
    if yy<0 then yy:=0;
    if yy<15 then col:=hocol;
    if (n.y)<0.83 then col:=kocol;
-   if yy<10 then {D3DXColormodulate(col,D3DXColor(239/255,239/255,239/255,1),
-                    D3DXColorfromDword(RGB(250-round(yy*4),100+round(yy*8),round(yy*20))+$FF000000));}
-                    col:=D3DXColorfromDword(RGB(255-round(yy*4),100+round(yy*8)+35,round(yy*20)+25)+$FF000000);
+   if yy<10 then D3DXColorLerp(col,wacol,hocol,yy/15);
    tmp:=D3DXVec3dot(n,l1);
    if tmp<0 then tmp:=0;
    D3DXColorscale(lght1,l1c,tmp);
@@ -1632,202 +1594,6 @@ begin
  //g_pd3dDevice.SetTransform(D3DTS_WORLD, matWorld);
 end;
 
-{procedure re_sound;
-var
-i:integer;
-begin
-
- if ((hanyszor mod 16)=0) and (tavpointpoint(re_gk,campos)<200) then
- begin
-  playsound(34,true,1338,true,re_gk);
-  SetSoundProperties(34,1338,0,5000,true,re_gk);
- end;
-end;}
-
-
-
-{procedure re_effect;
-var
-tmp,vec1,tmp1,tmp2,vec2,t:TD3DXVector3;
-rnd:integer;
-i,j:integer;
-val:boolean;
-camtav:single;
-love:integer;
-szog,tav:single;
-begin
-if (currevent is TReactorEvent) then
-begin
- if (currevent.phs=2) or (currevent.phs=3) then
-  if currevent.phstim=1 then
-  begin
-   rezg:=10;
-   d3dxvec3subtract(robhely,re_pos,d3dxvector3(cpx^,cpy^,cpz^));
-   fastvec3normalize(robhely);
-  end;
-
- if (currevent.phs=9) then
-  if currevent.phstim=1 then
-  begin
-   rezg:=20;
-   d3dxvec3subtract(robhely,re_pos,d3dxvector3(cpx^,cpy^,cpz^));
-   fastvec3normalize(robhely);
-  end;
-
- if (currevent.phs=10) then
-  begin
-   rezg:=currevent.phstim/20;
-   d3dxvec3subtract(robhely,re_pos,d3dxvector3(cpx^,cpy^,cpz^));
-   fastvec3normalize(robhely);
-  end;
-
- if currevent.phs=11 then
-   needsupdate:=true;
- gazmsg:='You have vanished into the nothingness. Please download 2.0 to reappear.';
- exit;
-end;
-  camtav:=tavpointpoint(campos,re_gk);
-
-
-   //Particlesystem_Add_Villam(re_szikr[random(length(re_szikr))],vec1,2,0.4,5,0.5,$FFFFFFFF,50);
-
-   //kék háttér a gömbnek
- particlesystem_add(simpleparticlecreate(re_gk,randomvec(gettickcount mod 100000,0.5),40,40,$10402010,0,1));
-
- // az örvény
- tmp:=re_gk;
- tmp.y:=tmp.y+200;
- for i:=0 to 2 do
- begin
-  szog:=pi*random(10000)/5000;
-  tav:=random(110);
-  tmp1:=D3DXVector3(sin(szog)*tav,0,cos(szog)*tav);
-  tmp2:=D3DXVector3(cos(szog)*0.3*150,0,-sin(szog)*0.3*150);
-  d3dxvec3add(tmp1,tmp1,tmp);
-  d3dxvec3subtract(tmp1,tmp1,tmp2);
-  d3dxvec3scale(tmp2,tmp2,1/150);
-  if tav>5 then
-   particlesystem_add(simpleparticlecreate(tmp1,tmp2,(160-tav)/3,0,0,$FF000000+$010101*round(tav),150))
-  else
-   particlesystem_add(simpleparticlecreate(tmp1,tmp2,100,0,0,$80F08040,150))
- end;
-
- //a tripla csík cucc
- for i:=0 to 2 do
- begin
-  vec1:=re_gk;
-  for j:=0 to 20 do
-  begin
-   vec2:=vec1;
-   tmp1:=randomvec(gettickcount/2000-j/20,j*5+5);
-   tmp2:=randomvec(gettickcount/1000+i*100,30+j*2);
-   d3dxvec3lerp(vec1,tmp1,tmp2,sqr((j-10)/10));
-   vec1.y:=(re_gk.y-re_pos.y+vec1.y*1+j*10);
-   d3dxvec3add(vec1,vec1,re_pos);
-   if j>0 then
-   particlesystem_Add(fenycsik2create(vec1,vec2,2+j/4,min($808080,$101010*(10-abs(10-j))),min($808080,$101010*(10-abs(10-j))),1));
-  end;
- end;
-
- //a szívott csíkok
- if camtav<150 then
- for i:=0 to 2 do
- begin
-  tmp1:=randomvec(random(100000)/100+i*13.4567,3);
-  d3dxvec3scale(tmp2,tmp1,1.2);
-  d3dxvec3scale(vec1,tmp2,-50);
-  d3dxvec3add(vec1,vec1,re_gk);
-  particlesystem_Add(fenycsikubercreate(vec1,vec1,tmp1,tmp2,0.2,0,0,$808080,50));
- end;
-
- // a felfelé menõ csíkok
- if (hanyszor and 3)=0 then
- begin
-  tmp1:=randomvec(random(100000)/100+i*13.4567,25);
-  d3dxvec3add(vec1,tmp1,re_gk);
-  vec2:=vec1;
-  vec2.y:=vec2.y+3;
-  particlesystem_Add(fenycsikubercreate(vec1,vec2,D3dxvector3(0,2,0),d3dxvector3(0,2.4,0),0.5,0.5,$808080,0,80));
- end;
-
- //for i:=0 to 0 do
- begin
-  tmp1:=randomvec(gettickcount*1.234+random(100),70);
-  tmp1.y:=0;
-  d3dxvec3add(tmp1,tmp1,re_pos);
-  d3dxvec3subtract(vec1,re_gk,tmp1);
-  d3dxvec3scale(vec1,vec1,1/1000);
-  particlesystem_Add(expsebparticlecreate(tmp1,vec1,5,2,1.03,0,$A0204020,100));
- end;
-
-
- particlesystem_add(simpleparticlecreate(re_gk,randomvec(gettickcount mod 100000,0.5),25,20,$FF000000,0,1));
-
-end;
-
-
-procedure re_gomb;
-var
-light:TD3DLight9;
-vecDir:TD3DXVector3;
-mat1,mat2,mat3:TD3DMatrix;
-begin
-  if (currevent is TReactorEvent) then
-  begin
-   if currevent.phs>6 then exit;
-
-   re_gk:=currevent.kivec;
-  end;
-
-  ZeroMemory(@light, SizeOf(TD3DLight9));
-  light._Type      := D3DLIGHT_DIRECTIONAL;
-  light.Diffuse.r  := -22;
-  light.Diffuse.g  := -22;
-  light.Diffuse.b  := -22;
-  light.Diffuse.a  := 1;
-  d3dxvec3subtract(vecDir,re_gk,campos);
-  D3DXVec3Normalize(light.Direction, vecDir);
-  light.Range := 1000.0;
-  g_pd3dDevice.SetLight(0, light);
-  g_pd3dDevice.LightEnable(0, true);
-  g_pd3dDevice.LightEnable(1, false);
-  g_pd3ddevice.setrenderstate(D3DRS_LIGHTING,itrue);
-  g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iTrue);
-  g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
-  g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_ONE);
-  g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,iFalse);
-  g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, $0FFFFFF);
-
-  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
-  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
-  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
-  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-  g_pd3ddevice.setrenderstate(D3DRS_CULLMODE,D3DCULL_CCW);
-  //g_pd3ddevice.setrenderstate(D3DRS_ZWRITEENABLE,itrue);
-
-  d3dxmatrixtranslation(mat1,re_gk.x,re_gk.y,re_gk.z);
-  d3dxmatrixscaling(mat2,18.5+sin(gettickcount/1000),18.5+sin(gettickcount/1200),18.5+sin(gettickcount/1300));
-  d3dxmatrixmultiply(mat3,mat2,mat1);
-  g_pd3ddevice.SetTransform(D3DTS_WORLD,mat3);
-
-  noobmesh.DrawSubset(0);
-
-end;
-
-
-
-procedure re_initeffect;
-var
-i,j,hol:integer;
-tav:single;
-tmp:TD3DXVector3;
-begin
- hol:=reactorepulet;
- re_pos:=ojjektumarr[hol].holvannak[0];
- d3dxvec3add(re_gk,D3DxVector3(0,17,0),re_pos);
-end;     }
-
 
 //-----------------------------------------------------------------------------
 // Name: InitGeometry()
@@ -1857,6 +1623,11 @@ begin
   enableeffects:=true;
   laststate:='Initializing';
 
+  hoszin:=stuffjson.GetInt(['color_sand']) and $FFFFFF;
+  vizszin:=stuffjson.GetInt(['color_water']) and $FFFFFF;
+  ambientszin:=$FF000000 or stuffjson.GetInt(['light','color_ambient']);
+  gunautoeffekt:=stuffjson.GetBool(['vehicle','gun','effect']);
+  techautoeffekt:=stuffjson.GetBool(['vehicle','tech','effect']);
   g_pd3ddevice.GetDeviceCaps(devicecaps);
 
   g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iTrue);
@@ -1880,7 +1651,7 @@ begin
   if not loadojjektumok then exit;
   tempmesh:=nil;
 
-  loadspecials('data\map.ini');
+  loadspecials;
     menu.DrawLoadScreen(50);
 
  { if FAILED(D3DXCreateSphere(g_pD3DDevice,0.2,10,20,tempmesh,nil)) then Exit;
@@ -2361,9 +2132,7 @@ begin
 
   ZeroMemory(@light, SizeOf(TD3DLight9));
   light._Type      := D3DLIGHT_DIRECTIONAL;
-  light.Diffuse.r  := 1.0;
-  light.Diffuse.g  := 1.0;
-  light.Diffuse.b  := 0.9;
+  light.Diffuse:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_sun']));
   light.Diffuse.a := 1;
   vecDir:= D3DXVector3(1,-1.0,0);
   D3DXVec3Normalize(light.Direction, vecDir);
@@ -2371,9 +2140,7 @@ begin
   g_pd3dDevice.SetLight(0, light);
   g_pd3dDevice.LightEnable(0, true);
   light.Direction.x:=-light.direction.x;
-  light.Diffuse.r  := 0.15;
-  light.Diffuse.g  := 0.15;
-  light.Diffuse.b  := 0.25;
+  light.Diffuse:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_shadow']));
   light.Diffuse.a := 1;
   g_pd3dDevice.SetLight(1, light);
   g_pd3dDevice.LightEnable(1, true);   //}
@@ -2382,7 +2149,7 @@ begin
   g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iTrue);
   // Finally, turn on some ambient light.
   //if (halal=0) or (halal>1.5) then
-  g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, $FF202020);
+  g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
 end;
 
 
@@ -2395,9 +2162,9 @@ begin
   v:=lit/10;
   ZeroMemory(@light, SizeOf(TD3DLight9));
   light._Type      := D3DLIGHT_DIRECTIONAL;
-  light.Diffuse.r  := lerp(0.15,1.0,v);
-  light.Diffuse.g  := lerp(0.15,1.0,v);
-  light.Diffuse.b  := lerp(0.25,0.9,v);
+  D3DXColorLerp(light.Diffuse,
+                D3DXColorFromDWORD(stuffjson.GetInt(['light','color_shadow'])),
+                D3DXColorFromDWORD(stuffjson.GetInt(['light','color_sun'])),v);
   light.Diffuse.a := 1;
   vecDir:= D3DXVector3(1,-1.0,0);
   D3DXVec3Normalize(light.Direction, vecDir);
@@ -2802,7 +2569,7 @@ begin
   if (length(chatmost)=0) and autoban then
   begin
     tegla.iranyit(dine.keyd(DIK_W),dine.keyd(DIK_S),dine.keyd(DIK_D),dine.keyd(DIK_A),true);
-    if (tegla.axes[2].y<0) and dine.keyd(DIK_R) then
+    if (tegla.axes[2].y<0) and dine.keyd(DIK_F) then
      recovercar:=1;
   end
    else
@@ -2813,21 +2580,27 @@ begin
       dine.keyd(DIK_A) or dine.keyd(DIK_D) then
        multisc.killscamping:=multisc.kills;
 
-  if dine.keyd(DIK_F) and (not autoban) {$IFNDEF speedhack} and (bunkerkozelben){$ENDIF}and (halal=0)  and (length(chatmost)=0) then
+  if dine.keyd(DIK_F) and (not autoban) {$IFNDEF speedhack} and (autobaszallhat){$ENDIF}and (halal=0)  and (length(chatmost)=0) then
   begin
    tegla.destroy; autoban:=true;
    cpox^:=cpx^; cpoz^:=cpz^; cpoy^:=cpy^;
    {$IFNDEF speedhack}
-   d3dxvec3add(tmp,ojjektumarr[0].holvannak[melyikbunkerkozelben],d3dxvector3(0,4,-8));
+   tmp:=autobaszallhatpos;
    tmp.y:=advwove(tmp.x,tmp.z)+2;
    {$ELSE}
    d3dxvec3add(tmp,d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(0,4,0));
    {$ENDIF}
 
    if myfegyv<128 then
-    tegla:=Tauto.create(d3dxvector3(2.3,0,0),d3dxvector3(0,0,-1.3),d3dxvector3(0,-0.7,0),tmp,d3dxvector3zero,0.2,0.5,hummkerekarr,0.7,0.5,0.2,false)
+    tegla:=Tauto.create(d3dxvector3(stuffjson.GetFloat(['vehicle','gun','scale','x']),0,0),
+                        d3dxvector3(0,0,-stuffjson.GetFloat(['vehicle','gun','scale','z'])),
+                        d3dxvector3(0,-stuffjson.GetFloat(['vehicle','gun','scale','y']),0),
+                        tmp,d3dxvector3zero,0.2,0.5,hummkerekarr,0.7,0.5,0.2,false)
    else
-    tegla:=Tauto.create(d3dxvector3(1.8,0,0),d3dxvector3(0,0,-1.5),d3dxvector3(0,-0.9,0),tmp,d3dxvector3zero,0.2,0.99,agkerekarr,0.7,0.5,0.2,true);
+    tegla:=Tauto.create(d3dxvector3(stuffjson.GetFloat(['vehicle','tech','scale','x']),0,0),
+                        d3dxvector3(0,0,-stuffjson.GetFloat(['vehicle','tech','scale','z'])),
+                        d3dxvector3(0,-stuffjson.GetFloat(['vehicle','tech','scale','y']),0),
+                        tmp,d3dxvector3zero,0.2,0.99,agkerekarr,0.7,0.5,0.2,true);
    
   end;
 
@@ -3225,128 +2998,6 @@ begin
 end;
 
 
-{function handlepajzsok(p1,p2:TD3DXVector3;mennyitvesz:integer):boolean;
-const
-r=1;
-var
-dp,sc,ep:TD3DXVector3;
-a,b,c,cp,bb4ac,a2:single;
-i,j,k:integer;
-mu1,mu2:single;
-ap,eap:TD3DXVector3;
-begin
-
-  result:=false;
-  constraintvec(p1);
-  constraintvec(p2);
-   dp.x := p2.x - p1.x;
-   dp.y := p2.y - p1.y;
-   dp.z := p2.z - p1.z;
-   a := dp.x * dp.x + dp.y * dp.y + dp.z * dp.z;
-   a2:=0.5/a;
-   cp := p1.x * p1.x + p1.y * p1.y + p1.z * p1.z;
-   cp := cp - r * r;
-
-
-
-   for i:=0 to pplhgh do
-   begin
-    if pplpls[i].fegyv<>FEGYV_FLAMETHROWER then continue;
-    if pplpos[i].pos.y>200 then continue;
-    if tavpointpointsq(pplpos[i].pos,campos)>sqr(100) then continue;
-    if pplpls[i].vtim<=1 then pplpls[i].vtim:=10000;
-    sc:=pplpls[i].megjpos;
-    sc.y:=sc.y+0.8;
-    c := sc.x * sc.x + sc.y * sc.y + sc.z * sc.z;
-    c := c+cp-2 * (sc.x * p1.x + sc.y * p1.y + sc.z * p1.z);
-    b := 2 * (dp.x * (p1.x - sc.x) + dp.y * (p1.y - sc.y) + dp.z * (p1.z - sc.z));
-
-    bb4ac := b * b - 4 * a * c;
-    if ((ABS(a) < 0.001) or  (bb4ac < 0)) then
-     continue;
-
-    bb4ac:=sqrt(bb4ac);
-
-    //mu1 := (-b + bb4ac) * a;
-    mu2 := (-b - bb4ac) * a2;
-    if mu2>0 then
-     d3dxvec3lerp(ep,p1,p2,mu2)
-    else continue;
-
-    for k:=0 to 3 do
-    begin
-     ap:=ep;
-     for j:=0 to 5 do
-     begin
-      eap:=ap;
-
-      randomplus(ap,animstat+j+k*100,1);
-      d3dxvec3subtract(ap,ap,sc);
-      fastvec3normalize(ap);
-      d3dxvec3add(ap,ap,sc);
-
-      Particlesystem_add(fenycsikcreate(eap,ap,0.03,$FFFFFF00,100-j*10));
-     end;
-    end;
-
-     setlength(explosionbubbles,length(explosionbubbles)+1);
-     with explosionbubbles[high(explosionbubbles)] do
-     begin
-      pos:=sc;
-      meret:=0.8; meretpls:=0.01;
-      erosseg:=1; erossegpls:=-1/20;
-      meretplsszor:=0.95;
-      tim:=20;
-     end;
-   end;
-    if (myfegyv<>FEGYV_FLAMETHROWER) or (halal>0) then exit;
-
-    sc.x:=cpx^;
-    sc.z:=cpz^;
-    sc.y:=cpy^+0.8;
-    c := sc.x * sc.x + sc.y * sc.y + sc.z * sc.z;
-    c := c+cp-2 * (sc.x * p1.x + sc.y * p1.y + sc.z * p1.z);
-    b := 2 * (dp.x * (p1.x - sc.x) + dp.y * (p1.y - sc.y) + dp.z * (p1.z - sc.z));
-
-    bb4ac := b * b - 4 * a * c;
-    if ((ABS(a) < 0.001) or  (bb4ac < 0)) then
-     exit;
-
-    bb4ac:=sqrt(bb4ac);
-    //mu1 := (-b + bb4ac) * a;
-    mu2 := (-b - bb4ac) * a2;
-    if mu2>0 then
-     d3dxvec3lerp(ep,p1,p2,mu2)
-    else exit;
-
-
-
-    playsound(24,false,timegettime+random(10000),true,ep) ;
-    for k:=0 to 3 do
-    begin
-     ap:=ep;
-     for j:=0 to 5 do
-     begin
-      eap:=ap;
-
-      randomplus(ap,animstat+j+k*100,1);
-      d3dxvec3subtract(ap,ap,sc);
-      fastvec3normalize(ap);
-     // d3dxvec3scale(ap,ap,1);
-      d3dxvec3add(ap,ap,sc);
-
-      Particlesystem_add(fenycsikcreate(eap,ap,0.03,$FFFFFF00,100-j*10));
-     end;
-    end;
-
-   if  (energy>mennyitvesz) then
-    energy:=energy-mennyitvesz
-   else
-    energy:=0;
-end;}
-
-
-
 procedure handlerobbanas(hol:TD3DXVector3;kilotte:integer;lovesfegyv:byte;x72eletkor:single);
 var
 love:integer;
@@ -3436,7 +3087,7 @@ begin
       d3dxvec3scale(ap,ap,fastinvsqrt(d3dxvec3lengthsq(ap))*r2);
       d3dxvec3add(ap,ap,DNSvec);
 
-      Particlesystem_add(fenycsik3create(eap,ap,0.5,$FFFFFF00,j*10+50,50));
+      Particlesystem_add(fenycsik3create(eap,ap,0.5,$FF00FFFF,j*10+50,50));
      end;
     end
   else
@@ -3452,7 +3103,7 @@ begin
       d3dxvec3scale(ap,ap,fastinvsqrt(d3dxvec3lengthsq(ap))*r2);
       d3dxvec3add(ap,ap,DNSvec);
 
-      Particlesystem_add(fenycsik3create(eap,ap,0.03,$FFFFFF00,j*10+20,20));
+      Particlesystem_add(fenycsik3create(eap,ap,0.03,$FF00FFFF,j*10+20,20));
      end;
     end;
 end;
@@ -3504,7 +3155,7 @@ begin
  begin
   t:=lawproj[mi].v3;
   randomplus(t,animstat*10+i,7);
-  Particlesystem_add(SimpleparticleCreate(t,randomvec(animstat*10+i,0.05),2,0,$0000FFFF,$010000FF,random(20)+20));
+  Particlesystem_add(SimpleparticleCreate(t,randomvec(animstat*10+i,0.05),2,0,$00FFFF00,$01FF0000,random(20)+20));
  end;
  for i:=0 to 200 do
  begin
@@ -3560,14 +3211,14 @@ begin
   for i:=0 to 50 do
   begin
    t:=randomvec(animstat*2+i/30+j,i/70);
-   Particlesystem_add(ExpsebparticleCreate(noobproj[mi].v3,t,0.5,0.5,0.95,$502060FF,$00000000,i+100));
+   Particlesystem_add(ExpsebparticleCreate(noobproj[mi].v3,t,0.5,0.5,0.95,$50FF6020,$00000000,i+100));
   end;
 
  for i:=0 to 500 do
  begin
   t:=randomvec(animstat*2+i*3,1);
   fastvec3normalize(t);
-  Particlesystem_add(ExpsebparticleCreate(noobproj[mi].v3,t,1.0,1.0,0.8,$502060FF,$00000000,random(50)+20));
+  Particlesystem_add(ExpsebparticleCreate(noobproj[mi].v3,t,1.0,1.0,0.8,$50FF6020,$00000000,random(50)+20));
  end;
 
  alngt:=tavpointpointsq(d3dxvector3(cpx^,cpy^,cpz^),noobproj[mi].v3);
@@ -3616,7 +3267,7 @@ begin
   t:=randomvec(animstat*2+i*3,1);
   fastvec3normalize(t);
   d3dxvec3scale(t,t,(x72proj[mi].eletkor/200+1)*0.3);
-  Particlesystem_add(ExpsebparticleCreate(x72proj[mi].v3,t,1.0,0,0.75,$FFFFFFFF,$00FF0000,random(50)+20));
+  Particlesystem_add(ExpsebparticleCreate(x72proj[mi].v3,t,1.0,0,0.75,$FFFFFFFF,$000000FF,random(50)+20));
  end;
 
  alngt:=tavpointpointsq(d3dxvector3(cpx^,cpy^,cpz^),x72proj[mi].v3);
@@ -3665,7 +3316,6 @@ var
  p2:TD3DXVector3;
  vec1,vec2,vec3,vec4:TD3DXVector3;
  voltc:boolean;
- tulnagylokes:boolean;
 label
 lawskip,noobskip,x72skip;
 begin
@@ -3674,7 +3324,7 @@ begin
  laststate:='Docollisiontests 1';
  cp:=D3DXVector3(cpx^,cpy^*0.5+0.4,cpz^);
 
- bunkerkozelben:=false;
+ autobaszallhat:=false;
 
  tulnagylokes:=false;
  for j:=0 to high(ojjektumnevek) do
@@ -3682,10 +3332,11 @@ begin
  begin
   adst:=ojjektumarr[j].tavtest(cp,0.4,ap,i,true);
   if adst>sqr(0.4) then continue;
-  if (j=0) then
+  if ((ojjektumflags[j] and OF_VEHICLEGUN) >0) and (myfegyv< 128) or
+     ((ojjektumflags[j] and OF_VEHICLETECH)>0) and (myfegyv>=128)  then
   begin
-   bunkerkozelben:=true;
-   melyikbunkerkozelben:=i;
+   autobaszallhat:=true;
+   d3dxvec3add(autobaszallhatpos,ojjektumarr[j].holvannak[i],d3dxvector3(0,ojjektumarr[j].rad2*0.5+2,-ojjektumarr[j].rad2-2));
   end;
   adst:=sqrt(adst);
 
@@ -3951,7 +3602,7 @@ laststate:='Docollisiontests 6';
  with x72proj[i] do
   if colltim>=3 then
   begin
-   Particlesystem_add(fenycsikcreate(v1,v3,0.07,$FF4010,100));
+   Particlesystem_add(fenycsikcreate(v1,v3,0.07,$1040FF,100));
    if advwove(v1.x,v1.z)>v1.y then
     begin
       Dox72Robbanas(i,false);
@@ -4039,7 +3690,7 @@ begin
 
  d3dxvec3scale(s2,s2,0.1);
  d3dxvec3add(v2,v1,s2);
- Particlesystem_add(Esocseppcreate(v2,v1,0.2,2,$C0A0A0C0,round(1+(abs(pls1)+abs(pls2))/10)));
+ Particlesystem_add(Esocseppcreate(v2,v1,0.2,2,$C0C0A0A0,round(1+(abs(pls1)+abs(pls2))/10)));
  if v1.y<>tmp then
  Particlesystem_add(Simpleparticlecreate(v1,D3DXVector3zero,0.03,0,$C0C0A0A0,0,20));
 end;
@@ -4251,11 +3902,13 @@ begin
  vec1:=D3DXVector3(cpx^,cpy^+0.8,cpz^);
  lk:=100000000000;
  for i:=1 to high(ojjektumnevek) do
+ if ojjektumzone[i]<>'' then
   for j:=0 to ojjektumarr[i].hvszam-1 do
    begin
      D3DXVec3add(vec2,ojjektumarr[i].holvannak[j],ojjektumarr[i].vce);
      mt:=tavpointpointsq(vec1,vec2);
      if mt<sqr(ojjektumarr[i].rad+radpls) then
+
      if mt<lk then
      begin
        zonaban:=true;
@@ -4329,15 +3982,15 @@ begin
      v1.x:=vfrom.x+sin(hanyszor/8)*(rad+0.4);
      v1.y:=vfrom.y;
      v1.z:=vfrom.z+cos(hanyszor/8)*(rad+0.4);
-     Particlesystem_add(simpleparticleCreate(v1,D3DXVector3(0,0.03,0),0.3,0.5,$00FF4020,$00000000,random(50)+100));
+     Particlesystem_add(simpleparticleCreate(v1,D3DXVector3(0,0.03,0),0.3,0.5,$002040FF,$00000000,random(50)+100));
     end;
 
     if random(40)=0 then
     begin
      v1:=vfrom;
      v1.y:=v1.y+2-random(200)/200;
-     Particlesystem_add(fenykorcreate(v1,D3DXVector3(0,0.03,0),d3dxvector3(1,0,0),d3dxvector3(0,0,1),rad,rad,0.5,$00FF8040,$00000000,100));
-     Particlesystem_add(fenykorcreate(v1,D3DXVector3(0,-0.02,0),d3dxvector3(1,0,0),d3dxvector3(0,0,1),rad,rad,0.5,$00FF8040,$00000000,100));
+     Particlesystem_add(fenykorcreate(v1,D3DXVector3(0,0.03,0),d3dxvector3(1,0,0),d3dxvector3(0,0,1),rad,rad,0.5,$004080FF,$00000000,100));
+     Particlesystem_add(fenykorcreate(v1,D3DXVector3(0,-0.02,0),d3dxvector3(1,0,0),d3dxvector3(0,0,1),rad,rad,0.5,$004080FF,$00000000,100));
 
     end;
 
@@ -4350,7 +4003,7 @@ begin
      v1:=D3DXVector3(vfrom.x+v1.x*rnd,vfrom.y+v1.y*rnd,vfrom.z+v1.z*rnd);
      v2:=v1;
      v2.y:=v1.y+4;
-     Particlesystem_add(fenycsik2create(v1,v2,rad*1.2,$00604020,$0,20));
+     Particlesystem_add(fenycsik2create(v1,v2,rad*1.2,$00204060,$0,20));
     end;
    end;
 
@@ -4386,114 +4039,12 @@ begin
     begin
      v1:=randomvec(animstat*2+i*3,1);
      fastvec3normalize(v1);
-     Particlesystem_add(ExpsebparticleCreate(D3DXVector3(cpx^,cpy^+1.5,cpz^),v1,1.0,1.0,0.8,$00FF2010,$00000000,random(50)+20));
+     Particlesystem_add(ExpsebparticleCreate(D3DXVector3(cpx^,cpy^+1.5,cpz^),v1,1.0,1.0,0.8,$001020FF,$00000000,random(50)+20));
     end;
    end;
-
-   {
- invulntim:=300;
- v1:=D3DXVector3(BGarr[BGben].holvannak[0].x+random(20)-10,BGarr[BGben].holvannak[0].y+0,BGarr[BGben].holvannak[0].z+random(20)-10);
- v2:=v1; v2.y:=v2.y+100;
- v3:=BGarr[BGben].raytest(v2,v1,0);
- cpx^:=v3.x;cpy^:=v3.y;cpz^:=v3.z;
- cpox^:=cpx^;cpoy^:=cpy^;cpoz^:=cpz^;
-
- playsound(25,false,timegettime+random(10000),true,D3DXVector3(cpx^,cpy^+1.5,cpz^));
- for i:=0 to 200 do
- begin
-  tmp:=randomvec(animstat*2+i*3,1);
-  fastvec3normalize(tmp);
-  Particlesystem_add(ExpsebparticleCreate(D3DXVector3(cpx^,cpy^+1.5,cpz^),tmp,1.0,1.0,0.8,$00FF2010,$00000000,random(50)+20));
- end;
-        }
   end;
 
 end;
-
-{procedure re_playerstuff;
-var
-tmp:single;
-vec1:TD3DXVector3;
-i:integer;
-begin
-if (currevent is TReactorEvent) then exit;
-
-for i:=0 to high(lawproj) do
- with lawproj[i] do
- begin
-  if eletkor<65 then continue;
-  tmp:=tavpointpoint(v1,re_gk);
-  if tmp<100 then
-   if tmp<2 then
-    v1.y:=0
-   else
-   begin
-    d3dxvec3subtract(vec1,v1,re_gk);
-    d3dxvec3scale(vec1,vec1,-0.3/(tmp*tmp));
-    d3dxvec3add(v1,v1,vec1);
-   end;
- end;
-
- for i:=0 to high(noobproj) do
- with noobproj[i] do
- begin
-  tmp:=tavpointpoint(v1,re_gk);
-  if tmp<100 then
-   if tmp<2 then
-    v1.y:=0
-   else
-   begin
-    d3dxvec3subtract(vec1,v1,re_gk);
-    d3dxvec3scale(vec1,vec1,-0.002*eletkor/(tmp*tmp));
-    d3dxvec3add(v1,v1,vec1);
-   end;
- end;
-
- for i:=0 to high(x72proj) do
- with x72proj[i] do
- begin
-  tmp:=tavpointpoint(v1,re_gk);
-  if tmp<100 then
-   if tmp<2 then
-    v1.y:=0
-   else
-   begin
-    d3dxvec3subtract(vec1,v1,re_gk);
-    d3dxvec3scale(vec1,vec1,-0.3/(tmp*tmp));
-    d3dxvec3add(v1,v1,vec1);
-   end;
- end;
-
- tmp:=tavpointpoint(tegla.pos,re_gk);
- if tmp<100 then
- begin
-  d3dxvec3subtract(vec1,tegla.pos,re_gk);
-  d3dxvec3scale(vec1,vec1,-0.3/(tmp*tmp));
-
-  for i:=0 to high(tegla.pontok) do
-   d3dxvec3add(tegla.pontok[i],tegla.pontok[i],vec1);
- end;
-
- tmp:=tavpointpoint(D3DXVector3(cpx^,cpy^+1,cpz^),re_gk);
- if tmp<100 then
- begin
-  d3dxvec3subtract(vec1,d3dxvector3(cpox^,cpoy^,cpoz^),re_gk);
-  d3dxvec3scale(vec1,vec1,-0.1/(tmp*tmp));
-  cpx^:=cpx^+vec1.x;
-  cpy^:=cpy^+vec1.y*40;
-  cpoy^:=cpoy^+vec1.y*39;
-  cpz^:=cpz^+vec1.z;
- end;
-
-if halal=0 then
-  if tmp<15 then
-   begin
-    halal:=1;
-    autoban:=false;
-    MMO.chatelj('==>'+MMO.mynev2+' has been disintegrated.');
-    addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(0.00,-0.1,0),myfegyv,10,0);
-   end;
-end;    }
 
 
 procedure handlefizik;
@@ -4587,11 +4138,11 @@ begin
     tmps.x:=    tmps.x +(aauto.pos.x-aauto.vpos.x)*0.8;
     tmps.y:=abs(tmps.y)+(aauto.pos.y-aauto.vpos.y)*0.8;
     tmps.z:=    tmps.z +(aauto.pos.z-aauto.vpos.z)*0.8;
-    if tmp.y>10 then
+    if (tmp.y>10) and gunautoeffekt then
      if tmp.y<15 then
-      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FFB2B9DC,$0,100))
+      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FFDCB9B2,$0,100))
      else
-      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FF2D7755,$0,100))
+      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FF55772D,$0,100))
 
    end;
   end
@@ -4604,14 +4155,16 @@ begin
     else
      d3dxvec3lerp(tmp,aauto.kerekorig[2],aauto.kerekorig[3],0.1+0.8*random(1000)/1000);
 
+    if techautoeffekt then
+    begin
      tmp :=aauto.kerekorig[0]; randomplus(tmp ,gtc  ,1);
      tmps:=aauto.kerekorig[1]; randomplus(tmps,gtc+5,1);
-     Particlesystem_add(fenycsikcreate(tmp,tmps,0.3,$0401005,100));
+     Particlesystem_add(fenycsikcreate(tmp,tmps,0.3,$00051040,100));
      tmp :=aauto.kerekorig[2]; randomplus(tmp ,gtc  ,1);
      tmps:=aauto.kerekorig[3]; randomplus(tmps,gtc+5,1);
-     Particlesystem_add(fenycsikcreate(tmp,tmps,0.3,$0401005,100));
-    //Particlesystem_add(fenykorCreate(tmp,d3dxvector3(0,-0.02,0),
-    //                                    d3dxvector3(1,0,0),d3dxvector3(0,0,1),0.3,0.3,0.3,$00FF7000,0,30));
+
+     Particlesystem_add(fenycsikcreate(tmp,tmps,0.3,$00051040,100));
+    end;
    end;
   end;
   end;
@@ -4673,7 +4226,7 @@ begin
   end
   else
    iranyithato:=true;
-
+  if tulnagylokes then iranyithato:=false;
    //PLR fizikája
   if not iranyithato then
   begin
@@ -4933,10 +4486,7 @@ begin
   d3dxvec3subtract(tmp,v1,v2);
   d3dxvec3scale(tmp,tmp,0.5);
   randomplus(tmp,animstat*5+i*2,0.01);
-  Particlesystem_add(Simpleparticlecreate(v1,
-                                         // D3DXVector3Zero,
-                                          tmp,
-                                          0.5,0,$0000010*(random(70)+150),$00000000,100));
+  Particlesystem_add(Fenycsikubercreate(v1,v2,randomvec(eletkor/3,0.02),randomvec((eletkor-1)/3,0.02),0.1,0.1,$50FF6020,0,100));
  end;
 
  
@@ -4973,7 +4523,7 @@ begin
    Particlesystem_add(Simpleparticlecreate(v2,
                                           // D3DXVector3Zero,
                                            tmp,
-                                           0.5,0,$0001010*(random(70)+150),$00000000,60));
+                                           0.5,0,$010100*(random(70)+150),$00000000,60));
   end;
  end;
 
@@ -4993,7 +4543,7 @@ begin
   Particlesystem_add(Simpleparticlecreate(v2,
                                          // D3DXVector3Zero,
                                           tmp,
-                                          0.3,0,$00202020,$00200000,30));
+                                          0.3,0,$00202020,$00000020,30));
  end;
 
  i:=0;
@@ -6033,12 +5583,14 @@ begin
   fogc:=felho.coverage/13;
   if fogc>1 then fogc:=1;
  g_pd3dDevice.SetRenderState(D3DRS_FOGCOLOR,
-                               colorlerp($FF909090,$FFFFF2C5,fogc));
+                               //colorlerp($FF909090,$FFC5F2FF,fogc)
+               colorlerp(stuffjson.GetInt(['fog','color_rainy']),stuffjson.GetInt(['fog','color_sunny']),fogc));
 
   g_pd3dDevice.SetRenderState(D3DRS_RANGEFOGENABLE,itrue);
   g_pd3dDevice.SetRenderState(D3DRS_FOGVERTEXMODE,D3DFOG_LINEAR);
 
- fogstart:=800;fogend:=900;
+ fogstart:=0;
+ fogend:=900;
 
   g_pd3dDevice.SetRenderState(D3DRS_FOGSTART,singletodword(FogStart));
   g_pd3dDevice.SetRenderState(D3DRS_FOGEND,singletodword(FogEnd));
@@ -6079,7 +5631,8 @@ begin
    // And some fog
 
   g_pd3dDevice.SetRenderState(D3DRS_FOGENABLE,itrue);
-  fogstart:=20;fogend:=lerp(600,900,fogc);
+  fogstart:=0;
+  fogend:=lerp(stuffjson.GetInt(['fog','radius_rainy']),stuffjson.GetInt(['fog','radius_sunny']),fogc);
 
 
  if mapmode>0 then
@@ -6263,17 +5816,14 @@ end;
 
 
 procedure respawn;
-type
- Tpszam = record
-  pont:single;
-  index:integer;
- end;
 var
-x,i,j:integer;
+x,i,j,ojjind:integer;
 rnd:byte;
-pontszam:array [0..100] of Tpszam;
-tmp:Tpszam;
 tmp2:single;
+tmppos:TD3DXVector3;
+tmppont:single;
+maxpos:TD3DXVector3;
+maxpont:single;
 begin
  lastzone:='';
  multisc.killscamping:=multisc.kills;
@@ -6288,52 +5838,39 @@ begin
  mapbol:=false;
  halal:=0;
  multisc.killswithoutdeath :=multisc.kills;
-{ rbid:=getrongybababyID(0);
- if rbid>=0 then
-  delrongybaba(rbid);}
-
- { x:=pplhgh+2;
- cpx^:=10*x-random(20*x);
- cpz^:=10*x-random(20*x);
- cpy^:=advwove(cpx^,cpz^);  }
-
-
- for i:=0 to ojjektumarr[0].hvszam-1 do
+ maxpont:=-1000000000000;
+ maxpos:=D3DXVector3(0,100,0);
+ for i:=0 to 5 do
+ for ojjind:=0 to high(ojjektumarr) do
+ if ((ojjektumflags[ojjind] and OF_SPAWNGUN)>0)  and (myfegyv<128) or
+    ((ojjektumflags[ojjind] and OF_SPAWNTECH)>0) and (myfegyv>=128) then
  begin
-  pontszam[i].index:=i;
-  pontszam[i].pont:=random(50);
+  tmppos:=ojjektumarr[ojjind].holvannak[random(ojjektumarr[ojjind].hvszam)];
+  tmppont:=0;
   for j:=0 to high(ppl) do
   begin
-   constraintvec(ppl[j].pos.pos);
    if ppl[j].pos.pos.y>5 then
    begin
-    tmp2:=100-tavpointpoint(ojjektumarr[0].holvannak[i],ppl[j].pos.pos);
+    tmp2:=100-tavpointpoint(tmppos,ppl[j].pos.pos);
     if tmp2<0 then tmp2:=0;
     if (ppl[j].pls.fegyv xor myfegyv)>128 then
-     pontszam[i].pont:=pontszam[i].pont+tmp2
+     tmppont:=tmppont+tmp2*3
     else
-     pontszam[i].pont:=pontszam[i].pont-tmp2;
-
+     tmppont:=tmppont-tmp2*2;
    end;
+  end;
+  if tmppont>maxpont then
+  begin
+   maxpont:=tmppont;
+   maxpos:=tmppos;
   end;
  end;
 
- for i:=0 to ojjektumarr[0].hvszam-2 do
-  for j:=i+1 to ojjektumarr[0].hvszam-1 do
-  if pontszam[i].pont<pontszam[j].pont then
-  begin
-   tmp:=pontszam[i];
-   pontszam[i]:=pontszam[j];
-   pontszam[j]:=tmp;
-  end;
+ tmp2:=stuffjson.GetFloat(['spawn_radius']);
+ cpx^:=maxpos.x+tmp2*(random(10000)/5000-1)/2;
+ cpy^:=maxpos.y+stuffjson.GetFloat(['spawn_height']);
+ cpz^:=maxpos.z+tmp2*(random(10000)/5000-1)/2;
 
- rnd:=pontszam[1].index;
- with ojjektumarr[0] do
- begin
- cpx^:=holvannak[rnd].x+rad*(random(10000)/5000-1)/4;
- cpy^:=holvannak[rnd].y+rad+2;
- cpz^:=holvannak[rnd].z+rad*(random(10000)/5000-1)/4;
-  end;
  NoNANINF(cpx^); NoNANINF(cpy^); NoNANINF(cpz^);
 
  szogx:=0;
@@ -6881,7 +6418,7 @@ begin
   drawmessage(txt,min(zonechanged,255) shl 24+betuszin);
  end;
 
- if bunkerkozelben and (halal=0) then
+ if autobaszallhat and (halal=0) then
  begin
   if latszonazF>2 then dec(latszonazF,2);
    drawmessage(lang[52],latszonazF*$1000000+betuszin)
@@ -7044,6 +6581,9 @@ begin
  g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSV,  D3DTADDRESS_CLAMP);
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_MODULATE);
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP,   D3DTOP_SELECTARG2);
+ g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+
+ g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
  g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_SRCALPHA);
  g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_INVSRCALPHA);
  vEyePt:=    D3DXVector3(0, 0,0);
@@ -7072,10 +6612,9 @@ begin
    mapind[(i+50 )*3+1]:=1+i+50;
    mapind[(i+50 )*3+2]:=1+(i+1) mod 50;
 
-   mapind[(i+100)*3+0]:=1+(i+1) mod 50;
-   mapind[(i+100)*3+1]:=1+(i+1) mod 50 + 50;
+   mapind[(i+100)*3+0]:=1+(i+1) mod 50 + 50;
+   mapind[(i+100)*3+1]:=1+(i+1) mod 50;
    mapind[(i+100)*3+2]:=1+i+50;
-
   end;
 
   g_pd3ddevice.DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST,0,101,150,mapind[0],D3DFMT_INDEX16,mapvert[0],sizeof(TMinimapVertex));
@@ -7706,7 +7245,7 @@ begin
 
     if not (cpy^>150)then
     begin
-    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, $FF202020);
+    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
     g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
 
     g_pd3dDevice.SetTexture(0,futex);
@@ -7953,7 +7492,7 @@ begin
 
     if not (cpy^>150)then
     begin
-    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, $FF202020);
+    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
     g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
 
     g_pd3dDevice.SetTexture(0,futex);
@@ -8084,7 +7623,7 @@ begin
 
     g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
 
-    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, $FF202020);
+    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
 
     end;  //Menübõl nemkéne vége
 
@@ -8437,7 +7976,7 @@ begin
      g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
 
      g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iTrue);
-     g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, $FF202020);
+     g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
      setupmyfegyvmatr;
 
       fegyv.drawfegyv(myfegyv);
@@ -8891,7 +8430,7 @@ begin
 
  volttim:=timegettime;
  kulsonezet:=true;
- szogx:=szogx+sin(2*D3DX_PI*(timegettime mod 20000)/20000)/1000;
+ szogx:=mszogx+sin(2*D3DX_PI*(timegettime mod 20000)/20000)/5;
  laststate:='Handlefizik lite';
  handlefizikLite;
  laststate:='Menu Render Scene';
@@ -8914,25 +8453,19 @@ begin
 end;
 
 procedure InitMenuScene;
-const
-scenes:array[0..6,0..4] of single =(
-(-460.11, 49.90, -128.67,  1.14, -0.37),
-(-368.52, 24.52,   49.50, -1.78,  0.37),
-(-314.41, 40.95,  104.83,  2.23, -0.46),
-(-281.39,  10.8,  -51.03, -0.42,  0.40),
-(-152.68, 65.11,  -17.90,  2.49, -0.36),
-(-128.98, 73.09,   47.41,  1.60,  0.30),
-(-166.48, 42.02, -132.16, -0.31, -0.18));
 var
 x:integer;
 begin
- x:=random(length(scenes));
- cpx^:=scenes[x,0];
- cpy^:=scenes[x,1];
- cpz^:=scenes[x,2];
+ x:=random(stuffjson.GetNum(['menubackgrounds']));
+ cpx^:=stuffjson.GetFloat(['menubackgrounds',x,'x']);
+ cpy^:=stuffjson.GetFloat(['menubackgrounds',x,'y']);
+ cpz^:=stuffjson.GetFloat(['menubackgrounds',x,'z']);
 
- szogx:=scenes[x,3];
- szogy:=scenes[x,4];
+ szogx:=stuffjson.GetFloat(['menubackgrounds',x,'angleH']);
+ szogy:=stuffjson.GetFloat(['menubackgrounds',x,'angleV']);
+ mszogx:=szogx;
+ mszogy:=szogy;
+
  cpox^:=cpx^;cpoy^:=cpy^;cpoz^:=cpz^;
 
  cmz:=round(cpz^/pow2[lvlmin]);
@@ -9382,14 +8915,6 @@ try
   end;
  anticheat1:=round(time*86400000)-timegettime;
 
-  //panthi check
-  addfiletochecksum('data/panthtex.jpg');
-  if (checksum<>3605112053) then
-  begin
-   messagebox(0,'Data corruption detected, please don''t try again. It won''t work. Trust me.', 'Stickman Warfare',0);
-   exit;
-  end;
-  checksum:=0;
   
   addfiletochecksum('data/4919.png');
   if checksum<>2305457788 then
@@ -9453,7 +8978,12 @@ try
   readln(hostfile,servername);
   closefile(hostfile);
   writeln(logfile,'Server url: ',servername);flush(logfile);
-  perlin:=Tperlinnoise.create(25);
+  writeln(logfile,'Loading stuff.json');flush(logfile);
+
+  addfiletochecksum('data/stuff.json');
+  stuffjson:=TQJSON.CreateFromFile('data/stuff.json');
+
+  perlin:=Tperlinnoise.create(stuffjson.GetInt(['random_seed']));
   laststate:='Loading';
   DIne:=TdinputEasy.create(hWindow);
   if Dine=nil then
@@ -9520,10 +9050,10 @@ try
 
      if (checksum<>datachecksum) {and (not canbeadmin) }then
      begin
-      menufi[MI_GAZMSG].valueS:='Modified data files detected.';
+      menufi[MI_GAZMSG].valueS:='Mod #'+inttohex(checksum,8)+#13#10#13#10+stuffjson.GetString(['modname']);
       menufi[MI_GAZMSG].visible:=true;
       menu.tegs[0,1].visible:=true;
-      writeln(logfile,'Modified game files detected');
+      writeln(logfile,'Mod detected.');
      end;
 
     //Enter the menu message loop

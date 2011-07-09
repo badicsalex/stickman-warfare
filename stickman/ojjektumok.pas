@@ -119,13 +119,16 @@ type
 
 procedure initojjektumok(g_pd3ddevice:IDirect3DDevice9;hdrtop:cardinal);
 procedure uninitojjektumok(g_pd3ddevice:IDirect3DDevice9);
-procedure saveojjektumini(hova:string);
-procedure loadojjektumini(honnan:string);
+
+procedure loadojjektumokfromjson;
 
 const
-OF_FITTOTERRAIN=1;
-OF_DONTFLATTEN=2;
-
+OF_FITTOTERRAIN=1 shl 0;
+OF_DONTFLATTEN= 1 shl 1;
+OF_SPAWNGUN=    1 shl 2;
+OF_SPAWNTECH=   1 shl 3;
+OF_VEHICLEGUN=  1 shl 4;
+OF_VEHICLETECH= 1 shl 5;
 var
 
  ojjektumarr: array of T3dojjektum;
@@ -1022,7 +1025,7 @@ begin
  g_pd3ddevice.SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD); }
 end;
 
-procedure saveojjektumini(hova:string);
+{procedure saveojjektumini(hova:string);
 var
  i,j:integer;
  fil:Textfile;
@@ -1047,93 +1050,61 @@ begin
 
  closefile(fil);
 end;
+}
 
-procedure loadojjektumini(honnan:string);
+procedure loadojjektumokfromjson;
 var
-i:integer;
-fil:textfile;
-str:string;
-attr,val:string;
-flt:Tarrayofstring;
-ojjbol:boolean;
+i,j,n:integer;
+special:string;
 begin
- setlength(ojjektumnevek,1024);
- setlength(ojjektumscalek,1024);
- setlength(ojjektumzone,1024);
- setlength(ojjektumhv,1024);
- setlength(ojjektumflags,1024); //}
+ n:=stuffjson.GetNum(['buildings']);
+ setlength(ojjektumnevek,n);
+ setlength(ojjektumscalek,n);
+ setlength(ojjektumzone,n);
+ setlength(ojjektumhv,n);
+ setlength(ojjektumflags,n);
 
- assignfile(fil,honnan);
- reset(fil);
- i:=-1;
- ojjbol:=false;
- repeat
-  readln(fil,str);
-  if length(str)=0 then
-   continue;
-  if str[1]='[' then
+ for i:=0 to n-1 do
+ begin
+  ojjektumnevek[i]:=stuffjson.GetKey(['buildings'],i);
+  ojjektumflags[i]:=0;
+  ojjektumscalek[i].x:=-stuffjson.GetFloat(['buildings',i,'scalex']);
+  ojjektumscalek[i].y:= stuffjson.GetFloat(['buildings',i,'scaley']);
+  ojjektumzone[i]:=stuffjson.GetString(['buildings',i,'zone']);
+
+  if stuffjson.GetKey(['buildings'],i)='pantheon' then
+   panthepulet:=i;
+
+  for j:=0 to stuffjson.GetNum(['buildings',i,'special']) do
   begin
-   if pos('[SPECIAL:',str)>0 then
-    ojjbol:=false
-   else
-   begin
-    inc(i);
-    ojjektumnevek[i]:=copy(str,2,length(str)-2);
-    ojjektumflags[i]:=0;
-    ojjbol:=true;
-   end;
-  end
-  else
-  if (i>=0) and ojjbol then
-  begin
-   attr:=lowercase(copy(str,1,pos('=',str)-1));
-   val :=copy(str,pos('=',str)+1,1000);
-   if attr='scalex' then
-    ojjektumscalek[i].x:=-strtofloat(val);
-   if attr='scaley' then
-    ojjektumscalek[i].y:= strtofloat(val);
-   if attr='zone' then
-    ojjektumzone[i]:=val;
+   special:=stuffjson.GetString(['buildings',i,'special',j]);
+   if special='fittoterrain' then
+    ojjektumflags[i]:=ojjektumflags[i] or OF_FITTOTERRAIN;
+   if special='dontflattenterrain' then
+    ojjektumflags[i]:=ojjektumflags[i] or OF_DONTFLATTEN;
 
-   if attr='special' then
-   begin
-    if val='pantheon'    then   panthepulet:=i;
-   end;
+   if special='spawngun' then
+    ojjektumflags[i]:=ojjektumflags[i] or OF_SPAWNGUN;
+   if special='spawntech' then
+    ojjektumflags[i]:=ojjektumflags[i] or OF_SPAWNTECH;
 
-   if attr='terrain' then
-   begin
-    if val='fit' then
-     ojjektumflags[i]:=ojjektumflags[i] or OF_FITTOTERRAIN;
-    if val='dont' then
-     ojjektumflags[i]:=ojjektumflags[i] or OF_DONTFLATTEN;
-   end;
-
-   if attr='pos' then
-   begin
-    explode(val,' ',flt);
-    if high(flt)<2 then
-    begin
-     writeln(logfile,'Bad position value in ',honnan,' at ',ojjektumnevek[i]);
-     continue;
-    end;
-    setlength(ojjektumhv[i],length(ojjektumhv[i])+1);
-    with ojjektumhv[i][high(ojjektumhv[i])] do
-    begin
-     x:=strtofloat(flt[0]);
-     y:=strtofloat(flt[1]);
-     z:=strtofloat(flt[2]);
-    end;
-   end;
+   if special='vehiclegun' then
+    ojjektumflags[i]:=ojjektumflags[i] or OF_VEHICLEGUN;
+   if special='vehicletech' then
+    ojjektumflags[i]:=ojjektumflags[i] or OF_VEHICLETECH;
   end;
- until eof(fil);
 
- inc(i);
- setlength(ojjektumnevek,i);
- setlength(ojjektumscalek,i);
- setlength(ojjektumzone,i);
- setlength(ojjektumhv,i);
- setlength(ojjektumflags,i);//}
- closefile(fil);
+  n:=stuffjson.GetNum(['buildings',i,'position']);
+  setlength(ojjektumhv[i],n);
+  for j:=0 to n-1 do
+   with ojjektumhv[i][j] do
+   begin
+    x:=stuffjson.GetFloat(['buildings',i,'position',j,'x']);
+    y:=stuffjson.GetFloat(['buildings',i,'position',j,'y']);
+    z:=stuffjson.GetFloat(['buildings',i,'position',j,'z']);
+   end;
+
+ end;
 end;
 
 constructor T3DORenderer.Create(ad3ddevice:IDirect3DDevice9);
