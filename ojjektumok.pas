@@ -54,7 +54,6 @@ type
 
   procedure makecurrent(miket:TKDData);
   procedure getacctris(var tris:Tacctriarr;miket:TKDData;plusz:TD3DXVector3);
-  function Van(x,z:single;i:integer;var tav:single;kelltav:boolean):boolean;
   destructor Destroy; reintroduce;
   procedure pluszegy(hova:TD3DXVector3);
   procedure minuszegy(mit:integer);
@@ -488,29 +487,6 @@ procedure T3dojjektum.minuszegy(mit:integer);
 begin
  holvannak[mit]:=holvannak[hvszam-1];
  hvszam:=hvszam-1;
-end;
-
-function T3dojjektum.Van(x,z:single;i:integer;var tav:single;kelltav:boolean):boolean;
-var
-tav2:single;
-hol:TD3DXVector3;
-begin
- result:=not nincsrad;
- if not result then exit;
- d3dxvec3add(hol,holvannak[i],vce2);
- tav2:=sqr(hol.x-x)+sqr(hol.z-z);
- result:=(tav2<sqr(tav));
- if not result then exit;
- if not kelltav then begin tav:=hol.y; exit; end;
- tav2:=sqrt(tav2);//sqrt(tav2); //Optimizálni kéne.
- if tav2<rad2 then
-  tav:=0
- else
- if tav2<(rad2+tav)*0.5 then
-  tav:=sqr((tav2-rad2)/(tav-rad2))*2
- else
-  tav:=1-sqr((tav-tav2)/(tav-rad2))*2;
-
 end;
 
 procedure T3dojjektum.Draw(g_pd3ddevice:IDirect3DDevice9;cp:TD3DXVector3;frust:TFrustum);

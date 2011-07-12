@@ -527,18 +527,6 @@ begin
 end;
 
 
-{$IFNDEF palyszerk}
-
- {if not kelltav then begin tav:=hol.y; exit; end;
- tav2:=sqrt(tav2);//sqrt(tav2); //Optimizálni kéne.
- if tav2<rad2 then
-  tav:=0
- else
- if tav2<(rad2+tav)*0.5 then
-  tav:=sqr((tav2-rad2)/(tav-rad2))*2
- else
-  tav:=1-sqr((tav-tav2)/(tav-rad2))*2;
-        }
 function vanottvalami(xx:single;var yy:single;zz:single):boolean;
 const
 szor=2;
@@ -570,69 +558,6 @@ begin
  end;
 end;
 
-{$ELSE}
-function vanottvalami(xx:single;var yy:single;zz:single):boolean;
-var
-i,j:integer;
-tav:single;
-begin
- result:=false;
- for j:=0 to high(ojjektumnevek) do
- begin
- // if ojjektumarr[j]<>nil then
-  for i:=0 to ojjektumarr[j].hvszam-1 do
-  begin
-   tav:=ojjektumarr[j].rad*1.5;
-   if ojjektumarr[j].van(xx,zz,i,tav,true) then
-   begin
-     yy:=ojjektumarr[j].holvannak[i].y*(1-tav)+yy*tav;
-     result:=true;
-  end;
-  end;
- end;
-end;
-{$ENDIF}
-
-function safevanottvalami(xx:single;var yy:single;zz:single):boolean;
-var
-i,j:integer;
-tav:single;
-begin
- result:=false;
- for j:=0 to high(ojjektumnevek) do
- begin
-  if ojjektumarr[j]<>nil then
-  for i:=0 to ojjektumarr[j].hvszam-1 do
-  begin
-   tav:=ojjektumarr[j].rad*1.5;
-   if ojjektumarr[j].van(xx,zz,i,tav,true) then
-   begin
-     //if yy<bunker.holvannak[i].y then
-     //tav:=tav/30;
-     yy:=ojjektumarr[j].holvannak[i].y*(1-tav)+yy*tav;
-     result:=true;
-    // exit;
-  end;
-  end;
- end;
-end;
-
-function vanottvalami2(xx:single;var yy:single;zz,scalfac:single):boolean;
-var
-i:integer;
-tav:single;
-begin
- result:=false;
- for i:=0 to ojjektumarr[0].hvszam-1 do
- begin
-  tav:=scalfac;
-  if ojjektumarr[0].van(xx,zz,i,tav,false) then
-   begin
-   yy:=tav;
-   result:=true; exit; end;
- end;
-end;
-
 function advwove(xx,zz:single):single;
 var
 ay:single;
@@ -647,21 +572,6 @@ begin
  result:=ay;
 end;
 
-function safeadvwove(xx,zz:single):single;
-var
-ay:single;
-begin
- if (xx<-10000) or (xx>10000) or (zz<-10000) or (zz>10000) then
- begin
-  result:=0;
-  exit;
- end;
- ay:=wove(xx,zz);
- safevanottvalami(xx,ay,zz);
- result:=ay;
-end;
-
-
 procedure yandnorm(var xx,yy,zz:single;var norm:Td3dvector;scalfac:single);
 var
 lngt:single;
@@ -672,7 +582,7 @@ begin
  yy:=advwove(xx,zz);
  noNANInf(xx);noNANInf(yy);noNANInf(zz);
  if scalfac>10 then
-  vanottvalami2(xx,yy,zz,scalfac);
+  vanottvalami(scalfac,yy,zz);
 
  v24y:=advwove(xx,zz-(scalfac))- advwove(xx,zz+(scalfac));
  //v1-v3
@@ -1628,6 +1538,10 @@ begin
   ambientszin:=$FF000000 or stuffjson.GetInt(['light','color_ambient']);
   gunautoeffekt:=stuffjson.GetBool(['vehicle','gun','effect']);
   techautoeffekt:=stuffjson.GetBool(['vehicle','tech','effect']);
+  
+  gunszin:=stuffjson.GetInt(['color_gun']);
+  techszin:=stuffjson.GetInt(['color_tech']);
+
   g_pd3ddevice.GetDeviceCaps(devicecaps);
 
   g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iTrue);
@@ -2193,7 +2107,7 @@ begin
  mv2:=mat_world;
  mv2._42:=mv2._42+0.1;
  //rongybabak[rbszam]:=nil;
- if fegyv>127 then szin:=$FF000040 else szin:=$FF000000;
+ if fegyv>127 then szin:=techszin else szin:=gunszin;
   rongybabak[rbszam]:=TRongybaba.Create(mat_world,muks,apos,vpos,gmbvec,mlgmb,ID,szin);
 
  playsound(9+halalhorg,false,integer(timegettime)+random(10000),true,rongybabak[rbszam].gmbk[10]);
@@ -6812,9 +6726,9 @@ begin
  ppl[i].pls.fejh:=muks.gmbk[10];
 
  if afegyv>127 then
-  muks.Render($FF000040,mat_world,D3DXVector3(cpx^,cpy^,cpz^))
+  muks.Render(techszin,mat_world,D3DXVector3(cpx^,cpy^,cpz^))
  else
-  muks.Render($FF000000,mat_world,D3DXVector3(cpx^,cpy^,cpz^));
+  muks.Render(gunszin,mat_world,D3DXVector3(cpx^,cpy^,cpz^));
 end;
 
 procedure rendermykez;
@@ -6856,9 +6770,9 @@ begin
   haromszog3d(gmbk[8],gmbk[5],gmbk[6],nb,0.5);
  end;
  if myfegyv<128 then
-  muks.Render($FF000000,identmatr,campos)
+  muks.Render(gunszin,identmatr,campos)
  else
-  muks.Render($FF000040,identmatr,campos)
+  muks.Render(techszin,identmatr,campos)
 end;
 
 procedure DrawDistortionEffects;
@@ -7576,7 +7490,7 @@ begin
     begin
      //g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, rongybabak[i].szin);
      rongybabak[i].transfertomuks(muks);
-     muks.Render( rongybabak[i].szin,mat_world,pos);
+     muks.Render(rongybabak[i].szin,mat_world,pos);
 
 
     end;
@@ -8276,13 +8190,13 @@ begin
  if menufi[MI_HEADBAL].clicked then
  begin
   menufi[MI_HEADBAL].clicked:=false;
-  myfejcucc:=(myfejcucc+high(cuccnevek)) mod length(cuccnevek);
+  myfejcucc:=(myfejcucc+stuffjson.GetNum(['hats'])-1) mod stuffjson.GetNum(['hats']);
  end;
 
  if menufi[MI_HEADJOBB].clicked then
  begin
   menufi[MI_HEADJOBB].clicked:=false;
-  myfejcucc:=(myfejcucc+1) mod length(cuccnevek);
+  myfejcucc:=(myfejcucc+1) mod stuffjson.GetNum(['hats']);
  end;
 
  //Exit
@@ -8708,7 +8622,7 @@ begin
 
   read(fil2,t1);
   myfejcucc:=round(t1);
-  if (myfejcucc>high(cuccnevek)) or (myfejcucc<0) then myfejcucc:=0;
+  if (myfejcucc>stuffjson.GetNum(['hats'])-1) or (myfejcucc<0) then myfejcucc:=0;
 
   read(fil2,t1);
   opt_detail:=round(t1);
@@ -8751,7 +8665,7 @@ begin
   mp3ambient:=false;
   mp3action:=false;
   mp3car:=true;
-  myfejcucc:=random(length(cuccnevek));
+  myfejcucc:=random(stuffjson.GetNum(['hats']));
  end;
 
  
@@ -8957,7 +8871,7 @@ try
 
   randomize;
 
-  azadvwove:=safeadvwove;
+  azadvwove:=advwove;
   csinaljfaszapointereket;
 
 
