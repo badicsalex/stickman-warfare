@@ -88,27 +88,7 @@ type
  procedure fenykardkezek(var ajk,abk:TD3DXVector3;animstate:single;state:byte; lo:single);
 var
 heavyLOD:boolean;
-const
-cuccnevek:array [0..19,0..1] of string = ( ('Blue sunglasses','napgepK'),
-                                           ('Black sunglasses','napgepF'),
-                                           ('Red sunglasses','napgepP'),
-                                           ('Nightvision','nvision'),
-                                           ('Targeter','tech1'),
-                                           ('Helm','rohbil'),
-                                           ('Headband','CN'),
-                                           ('Cigar','szivar'),
-                                           ('Santa hat','telapo'),
-                                           ('Microphone','mikrofon'),
-                                           ('Android 1','flash'),
-                                           ('Android 2','Blue'),
-                                           ('Long Brown','hosszu1'),
-                                           ('Long Blue','hosszu2'),
-                                           ('Hszg','hszg'),
-                                           ('Bandit','bandit'),
-                                           ('Western','indy'),
-                                           ('Blue punk','punk_blue'),
-                                           ('Red punk','punk_red'),
-                                           ('Crown','korona'));
+  gunszin,techszin:cardinal;
 implementation
 
 var
@@ -138,6 +118,8 @@ begin
  kapcsk:=alapkapcsk;
   addfiletochecksum('data\fehk.png');
   LTFF(g_pd3ddevice,'data\fehk.png',tex);
+
+
   if FAILED(g_pd3dDevice.CreateVertexBuffer(20000*sizeof(TCustomVertex),
                                             D3DUSAGE_WRITEONLY+D3DUSAGE_DYNAMIC, D3DFVF_CUSTOMVERTEX,
                                             D3DPOOL_DEFAULT, g_pmuksVB, nil))
@@ -859,9 +841,9 @@ begin
   then Exit;
 
 
-  for i:=0 to high(cuccnevek) do
+  for i:=0 to stuffjson.GetNum(['hats'])-1 do
   begin
-   loadOBJ(cuccnevek[i,1]);
+   loadOBJ(stuffjson.GetString(['hats',i]));
   end;
    
   LTFF(g_pd3ddevice,'data\hs\hstex.bmp',hstex);
@@ -1239,16 +1221,16 @@ begin
 
   fejverts[0].position:=D3DXVector3zero;
   if tech then
-    fejverts[0].szin:=$FF000040
+    fejverts[0].szin:=techszin
    else
-    fejverts[0].szin:=$FF000000;
+    fejverts[0].szin:=gunszin;
   for i:=1 to 30 do
   begin
    fejverts[i].position:=D3DXVector3(fejvst*sin(i*2*pi/29),fejvst*cos(i*2*pi/29),0);
    if tech then
-    fejverts[i].szin:=$FF000040
+    fejverts[i].szin:=techszin
    else
-    fejverts[i].szin:=$FF000000;
+    fejverts[i].szin:=gunszin;
   end;
 
   g_pd3dDevice.SetRenderState(D3DRS_ZENABLE,itrue);

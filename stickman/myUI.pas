@@ -323,27 +323,55 @@ begin
  write(logfile,'Loading csicsafont...');flush(logfile);
  if (AddFontResource('data\eurostar.ttf')=0) then
   writeln(logfile,'unsuccesful...');flush(logfile);
+ write(logfile,'cf1, ');flush(logfile);
  if FAILED(D3DXCreateFont(g_pD3dDevice, 32, 0, FW_NORMAL  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Eurostar Black Extended', g_pFont )) then
    Exit;
- writeln(logfile,'done');flush(logfile);
+ write(logfile,'cf2, ');flush(logfile);
  if FAILED(D3DXCreateFont(g_pD3dDevice, 25, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontmini )) then
    Exit;
+  writeln(logfile,'cf3.');flush(logfile);
  if FAILED(D3DXCreateFont(g_pD3dDevice, 12, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontchat )) then
    Exit;
+  write(logfile,'Other...');flush(logfile);
  if FAILED(D3DXCreateSprite(g_pd3dDevice,g_pSprite)) then
    Exit;
+  writeln(logfile,'Textures...');flush(logfile);
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/feh.bmp', 2,2,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_FILTER_NONE,D3DX_DEFAULT,0,nil,nil,feh)) then
+ begin
+   writeln(logfile,'Could not load data/feh.bmp');flush(logfile);
    Exit;
+ end;
+
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/glyphs.bmp',32,32,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,glyphs)) then
+ begin
+   writeln(logfile,'Could not load data/flyphs.bmp');flush(logfile);
    Exit;
+ end;
+
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/cglyphs.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_FILTER_NONE,D3DX_FILTER_NONE,0,nil,nil,cglyphs)) then
+ begin
+   writeln(logfile,'Could not load data/cglyphs.png');flush(logfile);
    Exit;
+ end;
+
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/chtalul.bmp',32,32,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,chtalultex)) then
+ begin
+   writeln(logfile,'Could not load data/chtalul.bmp');flush(logfile);
    Exit;
+ end;
+
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash)) then
+ begin
+   writeln(logfile,'Could not load data/splash.jpg');flush(logfile);
    Exit;
+ end;
+
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/circ2.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil,sarok)) then
+ begin
+   writeln(logfile,'Could not load data/circ2.png');flush(logfile);
    Exit;
+ end;
+
  loaded:=true;
 end;
 

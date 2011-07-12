@@ -25,6 +25,7 @@ var
  epuletnum:integer=-1;
  teleport:integer=-1;
  flt:TarrayofString;
+ srch:TSearchRec;
 begin
   DecimalSeparator:='.';
 try
@@ -32,10 +33,14 @@ try
  root.SetVal(['modname'],'Converted pre 2.1 mod');
  root.SetVal(['random_seed'],25);
 
+
  root.SetVal(['color_grass'],ARGB($FF,116,178,67));
  root.SetVal(['color_sand'],ARGB($FF,250,200,200));
  root.SetVal(['color_rock'],ARGB($FF,110,110,108));
  root.SetVal(['color_water'],ARGB($FF,0,100,250));
+ root.SetVal(['color_gun'], $FF000000);
+ root.SetVal(['color_tech'],$FF000040);
+
  root.SetVal(['fog','color_sunny'],$FFC5F2FF);
  root.SetVal(['fog','color_rainy'],$FF909090);
  root.SetVal(['fog','radius_sunny'], 900);
@@ -176,6 +181,14 @@ try
   root.SetValF(['menubackgrounds',i,'angleH'],menuscenes[i,3]);
   root.SetValF(['menubackgrounds',i,'angleV'],menuscenes[i,4]);
  end;
+
+ i:=0;
+ if FindFirst('./data/hs/*.obj',0,srch)=0 then
+ repeat
+  root.SetVal(['hats',i],copy(srch.Name,1,pos('.',srch.Name)-1));
+  inc(i);
+ until FindNext(srch)<>0;
+ FindClose(srch);
 
  root.SaveToFile('data\stuff.json');
  Writeln('Success');
