@@ -10,7 +10,7 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{.$DEFINE undebug}
+{$DEFINE undebug}
 {.$DEFINE speedhack}
 {.$DEFINE repkedomod}
 {.$DEFINE godmode}
@@ -1557,6 +1557,19 @@ begin
    raddn:=radd*1.5;
   end;
 
+  for i:=0 to 3 do
+  begin
+   hummkerekarr[i].x:=stuffjson.GetFloat(['vehicle','gun','wheels','position',i,'x']);
+   hummkerekarr[i].y:=stuffjson.GetFloat(['vehicle','gun','wheels','position',i,'y']);
+   hummkerekarr[i].z:=stuffjson.GetFloat(['vehicle','gun','wheels','position',i,'z']);
+  end;
+
+  for i:=0 to 3 do
+  begin
+   agkerekarr[i].x:=stuffjson.GetFloat(['vehicle','tech','wheels','position',i,'x']);
+   agkerekarr[i].y:=stuffjson.GetFloat(['vehicle','tech','wheels','position',i,'y']);
+   agkerekarr[i].z:=stuffjson.GetFloat(['vehicle','tech','wheels','position',i,'z']);
+  end;
   g_pd3ddevice.GetDeviceCaps(devicecaps);
 
   g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iTrue);
@@ -1631,7 +1644,7 @@ begin
 
  // D3DXcreatebox(g_pd3ddevice,2,2,2,testmesh,nil);
 
-  tegla:=Tauto.create(d3dxvector3(1,0,0),d3dxvector3(0,1,0),d3dxvector3(0,0,1),d3dxvector3zero,d3dxvector3zero,0.9,0.99,hummkerekarr,1,0.2,0.3,false);
+  tegla:=Tauto.create(d3dxvector3(1,0,0),d3dxvector3(0,1,0),d3dxvector3(0,0,1),d3dxvector3zero,d3dxvector3zero,0.9,0.99,hummkerekarr,1,0.1,0.03,0.2,0.3,0.2,0,0,false);
   tegla.disabled:=true;
   if not LTFF(g_pd3dDevice, 'data\hummer.jpg', cartex) then exit;
   if not LTFF(g_pd3dDevice, 'data\antigrav.jpg', antigravtex) then exit;
@@ -2512,7 +2525,7 @@ begin
 
   if dine.keyd(DIK_F) and (not autoban) {$IFNDEF speedhack} and (autobaszallhat){$ENDIF}and (halal=0)  and (length(chatmost)=0) then
   begin
-   tegla.destroy; autoban:=true;
+   tegla.free; autoban:=true;
    cpox^:=cpx^; cpoz^:=cpz^; cpoy^:=cpy^;
    {$IFNDEF speedhack}
    tmp:=autobaszallhatpos;
@@ -2525,13 +2538,39 @@ begin
     tegla:=Tauto.create(d3dxvector3(stuffjson.GetFloat(['vehicle','gun','scale','x']),0,0),
                         d3dxvector3(0,0,-stuffjson.GetFloat(['vehicle','gun','scale','z'])),
                         d3dxvector3(0,-stuffjson.GetFloat(['vehicle','gun','scale','y']),0),
-                        tmp,d3dxvector3zero,0.2,0.5,hummkerekarr,0.7,0.5,0.2,false)
+                        tmp,
+                        d3dxvector3zero,
+                        stuffjson.GetFloat(['vehicle','gun','friction']),
+                        0.5,
+                        hummkerekarr,
+                        stuffjson.GetFloat(['vehicle','gun','suspension','length']),
+                        stuffjson.GetFloat(['vehicle','gun','suspension','strength']),
+                        stuffjson.GetFloat(['vehicle','gun','suspension','absorb']),
+                        stuffjson.GetFloat(['vehicle','gun','wheels','radius']),
+                        stuffjson.GetFloat(['vehicle','gun','wheels','width']),
+                        stuffjson.GetFloat(['vehicle','gun','wheels','friction']),
+                        stuffjson.GetFloat(['vehicle','gun','max_speed']),
+                        stuffjson.GetFloat(['vehicle','gun','torque']),
+                        false)
    else
     tegla:=Tauto.create(d3dxvector3(stuffjson.GetFloat(['vehicle','tech','scale','x']),0,0),
                         d3dxvector3(0,0,-stuffjson.GetFloat(['vehicle','tech','scale','z'])),
                         d3dxvector3(0,-stuffjson.GetFloat(['vehicle','tech','scale','y']),0),
-                        tmp,d3dxvector3zero,0.2,0.99,agkerekarr,0.7,0.5,0.2,true);
-   
+                        tmp,
+                        d3dxvector3zero,
+                        stuffjson.GetFloat(['vehicle','tech','friction']),
+                        0.5,
+                        agkerekarr,
+                        stuffjson.GetFloat(['vehicle','tech','suspension','length']),
+                        stuffjson.GetFloat(['vehicle','tech','suspension','strength']),
+                        stuffjson.GetFloat(['vehicle','tech','suspension','absorb']),
+                        stuffjson.GetFloat(['vehicle','tech','wheels','radius']),
+                        stuffjson.GetFloat(['vehicle','tech','wheels','width']),
+                        stuffjson.GetFloat(['vehicle','tech','wheels','friction']),
+                        stuffjson.GetFloat(['vehicle','tech','max_speed']),
+                        stuffjson.GetFloat(['vehicle','tech','torque']),
+                        true);
+
   end;
 
   if  dine.keyd(DIK_F) and (not autoban) and (tavpointpointsq(tegla.pos,d3dxvector3(cpx^,cpy^,cpz^))<5*5) and (halal=0) then
@@ -3695,7 +3734,8 @@ begin
   d3dxvec3scale(tmp1,tmp1,cos(szog));
   d3dxvec3scale(tmp2,tmp2,-sin(szog));
   l:=d3dxvec3length(v2);
-  d3dxvec3scale(v2,v2,1/l);
+  if l>0.000001 then
+    d3dxvec3scale(v2,v2,1/l);
   d3dxvec3add(v2,v2,tmp1);
   d3dxvec3add(v2,v2,tmp2);
   d3dxvec3scale(v2,v2,0.003*l);
@@ -5041,7 +5081,23 @@ begin
  while high(ppl)>high(tobbiekautoi) do
  begin
   setlength(tobbiekautoi,length(tobbiekautoi)+1);
-  tobbiekautoi[high(tobbiekautoi)]:=Tauto.create(d3dxvector3(2.3,0,0),d3dxvector3(0,0,-1.3),d3dxvector3(0,-0.7,0),d3dxvector3zero,d3dxvector3zero,0.2,0.99,hummkerekarr,0.5,0.5,0.2,false);
+  tobbiekautoi[high(tobbiekautoi)]:=Tauto.create(
+                        d3dxvector3(stuffjson.GetFloat(['vehicle','gun','scale','x']),0,0),
+                        d3dxvector3(0,0,-stuffjson.GetFloat(['vehicle','gun','scale','z'])),
+                        d3dxvector3(0,-stuffjson.GetFloat(['vehicle','gun','scale','y']),0),
+                        d3dxvector3zero,
+                        d3dxvector3zero,
+                        stuffjson.GetFloat(['vehicle','gun','friction']),
+                        0.5,
+                        hummkerekarr,
+                        stuffjson.GetFloat(['vehicle','gun','suspension','length']),
+                        stuffjson.GetFloat(['vehicle','gun','suspension','strength']),
+                        stuffjson.GetFloat(['vehicle','gun','suspension','absorb']),
+                        stuffjson.GetFloat(['vehicle','gun','wheels','radius']),
+                        stuffjson.GetFloat(['vehicle','gun','wheels','width']),
+                        stuffjson.GetFloat(['vehicle','gun','wheels','friction']),
+                        0,0,
+                        false);
  end; 
  for i:=0 to high(ppl) do
  with tobbiekautoi[i] do
@@ -6290,7 +6346,7 @@ begin
  menu.DrawSzinesChat(txt,0.9,0.25,1,0.27,$FF000000+betuszin);
 
  txt:=lastzone;
- menu.DrawSzinesChat(txt,0.88,0.27,1,0.29,$FF000000+betuszin);
+ menu.DrawSzinesChat(txt,0.86,0.27,1,0.29,$FF000000+betuszin);
 
   case zonaellen of
    0:txt:=lang[39];
@@ -7404,10 +7460,6 @@ var
  i:integer;
  pos:TD3DVector;
 begin
-  if latszonaKL>0 then
-   if (checksum<>datachecksum) and (not canbeadmin) then
-    Postmessage(hwindow,WM_DESTROY,0,0);
-
    laststate:='Rendering reflections';
 
 
@@ -8462,7 +8514,7 @@ end;
 procedure handleparancsok(var mit:string);
 var
 i:integer;
-
+fsettings:TFormatSettings;
 begin
 
   if pos(' /practice',mit)=1 then
@@ -8478,13 +8530,14 @@ begin
   begin
    for i:=high(multisc.chats) downto 3 do
     multisc.chats[i]:=multisc.chats[i-3];
-
+   GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT,fsettings);
+   fsettings.DecimalSeparator:='.';
    multisc.chats[0].uzenet:='Coords: ('+copy(mit,pos(' /coords',mit)+length(' /coords')+1,100000)+')';
-   multisc.chats[1].uzenet:='x: '+FloatToStrF(cpx^,ffFixed,7,2)+
-           '  y: '+FloatToStrF(cpy^,ffFixed,7,2)+
-           '  z: '+FloatToStrF(cpz^,ffFixed,7,2);
-   multisc.chats[2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2)+
-           '  angleV: '+FloatToStrF(szogy,ffFixed,7,2);
+   multisc.chats[1].uzenet:='x: '+FloatToStrF(cpx^,ffFixed,7,2,fsettings)+
+           '  y: '+FloatToStrF(cpy^,ffFixed,7,2,fsettings)+
+           '  z: '+FloatToStrF(cpz^,ffFixed,7,2,fsettings);
+   multisc.chats[2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2,fsettings)+
+           '  angleV: '+FloatToStrF(szogy,ffFixed,7,2,fsettings);
    multisc.chats[0].glyph:=0;
    multisc.chats[1].glyph:=0;
    multisc.chats[2].glyph:=0;
@@ -8688,6 +8741,7 @@ begin
 
   read(fil2,t1);
   myfejcucc:=round(t1);
+  myfejcucc:=0;
   if (myfejcucc>stuffjson.GetNum(['hats'])-1) or (myfejcucc<0) then myfejcucc:=0;
 
   read(fil2,t1);

@@ -325,7 +325,8 @@ begin
   writeln(logfile,'unsuccesful...');flush(logfile);
  write(logfile,'cf1, ');flush(logfile);
  if FAILED(D3DXCreateFont(g_pD3dDevice, 32, 0, FW_NORMAL  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Eurostar Black Extended', g_pFont )) then
-   Exit;
+   if FAILED(D3DXCreateFont(g_pD3dDevice, 40, 0, FW_BOLD  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Arial', g_pFont )) then
+    Exit;
  write(logfile,'cf2, ');flush(logfile);
  if FAILED(D3DXCreateFont(g_pD3dDevice, 25, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontmini )) then
    Exit;
