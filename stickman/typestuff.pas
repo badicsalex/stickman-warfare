@@ -303,7 +303,7 @@ type
   T7pboxbol= array [0..7] of boolean;
 
   TnamedProjectile = record
-   v1,v2,v3:TD3DXVector3;
+   v1,v2,v3,cel:TD3DXVector3;
    name:Dword; //ez egy hash
    colltim:byte;
    eletkor:integer;
@@ -530,9 +530,9 @@ procedure constraintvec(var mi:TD3DVector);
 function trisinAABB(alaptris:Tacctriarr;alapdata:TKDData;var hova:TKDData;teg:TAABB;masoldis:boolean):integer;
 
 procedure ConstructKDtree(var  KDtree:TKDtree; var KDData:TKDData;indexes:TKDData;axis:byte;tris:Tacctriarr;teg:TAABB);
-procedure traverseKDtree(teg:TAABB;var hova:TKDData;KDData:TKDData;KDTree:TKDTree);
-procedure traverseKDtreelin(v1,v2:TD3DXVector3;var hova:TKDData;KDData:TKDData;KDTree:TKDTree;trik:Tacctriarr);
-procedure traverseKDtreelinDNT(v1,v2:TD3DXVector3;var hova:TKDData;KDData:TKDData;KDTree:TKDTree;trik:Tacctriarr);
+procedure traverseKDtree(const teg:TAABB;var hova:TKDData;const KDData:TKDData;const KDTree:TKDTree);
+procedure traverseKDtreelin(const v1,v2:TD3DXVector3;var hova:TKDData;const KDData:TKDData;const KDTree:TKDTree;const trik:Tacctriarr);
+procedure traverseKDtreelinDNT(const v1,v2:TD3DXVector3;var hova:TKDData;const KDData:TKDData;const KDTree:TKDTree;const trik:Tacctriarr);
 procedure saveKDtree(nev:string; KDTree:TKDTree; KDData:TKDData);
 procedure loadKDtree(nev:string; var KDTree:TKDTree; var KDData:TKDData);
 
@@ -1604,10 +1604,6 @@ begin
  result:=hgh;
 end;
 
-var
-globalhova,globalKDData:TKDData;
-globalKDTree:TKDTree;
-
 procedure ConstructKDtree(var  KDtree:TKDtree; var KDData:TKDData;indexes:TKDData;axis:byte;tris:Tacctriarr;teg:TAABB);
 var
 axisvec:TD3DXVector3;
@@ -1719,7 +1715,7 @@ begin
  end;
 end;
 
-procedure doKDTreetraversal(teg:TAABB;wichleaf,axis:integer);
+procedure doKDTreetraversal(const KDTree:TKDTree; const KDData:TKDData; var hova:TKDData;const teg:TAABB;wichleaf,axis:integer);
 var
 mmin,mmax:single;
 i:integer;
@@ -1727,40 +1723,34 @@ begin
 
  mmin:=0;
  mmax:=0;
- if globalKDTree=nil then exit;
+ if KDTree=nil then exit;
  case axis of
   0:begin mmin:=teg.min.x;mmax:=teg.max.x; end;
   1:begin mmin:=teg.min.y;mmax:=teg.max.y; end;
   2:begin mmin:=teg.min.z;mmax:=teg.max.z; end;
  end;
- if globalKDTree[wichleaf].left=0 then
+ if KDTree[wichleaf].left=0 then
  begin
  // volthgh:=high(globalhova)+1;
  // setlength(globalhova,length(globalhova)+globalKDTree[wichleaf].tricount);
-  for i:=0 to globalKDTree[wichleaf].tricount-1 do
-   Badd(globalhova,globalKDData[globalKDTree[wichleaf].tristart+i]);
+  for i:=0 to KDTree[wichleaf].tricount-1 do
+   Badd(hova,KDData[KDTree[wichleaf].tristart+i]);
  end
  else
  begin
-  if mmin<globalKDtree[wichleaf].split then doKDTreetraversal(teg,globalKDTree[wichleaf].left,(axis+1) mod 3);
-  if mmax>globalKDtree[wichleaf].split then doKDTreetraversal(teg,globalKDTree[wichleaf].right,(axis+1) mod 3);
+  if mmin<KDtree[wichleaf].split then doKDTreetraversal(KDTree,KDData,hova,teg,KDTree[wichleaf].left,(axis+1) mod 3);
+  if mmax>KDtree[wichleaf].split then doKDTreetraversal(KDTree,KDData,hova,teg,KDTree[wichleaf].right,(axis+1) mod 3);
  end;
 end;
 
-procedure traverseKDtree(teg:TAABB;var hova:TKDData;KDData:TKDData;KDTree:TKDTree);
+procedure traverseKDtree(const teg:TAABB;var hova:TKDData;const KDData:TKDData;const KDTree:TKDTree);
 begin
  setlength(hova,0);
- globalhova:=hova;
- globalKDData:=KDData;
- globalKDTree:=KDTree;
- doKDTreetraversal(teg,0,0);
- hova:=globalhova;
+ doKDTreetraversal(KDTree,KDData,hova,teg,0,0);
 end;
 
-var
-globalKDTris:Tacctriarr;
 
-procedure doKDTreetraversallin(v1,ir,invir:TD3DXVector3;rad:single;wichleaf,axis:integer;DNTtri:boolean);
+procedure doKDTreetraversallin(const KDTree:TKDTree; const KDData:TKDData; const KDtris:TAcctriarr; var hova:TKDData; v1,ir,invir:TD3DXVector3;rad:single;wichleaf,axis:integer;DNTtri:boolean);
 var
 i:integer;
 tmp,r2:single;
@@ -1772,23 +1762,23 @@ begin
  b1:=false;
  tmp:=0;
  if not DNTtri then
-  if length(globalhova)>0 then exit;
- if globalKDTree=nil then exit;
+  if length(hova)>0 then exit;
+ if KDTree=nil then exit;
  if rad<0 then exit;
- if globalKDTree[wichleaf].left=0 then
+ if KDTree[wichleaf].left=0 then
  begin
  // volthgh:=high(globalhova)+1;
  // setlength(globalhova,length(globalhova)+globalKDTree[wichleaf].tricount);
-  for i:=0 to globalKDTree[wichleaf].tricount-1 do
-  if intlinetribol(globalKDtris[globalKDData[globalKDTree[wichleaf].tristart+i]],v1,ir) then
-   Badd(globalhova,globalKDData[globalKDTree[wichleaf].tristart+i]);
+  for i:=0 to KDTree[wichleaf].tricount-1 do
+  if intlinetribol(KDtris[KDData[KDTree[wichleaf].tristart+i]],v1,ir) then
+   Badd(hova,KDData[KDTree[wichleaf].tristart+i]);
  end
  else
  begin
   case axis of
-   0:tmp:=(globalKDtree[wichleaf].split-v1.x)*invir.x;
-   1:tmp:=(globalKDtree[wichleaf].split-v1.y)*invir.y;
-   2:tmp:=(globalKDtree[wichleaf].split-v1.z)*invir.z;
+   0:tmp:=(KDtree[wichleaf].split-v1.x)*invir.x;
+   1:tmp:=(KDtree[wichleaf].split-v1.y)*invir.y;
+   2:tmp:=(KDtree[wichleaf].split-v1.z)*invir.z;
   end;
   if (tmp>=0) and (tmp<=rad) then
   begin
@@ -1796,45 +1786,41 @@ begin
    d3dxvec3scale(tmp2,ir,tmp);
    d3dxvec3add(tmp2,v1,tmp2);
    case axis of
-    0:b1:=(globalKDtree[wichleaf].split>v1.x);
-    1:b1:=(globalKDtree[wichleaf].split>v1.y);
-    2:b1:=(globalKDtree[wichleaf].split>v1.z);
+    0:b1:=(KDtree[wichleaf].split>v1.x);
+    1:b1:=(KDtree[wichleaf].split>v1.y);
+    2:b1:=(KDtree[wichleaf].split>v1.z);
    end;
    if b1 then
    begin
-    doKDTreetraversallin(v1,ir,invir,tmp,globalKDTree[wichleaf].left,mod3lookup[axis],DNTtri);
-    doKDTreetraversallin(tmp2,ir,invir,r2,globalKDTree[wichleaf].right,mod3lookup[axis],DNTtri);
+    doKDTreetraversallin(KDTree,KDData,KDTris,hova,v1,ir,invir,tmp,KDTree[wichleaf].left,mod3lookup[axis],DNTtri);
+    doKDTreetraversallin(KDTree,KDData,KDTris,hova,tmp2,ir,invir,r2,KDTree[wichleaf].right,mod3lookup[axis],DNTtri);
    end
    else
    begin
-    doKDTreetraversallin(v1,ir,invir,tmp,globalKDTree[wichleaf].right,mod3lookup[axis],DNTtri);
-    doKDTreetraversallin(tmp2,ir,invir,r2,globalKDTree[wichleaf].left,mod3lookup[axis],DNTtri);
+    doKDTreetraversallin(KDTree,KDData,KDTris,hova,v1,ir,invir,tmp,KDTree[wichleaf].right,mod3lookup[axis],DNTtri);
+    doKDTreetraversallin(KDTree,KDData,KDTris,hova,tmp2,ir,invir,r2,KDTree[wichleaf].left,mod3lookup[axis],DNTtri);
    end
   end
   else
   begin
    case axis of
-    0:b1:=(globalKDtree[wichleaf].split>v1.x);
-    1:b1:=(globalKDtree[wichleaf].split>v1.y);
-    2:b1:=(globalKDtree[wichleaf].split>v1.z);
+    0:b1:=(KDtree[wichleaf].split>v1.x);
+    1:b1:=(KDtree[wichleaf].split>v1.y);
+    2:b1:=(KDtree[wichleaf].split>v1.z);
    end;
     if b1 then
-     doKDTreetraversallin(v1,ir,invir,rad,globalKDTree[wichleaf].left,mod3lookup[axis],DNTtri)
+     doKDTreetraversallin(KDTree,KDData,KDTris,hova,v1,ir,invir,rad,KDTree[wichleaf].left,mod3lookup[axis],DNTtri)
     else
-     doKDTreetraversallin(v1,ir,invir,rad,globalKDTree[wichleaf].right,mod3lookup[axis],DNTtri);
+     doKDTreetraversallin(KDTree,KDData,KDTris,hova,v1,ir,invir,rad,KDTree[wichleaf].right,mod3lookup[axis],DNTtri);
   end;
  end;
 end;
 
-procedure traverseKDtreelin(v1,v2:TD3DXVector3;var hova:TKDData;KDData:TKDData;KDTree:TKDTree;trik:Tacctriarr);
+procedure traverseKDtreelin(const v1,v2:TD3DXVector3;var hova:TKDData;const KDData:TKDData;const KDTree:TKDTree;const trik:Tacctriarr);
 var
 tmp,invtmp:TD3DXVector3;
 lngt:single;
 begin
- globalhova:=hova;
- globalKDData:=KDData;
- globalKDTree:=KDTree;
- globalkdtris:=trik;
  d3dxvec3subtract(tmp,v2,v1);
  lngt:=d3dxvec3length(tmp);
  if lngt=0 then lngt:=1;
@@ -1842,20 +1828,14 @@ begin
  if tmp.x<>0 then invtmp.x:=1/tmp.x else invtmp.x:=10000000;
  if tmp.y<>0 then invtmp.y:=1/tmp.y else invtmp.y:=10000000;
  if tmp.z<>0 then invtmp.z:=1/tmp.z else invtmp.z:=10000000;
-
- doKDTreetraversallin(v1,tmp,invtmp,lngt,0,0,false);
- hova:=globalhova;
+ doKDTreetraversallin(KDTree,KDData,trik,hova,v1,tmp,invtmp,lngt,0,0,false);
 end;
 
-procedure traverseKDtreelinDNT(v1,v2:TD3DXVector3;var hova:TKDData;KDData:TKDData;KDTree:TKDTree;trik:Tacctriarr);
+procedure traverseKDtreelinDNT(const v1,v2:TD3DXVector3;var hova:TKDData;const KDData:TKDData;const KDTree:TKDTree;const trik:Tacctriarr);
 var
 tmp,invtmp:TD3DXVector3;
 lngt:single;
 begin
- globalhova:=hova;
- globalKDData:=KDData;
- globalKDTree:=KDTree;
- globalkdtris:=trik;
  d3dxvec3subtract(tmp,v2,v1);
  lngt:=d3dxvec3length(tmp);
  if lngt=0 then lngt:=1;
@@ -1864,8 +1844,8 @@ begin
  if tmp.y<>0 then invtmp.y:=1/tmp.y else invtmp.y:=10000000;
  if tmp.z<>0 then invtmp.z:=1/tmp.z else invtmp.z:=10000000;
 
- doKDTreetraversallin(v1,tmp,invtmp,lngt,0,0,true);
- hova:=globalhova;
+ doKDTreetraversallin(KDTree,KDData,trik,hova,v1,tmp,invtmp,lngt,0,0,true);
+
 end;
 
 procedure loadKDtree(nev:string; var KDTree:TKDTree; var KDData:TKDData);

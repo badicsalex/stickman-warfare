@@ -330,7 +330,7 @@ begin
  if FAILED(D3DXCreateFont(g_pD3dDevice, 25, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontmini )) then
    Exit;
   writeln(logfile,'cf3.');flush(logfile);
- if FAILED(D3DXCreateFont(g_pD3dDevice, 12, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontchat )) then
+ if FAILED(D3DXCreateFont(g_pD3dDevice, 13, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontchat )) then
    Exit;
   write(logfile,'Other...');flush(logfile);
  if FAILED(D3DXCreateSprite(g_pd3dDevice,g_pSprite)) then
@@ -808,14 +808,16 @@ end;
 
 procedure T3DMenu.DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal);
 var
-rect,crect:TRect;
+rect,crect,rect2:TRect;
 str:string;
 escapepos:integer;
 nextcolor:integer;
+alpha2:integer;
 begin
  rect.Top:= round(posy*SCheight); rect.Bottom:=round(posy2*SCheight);
  rect.Left:=round(posx*SCwidth);  rect.Right:= round(posx2*SCwidth);
  nextcolor:=color;
+ alpha2:=(color shr 2) and $FF000000;
  while length(mit)>0 do
  begin
   escapepos:=pos(chr(17),mit);
@@ -834,7 +836,29 @@ begin
 
   if length(str)>0 then
   begin
+   rect2:=rect;
+   {
+   rect2.Left:=rect.left-1;
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2 or $ffffff);
+   rect2.Left:=rect.left+1;
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2);
+   rect2.Left:=rect.left;
+   rect2.Top:=rect.Top-1;
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2 or $ffffff);
+   rect2.Top:=rect.Top+1;
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2);
+   }
+   {rect2.Left:=rect.left;
+   rect2.Left:=rect.left-1;
+   rect2.Top:=rect.Top-1;
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2 or $ffffff);
+   rect2.Top:=rect.Top+1;
+   rect2.Left:=rect.left+1;
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2);
+   }
+
    g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect,DT_NOCLIP,color);
+    
    zeromemory(@crect,sizeof(crect));
    if str[length(str)]=' ' then
     str[length(str)]:='l';//lol trailing space hack
