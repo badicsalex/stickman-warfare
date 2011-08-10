@@ -235,6 +235,7 @@ var
   noobproj,lawproj,x72proj:array of Tnamedprojectile;
   lawmesh,noobmesh:ID3DXMesh;
   rezg:single;
+  hatralok:single;
   LAWkesleltetes:integer=-1;
   mp5ptl:single;
   x72gyrs:single;
@@ -1183,14 +1184,11 @@ begin
 end;
 
 function initmaptex:HRESULT;
-const
-l1c:TD3DXColor=(r  : 1.0;g  : 1.0; b  : 0.9 ;a : 1);
-l2c:TD3DXColor=(r  : 0.15;g : 0.15;b  : 0.25;a : 1);
-l3c:TD3DXColor=(r  : $20/255;g : $20/255;b  : $20/255;a : 1);
 type
  array4ofbyte = array [0..3] of byte;
 var
 i,j,k,l:integer;
+l1c,l2c,l3c:TD3DXColor;
 lr:TD3DLockedrect;
 pbits:pointer;
 cmap1:array [0..255,0..255] of array4ofbyte;
@@ -1218,6 +1216,12 @@ begin
  hocol.a:=0;
  wacol:=D3DXColorFromDWord(stuffjson.GetInt(['color_water']));
  wacol.a:=0;
+
+
+ l1c:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_sun']));
+ l2c:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_shadow']));
+ l3c:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_ambient']));
+
  //D3DXColor(116/255,178/255,67/255,0);
  kocol:=D3DXColor(110/255,110/255,108/255,1);
  hocol:= D3DXColor(250/255,200/255,200/255,0);
@@ -1513,7 +1517,7 @@ function InitializeAll: HRESULT;
 var
   pIndices:PWordArray;
   indmost:integer;
-  x,y:integer;
+  i,x,y:integer;
   tempmesh:ID3DXMesh;
   tempd3dbuf:ID3DXBuffer;
   vmi:string;
@@ -1535,12 +1539,23 @@ begin
 
   hoszin:=stuffjson.GetInt(['color_sand']) and $FFFFFF;
   vizszin:=stuffjson.GetInt(['color_water']) and $FFFFFF;
-  ambientszin:=$FF000000 or stuffjson.GetInt(['light','color_ambient']);
+  ambientszin:=$FF000000 or cardinal(stuffjson.GetInt(['light','color_ambient']));
   gunautoeffekt:=stuffjson.GetBool(['vehicle','gun','effect']);
   techautoeffekt:=stuffjson.GetBool(['vehicle','tech','effect']);
-  
+
   gunszin:=stuffjson.GetInt(['color_gun']);
   techszin:=stuffjson.GetInt(['color_tech']);
+
+  setlength(posrads,stuffjson.GetNum(['terrain_modifiers']));
+  for i:=0 to stuffjson.GetNum(['terrain_modifiers'])-1 do
+  with posrads[i] do
+  begin
+   posx:=stuffjson.GetFloat(['terrain_modifiers',i,'x']);
+   posy:=stuffjson.GetFloat(['terrain_modifiers',i,'y']);
+   posz:=stuffjson.GetFloat(['terrain_modifiers',i,'z']);
+   radd:=stuffjson.GetFloat(['terrain_modifiers',i,'radius']);
+   raddn:=radd*1.5;
+  end;
 
   g_pd3ddevice.GetDeviceCaps(devicecaps);
 
@@ -1980,9 +1995,12 @@ begin
   D3DXMatrixRotationX(mat2,mszogy);
   D3DXMatrixMultiply(mat,mat2,mat);
   if csipo then
-   D3DXMatrixTranslation(mat2,-0.1,-0.1,0.0)
+   D3DXMatrixTranslation(mat2,-0.1,-0.1,0.0+hatralok)
   else
-   D3DXMatrixTranslation(mat2,0,0,0.05);
+   D3DXMatrixTranslation(mat2,0,0,0.05+hatralok*0.5);
+
+  mat2._41:=mat2._41-sin(mszogx-szogx)*0.3;
+  mat2._42:=mat2._42-sin(mszogy-szogy)*0.3;
   if (myfegyv=FEGYV_MP5A3) and (not csipo) then mat2._43:=mat2._43+0.05;
 
   D3DXMatrixMultiply(mat,mat2,mat);
@@ -2229,12 +2247,15 @@ begin
    //hollo:=D3DXVector3(0,3,0); ///BVÁÁÁÁÁÁ
 
     hollo:=D3DXVector3(0,-0.10,0);
-    if myfegyv=FEGYV_QUAD then hollo.y:=0;
+    if myfegyv=FEGYV_QUAD then
+     hollo.y:=0
+  {  else
+    if myfegyv=FEGYV_X72 then
+     hollo:=D3DXVector3((random(100)-50)/200,-0.2,0.3)};
 
     v1:=D3DXvector3zero;
 
-     D3DXVec3add(v2   ,hollo,D3DxVector3(0,0,-300));
-
+    D3DXVec3add(v2   ,hollo,D3DxVector3(0,0,-300));
     D3DXVec3add(hollo,hollo,D3DxVector3(0,0,-0.7));
 
 
@@ -2331,9 +2352,7 @@ begin
   setupmyfegyvmatr;
   if myfegyv=FEGYV_NOOB then
    hollo:=D3DXVector3(0,-0.2,-0.5)
-  else
-  if myfegyv=FEGYV_X72 then
-   hollo:=D3DXVector3((random(100)-50)/200,-0.2,-0.4)
+
   else          
    hollo:=D3DXVector3(0,-0.05,-0.7);
 
@@ -2341,9 +2360,6 @@ begin
 
    if myfegyv=FEGYV_LAW then
     D3DXVec3add(hollo,hollo,D3DxVector3(0,0.0,-0.04))
-   else
-   if myfegyv=FEGYV_X72 then
-    D3DXVec3add(hollo,hollo,D3DxVector3(0,0,-1.2))
    else
     D3DXVec3add(hollo,hollo,D3DxVector3(0,0.0,-0.04));
 
@@ -2622,21 +2638,16 @@ begin
      latszonaKL:=200;
      goto atugor;
     end;
-    {$IFNDEF Armageddon}
-
     lovok:=lovok+0.01;
     if lovok>=0.99 then
     begin
      lojjranged;
      cooldown:=1.5;
+     hatralok:=0.15;
      szogX:=szogx+(100-random(200))/4000;
      szogY:=szogy+(100-random(200))/400;
      inc(zeneintensity,round(4000));
     end;
-    {$ELSE}
-     lojjranged;
-     cooldown:=0.2;
-    {$ENDIF}
    end
    else
    lovok:=0;
@@ -2662,20 +2673,16 @@ begin
     end;
     //fegyv.addproj(FEGYV_M4A1,hollo,v2,M4_Golyoido);
     if myfegyv<>FEGYV_LAW then
-     if myfegyv=FEGYV_X72 then
-      lojjranged
-     else
       lojjegyet;
 
     if myfegyv=FEGYV_MP5A3 then mp5ptl:=mp5ptl+1;
     if myfegyv=FEGYV_X72 then x72gyrs:=x72gyrs+1/8;
 
     case myfegyv of
-     FEGYV_M4A1:begin lovok:=0.5; cooldown:=1/8; end;
-     FEGYV_M82A1:begin lovok:=1; cooldown:=1/1.5;  end;
-     FEGYV_MPG:begin lovok:=0; cooldown:=1/1.5; end;
-     FEGYV_quad:begin lovok:=1; cooldown:=1/8; end;
-     {$IFNDEF Armageddon}
+     FEGYV_M4A1:begin lovok:=0.5; cooldown:=1/8; hatralok:=0.05; end;
+     FEGYV_M82A1:begin lovok:=1; cooldown:=1/1.5; hatralok:=0.15; end;
+     FEGYV_MPG:begin lovok:=0; cooldown:=1/1.5; hatralok:=0.10; end;
+     FEGYV_quad:begin lovok:=1; cooldown:=1/8; hatralok:=0.03; end;
      FEGYV_LAW:begin
                 LAWkesleltetes:=75;
                 rezg:=2;
@@ -2683,12 +2690,10 @@ begin
                 cooldown:=3;
                 playsound(26,false,1,true,D3DXVector3(campos.x+cos(szogx),campos.y,campos.z-sin(szogx)));
                 setsoundproperties(26,1,1,1,true,D3DXVector3(campos.x+cos(szogx),campos.y,campos.z-sin(szogx)));
+
                end;
-     {$ELSE}
-     FEGYV_LAW:begin LAWkesleltetes:=5;lovok:=0.5; cooldown:=0.2; end;
-     {$ENDIF}
-     FEGYV_X72:begin lovok:=1; cooldown:=max(x72gyrs-0.5,1/6) end;
-     FEGYV_Mp5a3:begin lovok:=0.5; cooldown:=1/8; end;
+     FEGYV_X72:begin lovok:=1; cooldown:=max(x72gyrs-0.5,1/6); hatralok:=0.1; end;
+     FEGYV_Mp5a3:begin lovok:=0.5; cooldown:=1/8; hatralok:=0.05; end;
     end;
 
     if myfegyv<>FEGYV_LAW then
@@ -2757,14 +2762,14 @@ begin
       if myfegyv=FEGYV_X72 then
       if csipo then
       begin
-       MszogX:=Mszogx+(100-random(200))/500;
-       MszogY:=mszogy+(100-random(200))/500;
+       MszogX:=Mszogx+(100-random(200))/1000;
+       MszogY:=mszogy+(100-random(200))/1000;
 
        end
        else
        begin
-       szogX:=szogx+(100-random(200))/5000;
-        szogY:=szogy+(100-random(200))/5000;
+       szogX:=szogx+(100-random(200))/10000;
+        szogY:=szogy+(100-random(200))/10000;
        //szogX:=szogx+(100-random(200))/5000;
       // szogY:=szogy+(100-random(200))/5000;
       end;
@@ -2781,6 +2786,7 @@ begin
   if LAWkesleltetes=0 then
   begin
    lojjranged;
+   hatralok:=0.3;
    szogX:=szogx+(100-random(200))/500;
    szogY:=szogy+(100-random(200))/500-0.2;
   end;
@@ -2875,7 +2881,7 @@ begin
 end;
 
 
-function felrobbanva(gmbk:Tgmbk;kapcsk:Tkapcsk;hol,honnan:Td3DVector;siz1,siz2:single):integer;
+function felrobbanva(gmbk:Tgmbk;kapcsk:Tkapcsk;hol,honnan:Td3DVector;siz:single):integer;
 var
 i,j,l:integer;
 talalat:array [0..9] of boolean;
@@ -2883,31 +2889,29 @@ vec:TD3DXVector3;
 begin
  result:=-1;
 
- if hol.y>200 then
- begin
-  if tavpointpointsq(hol,honnan)>sqr(siz1+1) then exit;
- end
- else
- begin
-  if tavpointpointsq(hol,honnan)>sqr(siz2+1) then exit;
- end;
+ if tavpointpointsq(hol,honnan)>sqr(siz+2) then exit;
 
  D3DXVec3TransformCoordArray(@gmbk[0],sizeof(gmbk[0]),@gmbk[0],sizeof(gmbk[0]),mat_World,11);
 
- for i:=0 to 9 do talalat[i]:=true;
+ for i:=0 to 9 do
+  talalat[i]:=tavpointpointsq(hol,gmbk[i])<sqr(siz);
 
 
    for l:=0 to high(ojjektumnevek) do
    for j:=0 to ojjektumarr[l].hvszam-1 do
    begin
     D3dxvec3add(vec,ojjektumarr[l].holvannak[j],ojjektumarr[l].vce);
-    if tavpointpointsq(honnan,vec)<sqr(ojjektumarr[l].rad+siz2) then
+    if tavpointpointsq(honnan,vec)<sqr(ojjektumarr[l].rad+siz) then
      for i:=0 to 9 do
       if ojjektumarr[l].raytestbol(gmbk[i],hol,j) then talalat[i]:=false;
     end;
 
  for i:=0 to 9 do
-  if talalat[i] then result:=i;
+  if talalat[i] then
+  begin
+   result:=i;
+   break;
+  end;
 
 end;
 
@@ -2923,9 +2927,9 @@ begin
 
   if (kilotte=-1) or ((lovesfegyv xor myfegyv)>=128) then
   case lovesfegyv of
-   FEGYV_LAW :love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),3,4);
-   FEGYV_NOOB:love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),3,5);
-   FEGYV_X72:love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),x72eletkor/200+0.5,x72eletkor/200+0.5);
+   FEGYV_LAW :love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),4);
+   FEGYV_NOOB:love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),5);
+   FEGYV_X72:love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),x72eletkor/300+0.3);
   end;                                                                   
 
   {$IFNDEF godmode}
@@ -3170,19 +3174,35 @@ end;
 
 procedure DoX72Robbanas(mi:integer;rippl:boolean);
 var
- t:TD3DXVector3;
+ t,t2:TD3DXVector3;
  i:integer;
- alngt:single;
+ alngt,rad:single;
  avec:TD3DXVector3;
 begin
 
- for i:=0 to 100 do
+ rad:=(x72proj[mi].eletkor/300+0.3);
+
+ Particlesystem_add(SimpleparticleCreate(x72proj[mi].v3,D3DXVector3Zero,rad*1.1,rad*0.8,$8080FF,$00000000,50));
+
+ for i:=0 to 50 do
  begin
   t:=randomvec(animstat*2+i*3,1);
   fastvec3normalize(t);
-  d3dxvec3scale(t,t,(x72proj[mi].eletkor/200+1)*0.3);
-  Particlesystem_add(ExpsebparticleCreate(x72proj[mi].v3,t,1.0,0,0.75,$FFFFFFFF,$000000FF,random(50)+20));
+  d3dxvec3scale(t,t,rad);
+  D3dxvec3add(t,t,x72proj[mi].v3);
+  Particlesystem_add(SimpleparticleCreate(t,D3DXVector3Zero,0.2,0,$FFFFFFFF,$000000FF,random(50)+20));
  end;
+
+ for i:=0 to 20 do
+ begin
+  t:=randomvec(animstat*2+i*3,1);
+  fastvec3normalize(t);
+  d3dxvec3scale(t,t,rad*0.3);
+  d3dxvec3scale(t2,t,0.25);
+  D3dxvec3add(t,t,x72proj[mi].v3);
+  particlesystem_Add(FenycsikuberCreate(x72proj[mi].v3,t,D3DXVector3Zero,t2,0.1,0,$FFFFFF,$FF,random(10)+10));
+ end;
+
 
  alngt:=tavpointpointsq(d3dxvector3(cpx^,cpy^,cpz^),x72proj[mi].v3);
  if alngt<sqr(5) then
@@ -3274,7 +3294,7 @@ begin
 
  laststate:='Docollisiontests 2';
 //VONAL TESZT  ÉS ZÓNATESZT
- vec1:=D3DXVector3(cpx^,cpy^+0.8,cpz^);
+ vec1:=D3DXVector3(cpx^,cpy^+1,cpz^);
  if not autoban then
  for l:=0 to high(ojjektumnevek) do
   for j:=0 to ojjektumarr[l].hvszam-1 do
@@ -3514,7 +3534,7 @@ laststate:='Docollisiontests 6';
 
  while i<=high(x72proj) do
  with x72proj[i] do
-  if colltim>=3 then
+  if (colltim>=3) then
   begin
    Particlesystem_add(fenycsikcreate(v1,v3,0.07,$1040FF,100));
    if advwove(v1.x,v1.z)>v1.y then
@@ -3546,7 +3566,14 @@ laststate:='Docollisiontests 6';
        end;
   end;
 
-    
+
+
+   if tavpointpointsq(v1,cel)<sqr((eletkor/300+0.3)*0.66) then
+   begin
+    DoX72Robbanas(i,false);
+    goto x72skip;
+   end;
+
    v3:=v1;
    colltim:=0;
    inc(i);
@@ -3644,16 +3671,37 @@ end;
 
 
 procedure AddX72(av1,av2:TD3DXvector3;akl:integer);
+var
+tmp1,tmp2:TD3DXVector3;
+szog,l:single;
 begin
  setlength(X72proj, length(X72proj)+1);
  with X72proj[high(X72proj)] do
  begin
   v1:=av1;
-  v2:=av2;
+  cel:=av2;
+  d3dxvec3Subtract(v2,av2,av1);
 
-  name:=XORHash2x12byte(v1,v2);
- // name:=((name shl 16) and $FFFF0000) + ((name shr 16) and $FFFF);
-  d3dxvec3lerp(v2,v2,v1,0.6);
+  name:=XORHash2x12byte(av1,av2);
+  name:=name*name*name*name*134775813;
+  D3DXVec3Cross(tmp1,v2,D3DXVector3(0,1,0));
+  D3DXVec3Cross(tmp2,v2,tmp1);
+
+  FastVec3Normalize(tmp1);
+  FastVec3Normalize(tmp2);
+
+  szog:=((name and $FFFF)/$10000)*D3DX_PI;
+
+  d3dxvec3scale(tmp1,tmp1,cos(szog));
+  d3dxvec3scale(tmp2,tmp2,-sin(szog));
+  l:=d3dxvec3length(v2);
+  d3dxvec3scale(v2,v2,1/l);
+  d3dxvec3add(v2,v2,tmp1);
+  d3dxvec3add(v2,v2,tmp2);
+  d3dxvec3scale(v2,v2,0.003*l);
+
+  d3dxvec3subtract(v2,v1,v2);
+
   v3:=v2;
   kilotte:=akl;
   eletkor:=0;
@@ -4286,6 +4334,8 @@ begin
   kulsonezet:=false;
   kiszallas:=0;
   vanishcar:=1;
+  cpy^:=cpy^-1;
+  cpoy^:=cpy^;
  end;
  if mszogx>(szogx+pi) then
   mszogx:=mszogx*0.8+(szogx+2*pi)*0.2
@@ -4296,6 +4346,10 @@ begin
   mszogx:=mszogx*0.8+szogx*0.2;
 
  mszogy:=mszogy*0.8+szogy*0.2;
+
+ if mszogx>D3DX_PI then mszogx:=mszogx-2*D3DX_PI;
+ if mszogx<-D3DX_PI then mszogx:=mszogx+2*D3DX_PI;
+
  if ((mstat and MSTAT_MASK)<5) and ((mstat and MSTAT_MASK)<>0) then
  if csipo then
   mszogy:=mszogy+sin(animstat*2*D3DX_PI)/200
@@ -4447,17 +4501,24 @@ begin
   inc(eletkor);
   inc(colltim);
   tmp:=v1;
-  v1.x:=2.00*v1.x-v2.x;
-  v1.y:=2.00*v1.y-v2.y-(max(0,eletkor-400))/5000-GRAVITACIO/2;
-  v1.z:=2.00*v1.z-v2.z;
-  randomplus2(v1,eletkor/100+name and $FFFF,0.003);
+  v1.x:=(v1.x-v2.x)*0.95+v1.x;
+  v1.y:=(v1.y-v2.y)*0.95+v1.y;
+  v1.z:=(v1.z-v2.z)*0.95+v1.z;
   v2:=tmp;
-  d3dxvec3subtract(tmp,v1,v2);
-  d3dxvec3scale(tmp,tmp,0.8);
-  Particlesystem_add(Simpleparticlecreate(v2,
-                                         // D3DXVector3Zero,
-                                          tmp,
-                                          0.3,0,$00202020,$00000020,30));
+
+  d3dxvec3subtract(tmp,cel,v1);
+  d3dxvec3scale(tmp,tmp,0.0001*eletkor*fastinvsqrt(d3dxvec3lengthsq(tmp)));
+  d3dxvec3add(v1,v1,tmp);
+
+  if colltim=1 then
+  begin
+   d3dxvec3subtract(tmp,v1,v2);
+   d3dxvec3scale(tmp,tmp,0.8);
+   Particlesystem_add(Simpleparticlecreate(v2,
+                                          // D3DXVector3Zero,
+                                           tmp,
+                                           0.3,0,$00202020,$00000020,30))
+  end;
  end;
 
  i:=0;
@@ -4500,6 +4561,11 @@ begin
   rezg:=0;
   robhely:=D3DXvector3zero;
  end;
+
+ if hatralok>0 then
+  hatralok:=hatralok-0.005
+ else
+  hatralok:=0;
 
   for i:=0 to high(ppl) do
    if ppl[i].pls.lottram>0 then dec(ppl[i].pls.lottram);
@@ -6221,10 +6287,10 @@ begin
  menu.DrawSzinesChat(txt,0,0,0.4,0.05,$FF000000+betuszin);
 
  txt:=formatdatetime('hh:nn',time);
- menu.DrawText(txt,0.9,0.25,1,0.27,0,$FF000000+betuszin);
+ menu.DrawSzinesChat(txt,0.9,0.25,1,0.27,$FF000000+betuszin);
 
  txt:=lastzone;
- menu.DrawText(txt,0.88,0.27,1,0.29,0,$FF000000+betuszin);
+ menu.DrawSzinesChat(txt,0.88,0.27,1,0.29,$FF000000+betuszin);
 
   case zonaellen of
    0:txt:=lang[39];
@@ -6232,7 +6298,7 @@ begin
   else
      txt:=inttostr(zonaellen)+lang[41];
   end;
- menu.DrawText(txt,0.88,0.29,1,0.31,0,$FF000000+betuszin);
+ menu.DrawSzinesChat(txt,0.88,0.29,1,0.31,$FF000000+betuszin);
 
 
  if multisc.kills>0 then
@@ -6242,13 +6308,13 @@ begin
    txt:=lang[43]
  else
   txt:='';
- menu.DrawText(txt,0.9,0.33,1,0.35,0,$FF000000+betuszin);
+ menu.DrawSzinesChat(txt,0.9,0.33,1,0.35,$FF000000+betuszin);
 
  if multisc.kills-multisc.killswithoutdeath>1 then
   txt:=inttostr(multisc.kills-multisc.killswithoutdeath)+lang[44]
  else
   txt:='';
- menu.DrawText(txt,0.86,0.35,1,0.37,0,$FF000000+betuszin);
+ menu.DrawSzinesChat(txt,0.86,0.35,1,0.37,$FF000000+betuszin);
 
  case multisc.kills-multisc.killswithoutdeath of
    0, 1, 2:txt:='';
@@ -6257,9 +6323,9 @@ begin
    9,10,11:txt:='Dominating!';
   12,13,14:txt:='Unstoppable!';
   15..29  :txt:='Godlike';
-  else           txt:='WICKED SICK';
+  30..10000:txt:='WICKED SICK';
  end;
- menu.DrawText(txt,0.89,0.37,1,0.39,0,$FF000000+betuszin);
+ menu.DrawSzinesChat(txt,0.89,0.37,1,0.39,$FF000000+betuszin);
 
  aszin:=$FF;
 

@@ -77,7 +77,8 @@ try
    if pos('[SPECIAL:',str)<=0 then
    begin
     epulet:=copy(str,2,length(str)-2);
-    inc(epuletnum);
+    if epulet<>'meder'then  //hack, de muszáj. faszom.
+     inc(epuletnum);
     if epuletnum=0 then
     begin
      root.SetVal(['buildings',epulet,'special',0],'spawngun');
@@ -89,6 +90,26 @@ try
    else
     if str='[SPECIAL:teleport]' then
      teleport:=root.GetNum(['teleports'])
+  end
+  else
+  if epulet='meder' then  //hack, de muszáj. faszom.
+  begin
+   attr:=lowercase(copy(str,1,pos('=',str)-1));
+   val :=copy(str,pos('=',str)+1,1000);
+   if attr='pos' then
+   begin
+    explode(val,' ',flt);
+    if high(flt)<2 then
+    begin
+     writeln('Bad position value in map.ini at ',epulet);
+     continue;
+    end;
+    num:= root.GetNum(['terrain_modifiers']);
+    root.SetValF(['terrain_modifiers',num,'x'],strtofloat(flt[0]));
+    root.SetValF(['terrain_modifiers',num,'y'],strtofloat(flt[1]));
+    root.SetValF(['terrain_modifiers',num,'z'],strtofloat(flt[2]));
+    root.SetValF(['terrain_modifiers',num,'radius'],15.0);
+   end;
   end
   else
   if epulet<>'' then
