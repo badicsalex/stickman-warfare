@@ -6,6 +6,11 @@ uses
   SysUtils,
   qjson,
   typestuff;
+type
+ TD3DXVector3 = record
+  x,y,z:single;
+ end;
+
 const
 menuscenes:array[0..6,0..4] of single =(
 (-460.11, 49.90, -128.67,  1.14, -0.37),
@@ -15,6 +20,9 @@ menuscenes:array[0..6,0..4] of single =(
 (-152.68, 65.11,  -17.90,  2.49, -0.36),
 (-128.98, 73.09,   47.41,  1.60,  0.30),
 (-166.48, 42.02, -132.16, -0.31, -0.18));
+
+ hummkerekarr:array [0..3] of TD3DXVector3=((x:-1;y:-1;z:0.8),(x:-1;y:-1;z:-0.7),(x:1;y:-1;z:0.8),(x:1;y:-1;z:-0.7));
+ agkerekarr:array [0..3] of TD3DXVector3=((x:-0.9;y:-1;z:1),(x:-0.9;y:-1;z:-0.9),(x:0.9;y:-1;z:1),(x:0.9;y:-1;z:-0.9));
 var
  root:TQJSON;
  i,num:integer;
@@ -54,15 +62,46 @@ try
  root.SetVal(['spawn_height'], 10);
  root.SetVal(['spawn_radius'], 5);
 
+ root.SetVal (['vehicle','gun','effect'],true);
  root.SetValF(['vehicle','gun','scale','x'],2.3);
  root.SetValF(['vehicle','gun','scale','y'],0.7);
  root.SetValF(['vehicle','gun','scale','z'],1.3);
- root.SetVal (['vehicle','gun','effect'],true);
+ root.SetValF(['vehicle','gun','friction'],0.1);
+ root.SetValF(['vehicle','gun','max_speed'],0.5);
+ root.SetValF(['vehicle','gun','torque'],0.017);
+ root.SetValF(['vehicle','gun','suspension','length'],0.7);
+ root.SetValF(['vehicle','gun','suspension','strength'],0.1);
+ root.SetValF(['vehicle','gun','suspension','absorb'],0.03);
+ root.SetValF(['vehicle','gun','wheels','friction'],0.2);
+ root.SetValF(['vehicle','gun','wheels','radius'],0.5);
+ root.SetValF(['vehicle','gun','wheels','width'],0.2);
+ for i:=0 to 3 do
+ begin
+  root.SetValF(['vehicle','gun','wheels','position',i,'x'],hummkerekarr[i].x);
+  root.SetValF(['vehicle','gun','wheels','position',i,'y'],hummkerekarr[i].y);
+  root.SetValF(['vehicle','gun','wheels','position',i,'z'],hummkerekarr[i].z);
+ end;
 
+
+ root.SetVal (['vehicle','tech','effect'],true);
  root.SetValF(['vehicle','tech','scale','x'],1.8);
  root.SetValF(['vehicle','tech','scale','y'],0.9);
  root.SetValF(['vehicle','tech','scale','z'],1.5);
- root.SetVal (['vehicle','tech','effect'],true);
+ root.SetValF(['vehicle','tech','friction'],0.1);
+ root.SetValF(['vehicle','tech','max_speed'],0.075);
+ root.SetValF(['vehicle','tech','torque'],0.015);
+ root.SetValF(['vehicle','tech','suspension','length'],0.7);
+ root.SetValF(['vehicle','tech','suspension','strength'],0.1);
+ root.SetValF(['vehicle','tech','suspension','absorb'],0.03);
+ root.SetValF(['vehicle','tech','wheels','friction'],0.2);
+ root.SetValF(['vehicle','tech','wheels','radius'],0.5);
+ root.SetValF(['vehicle','tech','wheels','width'],0.2);
+ for i:=0 to 3 do
+ begin
+  root.SetValF(['vehicle','tech','wheels','position',i,'x'],agkerekarr[i].x);
+  root.SetValF(['vehicle','tech','wheels','position',i,'y'],agkerekarr[i].y);
+  root.SetValF(['vehicle','tech','wheels','position',i,'z'],agkerekarr[i].z);
+ end;
 
  assignfile(fil,'data\map.ini');
  reset(fil);

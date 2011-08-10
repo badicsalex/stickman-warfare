@@ -57,7 +57,8 @@ type
   kerekhely:Tkerekarray;
   kerekbol:array [0..3] of boolean;
   kerekirany:integer;
-  felf,kereknagy,kerekvst:single;
+  felf,felfero,felfdamp,kereknagy,kerekvst:single;
+  maxseb,nyomatek:single;
   k1,k2,k3:single;
   kx1,kx2:array [0..31] of single;
   kerekiranyszorzo:single;
@@ -65,8 +66,9 @@ type
   kerekfor:single;
   atlagseb:TD3DXVector3;
   agx:boolean;
+  kerekfriction:single;
   function kerektransformmatrix(mit:integer):TD3DMatrix;
-  constructor create(axe1,axe2,axe3,apos,seb:TD3DXVector3;afriction,azsele:single;akerekhely:Tkerekarray;afelf,akereknagy,akerekvst:single;aantigrav:boolean);
+  constructor create(axe1,axe2,axe3,apos,seb:TD3DXVector3;afriction,azsele:single;akerekhely:Tkerekarray;afelf,afelfero,afelfdamp,akereknagy,akerekvst,akerekfriction,amaxseb,anyomatek:single;aantigrav:boolean);
   procedure initkerekek;
   procedure usekerekek;
   procedure step;
@@ -76,7 +78,7 @@ type
 var
  kim:integer;
  kic:array [0..12] of integer;
-const
+var
  hummkerekarr:Tkerekarray=((x:-1;y:-1;z:0.8),(x:-1;y:-1;z:-0.7),(x:1;y:-1;z:0.8),(x:1;y:-1;z:-0.7));
  agkerekarr:Tkerekarray=((x:-0.9;y:-1;z:1),(x:-0.9;y:-1;z:-0.9),(x:0.9;y:-1;z:1),(x:0.9;y:-1;z:-0.9));
 implementation
@@ -490,7 +492,7 @@ begin
  for i:=0 to 7 do
   if bolbox[i] then
   begin
-   d3dxvec3lerp(vpontok[i],vpontok[i],pontok[i],0.1);
+   d3dxvec3lerp(vpontok[i],vpontok[i],pontok[i],friction);
   end;
 end;
 
@@ -512,7 +514,7 @@ end;
 
 //AUTÓ CLASS ITT
 
-constructor Tauto.create(axe1,axe2,axe3,apos,seb:TD3DXVector3;afriction,azsele:single;akerekhely:Tkerekarray;afelf,akereknagy,akerekvst:single;aantigrav:boolean);
+constructor Tauto.create(axe1,axe2,axe3,apos,seb:TD3DXVector3;afriction,azsele:single;akerekhely:Tkerekarray;afelf,afelfero,afelfdamp,akereknagy,akerekvst,akerekfriction,amaxseb,anyomatek:single;aantigrav:boolean);
 var
 i:integer;
 tmp,tmp2:TD3DXVector3;
@@ -523,8 +525,13 @@ begin
   kerekhely[i]:=akerekhely[i];
  kerekirany:=0;
  felf:=afelf;
+ felfero:=afelfero;
+ felfdamp:=afelfdamp;
  kereknagy:=akereknagy;
  kerekvst:=akerekvst;
+ kerekfriction:=akerekfriction;
+ maxseb:=amaxseb;
+ nyomatek:=anyomatek;
  k2:=-kerekvst/axehossz[1];
  k1:=kereknagy/axehossz[0];
  k3:=kereknagy/axehossz[2];
@@ -570,15 +577,11 @@ i:integer;
 elorescale,tt:single;
 begin
 
- d3dxvec3scale(tmp,axes[2],-felf);
- elorescale:=(0.5-tavpointpointsq(pos,vpos))/15;
- // kerekhely-tmp-kerekorig
-
  if agx then
- begin
- tmp:=D3DXVector3(0,-felf,0);
- elorescale:=(0.075-tavpointpointsq(pos,vpos))/5;
- end;
+  tmp:=D3DXVector3(0,-felf,0)
+ else
+  d3dxvec3scale(tmp,axes[2],-felf);
+ elorescale:=(maxseb-tavpointpointsq(pos,vpos))*nyomatek/maxseb;
 
  for i:=0 to 3 do
  begin
@@ -603,7 +606,7 @@ begin
    else
     a2:=axes[1];
    if d3dxvec3lengthsq(a2)<0.0001 then a2.y:=1;
-   d3dxvec3scale(tmp2,a2,d3dxvec3dot(a2,tmp2)*0.8/d3dxvec3lengthsq(a2));
+   d3dxvec3scale(tmp2,a2,d3dxvec3dot(a2,tmp2)*(1-kerekfriction)/d3dxvec3lengthsq(a2));
    //wtf ennyi lenne a kerekes hozzáadós cucc?
    //ja lol ez a kerék tapadása
    d3dxvec3subtract(kerekek[i],kerekek[i],tmp2);
@@ -625,7 +628,7 @@ begin
    if fek then
    if tavpointpointsq(kerekek[i],vkerekek[i])<0.1*0.1 then
    begin
-    d3dxvec3scale(tmp2,a1,-0.01);
+    d3dxvec3scale(tmp2,a1,-0.02);
     d3dxvec3add(kerekek[i],kerekek[i],tmp2);
    end
    else
@@ -637,12 +640,12 @@ begin
   d3dxvec3subtract(tmp2,kerekek[i],kerekorig[i]);
   tt:=d3dxvec3dot(tmp2,tmp);
   if (tt<0) or (tt>d3dxvec3lengthsq(tmp)) then d3dxvec3add(kerekek[i],tmp,kerekorig[i]);
-   pontok[i].x:= pontok[i].x+(tmp2.x-tmp.x)/20;
-   pontok[i].y:= pontok[i].y+(tmp2.y-tmp.y)/20;
-   pontok[i].z:= pontok[i].z+(tmp2.z-tmp.z)/20;
-  vpontok[i].x:=vpontok[i].x+(tmp2.x-tmp.x)/200;
-  vpontok[i].y:=vpontok[i].y+(tmp2.y-tmp.y)/200;
-  vpontok[i].z:=vpontok[i].z+(tmp2.z-tmp.z)/200;
+   pontok[i].x:= pontok[i].x+(tmp2.x-tmp.x)*felfero;
+   pontok[i].y:= pontok[i].y+(tmp2.y-tmp.y)*felfero;
+   pontok[i].z:= pontok[i].z+(tmp2.z-tmp.z)*felfero;
+  vpontok[i].x:=vpontok[i].x+(tmp2.x-tmp.x)*felfdamp;
+  vpontok[i].y:=vpontok[i].y+(tmp2.y-tmp.y)*felfdamp;
+  vpontok[i].z:=vpontok[i].z+(tmp2.z-tmp.z)*felfdamp;
  end;
 end;
 
