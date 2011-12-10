@@ -399,8 +399,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20103;
-  datachecksum=$B54881AC;
+  PROG_VER=20104;
+  datachecksum=$B54881AB;
 var
   checksum:Dword=0;
   nyelv:integer;

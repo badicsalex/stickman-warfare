@@ -35,6 +35,9 @@ type
    hol:single;
    swaptim:integer; //0..127
    pluszind:integer;
+   fseb:single;
+   col:TD3DXColor;
+   sky_ambientval:integer;
    villam1,villam2:boolean;
    tex1,tex2,texsysmem:IDirect3DTexture9;
    g_pVB:IDirect3DVertexBuffer9;
@@ -46,7 +49,7 @@ type
    colormap:array [0..255,0..255,0..3] of byte;
    coverage:single;
    procedure makenew;
-   constructor Create(A_D3DDevice:IDirect3DDevice9);
+   constructor Create(A_D3DDevice:IDirect3DDevice9;sky_ambi:integer;cloud_spd:single;color:TD3DXColor);
    procedure Render(alulis:boolean);
    procedure Update;
    procedure villamolj;
@@ -69,9 +72,8 @@ const
  pow2:array [0..8] of single=(1,2,4,8,16,32,64,128,256);
  invpow2:array [0..8] of single=(1,1/2,1/4,1/8,1/16,1/32,1/64,1/128,1/256);
  divpow2:array [0..7] of integer=(128,64,32,16,8,4,2,1);
- fseb=0.00003;
+
  //fseb=0.0005;
- SKY_AMBIENT=100;
 function phase(mi1,mi2:TD3DXVector3):single;
 begin
  result:=(1+sqr(d3dxvec3dot(mi1,mi2))/(d3dxvec3lengthsq(mi2)*d3dxvec3lengthsq(mi1)));
@@ -121,7 +123,7 @@ begin
  villam1:=true;
 end;
 
-constructor TFelho.Create(A_D3DDevice:IDirect3DDevice9);
+constructor TFelho.Create(A_D3DDevice:IDirect3DDevice9;sky_ambi:integer;cloud_spd:single;color:TD3DXColor);
 var
 i,j,k:integer;
 pindices:PWORDArray;
@@ -135,9 +137,12 @@ begin
  hol:=0;
  villam1:=false;
  villam2:=false;
+ sky_ambientval:=sky_ambi;
+ fseb := cloud_spd ;
  pluszind:=0;
  swaptim:=0;
  coverage:=13;
+ col:= color;
 
  zeromemory(@at, sizeof(at));
  zeromemory(@a1, sizeof(a1));
@@ -556,7 +561,7 @@ j,k:integer;
 mst:double;
 ppi:integer;
 maxX,maxY,maxZ,tmp:double;
-tmp2:integer;
+tmp2:double;
 xi,yi:integer;
 bol:boolean;
 begin
@@ -642,33 +647,16 @@ begin
     if mst>100000 then mst:=0;
     if abs(lt2)>50000 then lt2:=0;
 
-    a2[i,j]:=min(lt2*power(0.95,mst)+SKY_AMBIENT,255);
+    a2[i,j]:=min(lt2*power(0.95,mst)+sky_ambientval,255);
 
   end;
 
   for j:=0 to 127 do
   begin
-   //  az:=max(lerp(a2[i2,j],a1[i2,j],mivel)-200,0);
-    //azp:=max(lerp(a2[i2,(j+10) and 511],a1[i2,(j+10) and 511],mivel)-200,0);
-   // tmp:=a1[(i*2+pluszind) and 255,j*2]*16;
-   // tmp:=(power(0.98,tmp));
-
-
-    if sky_voros then
-    begin
-     tmp2:=round(a2[i,j])-SKY_AMBIENT;
-     colormap[i*2,j*2,0]:=0;//round(lerp(255,tmp2,tmp));
-     colormap[i*2,j*2,1]:=0;//round(lerp(150,tmp2,tmp));
-     colormap[i*2,j*2,2]:=tmp2;//round(lerp(0,tmp2,tmp));
-    end
-    else
-    begin
-        tmp2:=round(a2[i,j]);
-     colormap[i*2,j*2,0]:=tmp2;//round(lerp(255,tmp2,tmp));
-     colormap[i*2,j*2,1]:=tmp2;//round(lerp(150,tmp2,tmp));
-     colormap[i*2,j*2,2]:=tmp2;//round(lerp(0,tmp2,tmp));
-    end;
-   // colormap[i*2,j*2,3]:=round(tmp*255);
+   tmp2:=a2[i,j];
+   colormap[i*2,j*2,0]:=round(tmp2*col.B);//round(lerp(255,tmp2,tmp)) itt van a szine a felhonek!!!;
+   colormap[i*2,j*2,1]:=round(tmp2*col.G);//round(lerp(150,tmp2,tmp));
+   colormap[i*2,j*2,2]:=round(tmp2*col.R);//round(lerp(0,tmp2,tmp));
   end;
 
   for j:=0 to 126 do

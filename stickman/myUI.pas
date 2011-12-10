@@ -388,7 +388,7 @@ begin
 
  if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/cursor.bmp',64,64,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,cursor)) then
    Exit;
- if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/beiro.jpg',150,25,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,boxtex)) then
+ if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/beiro.jpg',250,25,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,boxtex)) then
    Exit;
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/csuszka.png',16,128,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusztex)) then
    Exit;
