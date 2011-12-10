@@ -22,6 +22,7 @@ const
  DefSmpRt= 16000;
  vDefsmprt:integer=Defsmprt;
  MAX_PLAYING_BUFFERS=15;
+ MAX_BUFFER_AGE=15000;
 type
 
  TCombinedSoundBuffer = record
@@ -1006,6 +1007,7 @@ atav:single;
 max: single;
 kisebbek,nagyobbak,maxhely:integer;
 begin
+
  if DS=nil then exit;
   lastsoundaction:='Playsound('+inttostr(mit)+','+inttostr(aid)+')';
 
@@ -1114,9 +1116,6 @@ begin
    else
     hangero:=1/bufloaded[mit].mindis;
    SetSoundProperties(mit,aid,1,0,effects,hol);
-   
-
-
   end;
 
 end;
@@ -1259,7 +1258,7 @@ begin
 
  i:=0;
  while i<=high(bufPlaying) do
-  if (BufPlaying[i].DSBuf=nil) or (BufPlaying[i].played<gtc-3000) then
+  if (BufPlaying[i].DSBuf=nil) or (BufPlaying[i].played<gtc-MAX_BUFFER_AGE) then
   begin
 
    if BufPlaying[i].DSBuf<>nil then

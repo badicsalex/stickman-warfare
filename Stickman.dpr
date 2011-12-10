@@ -10,7 +10,7 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{$DEFINE undebug}
+{.$DEFINE undebug}
 {.$DEFINE speedhack}
 {.$DEFINE repkedomod}
 {.$DEFINE godmode}
@@ -135,6 +135,7 @@ var
   
   kickmsg:string;
   hardkick:boolean;
+
 
 
   cpx:Psingle;  ///FRÖCCCS
@@ -267,6 +268,9 @@ var
 
   currevent:TStickmanevent;
   zeneintensity:integer;
+
+  grass_dust:cardinal;
+  sand_dust:cardinal;
 //  re_gk:TD3DXVector3;
 //  re_pos:TD3DXVector3;
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1524,6 +1528,9 @@ var
   devicecaps: TD3DCaps9;
   backbuf:IDirect3Dsurface9;
   desc:TD3DSurfacedesc;
+  sky_ambient:integer;
+  cloud_speed:single;
+  cloud_color:TD3DXColor;
 const
   Effect_offset:array [0..11] of TD3DXVector2 =
     ((x:-0.015;y:-0.015),(x:-0.01;y:-0.01),(x:-0.005;y:-0.005),(x: 0.015;y:-0.015),(x: 0.01;y:-0.01),(x: 0.005;y:-0.005),
@@ -1539,12 +1546,21 @@ begin
 
   hoszin:=stuffjson.GetInt(['color_sand']) and $FFFFFF;
   vizszin:=stuffjson.GetInt(['color_water']) and $FFFFFF;
-  ambientszin:=$FF000000 or cardinal(stuffjson.GetInt(['light','color_ambient']));
+  ambientszin:=cardinal(stuffjson.GetInt(['light','color_ambient']));
   gunautoeffekt:=stuffjson.GetBool(['vehicle','gun','effect']);
   techautoeffekt:=stuffjson.GetBool(['vehicle','tech','effect']);
 
   gunszin:=stuffjson.GetInt(['color_gun']);
   techszin:=stuffjson.GetInt(['color_tech']);
+
+  grass_dust:=stuffjson.GetInt(['color_grass_dust']);
+  sand_dust:=stuffjson.GetInt(['color_sand_dust']);
+
+  if grass_dust=0 then
+  begin
+   sand_dust:=$FFDCB9B2;
+   grass_dust:=$FF55772D;
+  end;
 
   setlength(posrads,stuffjson.GetNum(['terrain_modifiers']));
   for i:=0 to stuffjson.GetNum(['terrain_modifiers'])-1 do
@@ -1554,7 +1570,8 @@ begin
    posy:=stuffjson.GetFloat(['terrain_modifiers',i,'y']);
    posz:=stuffjson.GetFloat(['terrain_modifiers',i,'z']);
    radd:=stuffjson.GetFloat(['terrain_modifiers',i,'radius']);
-   raddn:=radd*1.5;
+   raddn:=radd+stuffjson.GetFloat(['terrain_modifiers',i,'offset']);
+   if (raddn<=radd) then raddn := 1.5* radd; 
   end;
 
   for i:=0 to 3 do
@@ -1812,7 +1829,16 @@ begin
   //if not fuvek2.betoltve then exit;
   writeln(logfile,'Loaded foliage');flush(logfile);
 
-  felho:=Tfelho.create(g_pd3ddevice);
+  cloud_color:=D3DXColorFromDWord(stuffjson.GetInt(['cloud','color']));
+  sky_ambient:=stuffjson.GetInt(['cloud','ambient']);
+  cloud_speed:=stuffjson.GetFloat(['cloud','speed']);
+  if sky_ambient=0 then //legacy modoknak
+  begin
+   sky_ambient:=100;
+   cloud_color:=D3DXColorFromDWord($FFFFFF);
+   cloud_speed:=0.00003;
+  end;
+  felho:=Tfelho.create(g_pd3ddevice,sky_ambient,cloud_speed,cloud_color);
   writeln(logfile,'Initialized sky');flush(logfile);
 
   fejcuccrenderer:=Tfejcuccrenderer.Create(g_pd3ddevice);
@@ -4142,9 +4168,9 @@ begin
     tmps.z:=    tmps.z +(aauto.pos.z-aauto.vpos.z)*0.8;
     if (tmp.y>10) and gunautoeffekt then
      if tmp.y<15 then
-      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FFDCB9B2,$0,100))
+      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,sand_dust,$0,100))
      else
-      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FF55772D,$0,100))
+      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,grass_dust,$0,100))
 
    end;
   end
@@ -5854,7 +5880,6 @@ end;
 procedure respawn;
 var
 x,i,j,ojjind:integer;
-rnd:byte;
 tmp2:single;
 tmppos:TD3DXVector3;
 tmppont:single;
@@ -5997,7 +6022,7 @@ begin
      g_pEffect.SetMatrix('g_mProjectionKorr', matKorr2);
      g_pEffect.SetTexture('g_MeshTexture', reflecttexture);
      g_pEffect.SetTexture('g_Wavemap', waterbumpmap);
-     
+
      g_peffect._Begin(@tmplw,0);
      g_peffect.BeginPass(0);
      g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,itrue);
@@ -6653,9 +6678,9 @@ begin
    mapind[(i+100)*3+2]:=1+i+50;
   end;
 
-  g_pd3ddevice.DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST,0,101,150,mapind[0],D3DFMT_INDEX16,mapvert[0],sizeof(TMinimapVertex));
+ g_pd3ddevice.DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST,0,101,150,mapind[0],D3DFMT_INDEX16,mapvert[0],sizeof(TMinimapVertex));
 
-   g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSU,  D3DTADDRESS_WRAP);
+ g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSU,  D3DTADDRESS_WRAP);
  g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSV,  D3DTADDRESS_WRAP);
 
 end;
@@ -8741,7 +8766,6 @@ begin
 
   read(fil2,t1);
   myfejcucc:=round(t1);
-  myfejcucc:=0;
   if (myfejcucc>stuffjson.GetNum(['hats'])-1) or (myfejcucc<0) then myfejcucc:=0;
 
   read(fil2,t1);

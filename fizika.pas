@@ -143,9 +143,17 @@ begin
 
   tmp:=gmbk[i];
   //gmbk[i]:=gmbk[i]*2-voltgmbk[i];
+  if (gmbk[i].y<10) then begin
+  gmbk[i].x:=gmbk[i].x +(gmbk[i].x-voltgmbk[i].x)*0.98;
+  gmbk[i].y:=gmbk[i].y +(gmbk[i].y-voltgmbk[i].y)*0.98+GRAVITACIO/30;
+  gmbk[i].z:=gmbk[i].z +(gmbk[i].z-voltgmbk[i].z)*0.98;
+  end
+  else
+  begin
   gmbk[i].x:=gmbk[i].x*2-voltgmbk[i].x;
   gmbk[i].y:=gmbk[i].y*2-voltgmbk[i].y-GRAVITACIO/5;
   gmbk[i].z:=gmbk[i].z*2-voltgmbk[i].z;
+  end;
   voltgmbk[i]:=tmp;
   if i=10 then
   dlngt:=advwove(gmbk[i].x,gmbk[i].z)+fejvst
@@ -309,9 +317,18 @@ begin
  vp:=pontok;
  for i:=0 to 7 do
  begin
+ if (pontok[i].y<10) then
+ begin
+  pontok[i].x:=pontok[i].x+(pontok[i].x-vpontok[i].x)*0.95;
+  pontok[i].y:=pontok[i].y+(pontok[i].y-vpontok[i].y)*0.95-GRAVITACIO*0.45;
+  pontok[i].z:=pontok[i].z+(pontok[i].z-vpontok[i].z)*0.95;
+ end
+ else
+ begin
   pontok[i].x:=pontok[i].x*2-vpontok[i].x;
   pontok[i].y:=pontok[i].y*2-vpontok[i].y-GRAVITACIO;
   pontok[i].z:=pontok[i].z*2-vpontok[i].z;
+ end;
  end;
  vpontok:=vp;
 end;
