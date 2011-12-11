@@ -43,14 +43,17 @@ type
   procedure ReceiveKick(frame:TSocketFrame);
   procedure ReceiveWeather(frame:TSocketFrame);
   procedure ReceiveSendUDP(frame:TSocketFrame);
+  procedure ReceiveEvent(frame:TSocketFrame);
  public
   myport:integer; //általam kijelölt port
   myUID:integer;
   loggedin:boolean; //read only
   playersonserver:integer;
   chats:array [0..8] of TChat; //detto
-  kicked:string;
+  kicked:string;       //olvasd majd töröld ki
   kickedhard:boolean;
+  doevent:string;      //detto
+  doeventphase:integer;
   kills:integer;
   killscamping:integer; //readwrite
   killswithoutdeath:integer; // readwrite
@@ -77,8 +80,6 @@ type
   procedure WritePackedPos(mit:TD3DXVector3);
   function ReadPackedPos:TD3DXVector3;
  end;
-
-
 
   Thulla = record
    apos,vpos,gmbvec:TD3DXVector3;
@@ -203,6 +204,12 @@ const
 
  SERVERMSG_SENDUDP=6;
  {
+  int auth
+ }
+
+ SERVERMSG_EVENT=7;
+ {
+  string event
   int auth
  }
 
@@ -424,6 +431,12 @@ begin
  frame2.Free;
 end;
 
+procedure TMMOServerClient.ReceiveEvent(frame:TSocketFrame);
+begin
+ doevent:=frame.ReadString;
+ doeventphase:=frame.ReadInt;
+end;
+
 constructor TMMOServerClient.Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
 begin
  inherited Create;
@@ -501,6 +514,7 @@ begin
    SERVERMSG_PLAYERLIST: ReceivePlayerList(frame);
    SERVERMSG_WEATHER: ReceiveWeather(frame);
    SERVERMSG_SENDUDP: ReceiveSendUDP(frame);
+   SERVERMSG_EVENT: ReceiveEvent(frame);
   end;
  end;
  frame.Free;

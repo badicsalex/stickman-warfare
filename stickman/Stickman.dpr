@@ -4031,6 +4031,7 @@ begin
   lastzone:='';
   zonechanged:=0;
   zonaellen:=0;
+  zch:=false;
  end;
 
  if zch or ((hanyszor and 15)=0) then
@@ -4788,23 +4789,8 @@ begin
     begin
      if phstim<500 then
      if (phstim mod 20)=0 then
-      //!TODO spaceship event nooblövések
+      AddNOOB(kivec,d3dxvector3(kivec.x-0.2,kivec.y+(random(200)-100)*0.01*0.02,kivec.z+(random(200)-100)*0.01*0.05),-1);
     end;
-
-   { if (phs=7) or (phs=8) then
-    begin
-     setlength(explosionbubbles,length(explosionbubbles)+1);
-     with explosionbubbles[high(explosionbubbles)] do
-     begin
-      pos:=DNSVec;
-      randomplus(pos,timegettime,5);
-      meret:=50; meretpls:=-0.3;
-      erosseg:=random(700); erossegpls:=-1/50;
-      meretplsszor:=1;
-      tim:=5;
-     end;
-
-    end;  }
    end;
   end;
   for i:=high(posokvoltak)-1 downto 0  do
@@ -5198,6 +5184,26 @@ begin
  for i:=1 to 9 do
   if multisc.kills>=killcnt[i] then
    multisc.Medal('K',inttostr(i)[1]);
+
+ if multisc.doevent<>'' then
+ begin
+  if multisc.doevent='spaceship' then
+  begin
+   if currevent<>nil then
+    if not (currevent is TSpaceshipEvent) then
+    begin
+     currevent.Free;
+     currevent:=nil;
+    end;
+
+   if currevent=nil then
+    currevent:=TSpaceshipEvent.Create(g_pd3ddevice,true,'data\event\');
+  end;
+
+  if currevent<>nil then
+   currevent.Phase(multisc.doeventphase);
+  multisc.doevent:='';
+ end;
 end;
 
 procedure handleMMOcars;
