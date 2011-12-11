@@ -23,8 +23,6 @@ type
  T3dojjektum = class (Tobject)
  public
   myMesh:TStickMesh;
-  indBuf:IDirect3DIndexBuffer9;     //Csak BGknél
-  vertBuf:IDirect3DVertexBuffer9;
   textures: array [0..20] of integer;
   texszam:shortint;
   triangles,felestri,tmptri:Tacctriarr;
@@ -39,21 +37,20 @@ type
   vmi,vma,vce,vce2:Td3DXvector3;
   rad,rad2:single;
   betoltve:boolean;
-  lghtind:integer;
   nincsrad:boolean;
   filenev:string;
-  constructor Create(fnev:string;a_d3ddevice:IDirect3DDevice9;scale,yscale:single;posok:array of TD3DXVector3;flags:cardinal;makebuffers:boolean);
+  constructor Create(fnev:string;a_d3ddevice:IDirect3DDevice9;scale,yscale:single;posok:array of TD3DXVector3;flags:cardinal);
   procedure Draw(g_pd3ddevice:IDirect3DDevice9;cp:TD3DXVector3;frust:TFrustum);
-  function raytest(v1,v2:TD3DXVector3;melyik:integer):TD3DXVector3;
-  function raytestlght(v1:TD3DXVector3;var v2:TD3DXVector3;melyik:integer):integer;
-  function raytestbol(v1,v2:TD3DXVector3;melyik:integer):boolean;
+  function raytest(v1,v2:TD3DXVector3;melyik:integer;collision:cardinal):TD3DXVector3;
+  function raytestlght(v1:TD3DXVector3;var v2:TD3DXVector3;melyik:integer;collision:cardinal):integer;
+  function raytestbol(v1,v2:TD3DXVector3;melyik:integer;collision:cardinal):boolean;
   function raytestbolfromcurrent(v1,v2:TD3DXVector3;melyik:integer):boolean;
-  function tavtest(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean):single;overload;
+  function tavtest(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean;collision:cardinal):single;overload;
 //  function tavtest(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean;miket:TKDData):single;overload;
   function tavtestfromcurrent(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer):single;overload;
 
   procedure makecurrent(miket:TKDData);
-  procedure getacctris(var tris:Tacctriarr;miket:TKDData;plusz:TD3DXVector3);
+  procedure getacctris(var tris:Tacctriarr;miket:TKDData;plusz:TD3DXVector3;collision:cardinal);
   destructor Destroy; reintroduce;
   procedure pluszegy(hova:TD3DXVector3);
   procedure minuszegy(mit:integer);
@@ -114,6 +111,7 @@ type
   heightmap:IDirect3DTexture9;
   name:string;
   alphatest:boolean;
+  collisionflags:cardinal;
  end;
 
 procedure initojjektumok(g_pd3ddevice:IDirect3DDevice9;hdrtop:cardinal);
@@ -167,7 +165,73 @@ var
 {$IFDEF normaltest}
  normalvon:array of array [0..1] of TD3DXVector3;
 {$ENDIF}
-constructor T3dojjektum.Create(fnev:string;a_d3ddevice:IDirect3DDevice9;scale,yscale:single;posok:array of TD3DXVector3;flags:cardinal;makebuffers:boolean);
+
+function LoadOjjektumTexture(a_d3ddevice:IDirect3DDevice9;nev,dir:string):integer;
+var
+ i,j:integer;
+ hmnev:string;
+ special:string;
+begin
+
+  if (nev='') then
+  begin
+   result:=-1;
+   exit;
+  end;
+
+  for j:=0 to otnszam do
+   if ojjektumtextures[j].name=nev then
+   begin
+    result:=j;
+    exit;
+   end;
+
+ inc(otnszam);
+
+ with ojjektumtextures[otnszam] do
+ begin
+  collisionflags:=$FFFFFFFF;
+
+  for i:=0 to stuffjson.GetNum(['materials',nev,'special'])-1 do
+  begin
+   special:=stuffjson.GetString(['materials',nev,'special',i]);
+   if special='disabled' then
+   begin
+    result:=-1;
+    exit;
+   end
+   else
+   if special='notbulletproof' then
+    collisionflags:=collisionflags and (not COLLISION_BULLET)
+   else
+   if special='notsolid' then
+    collisionflags:=collisionflags and (not COLLISION_SOLID)
+   else
+   if special='noshadow' then
+    collisionflags:=collisionflags and (not COLLISION_SHADOW)
+   else
+   if special='alphatest' then
+    alphatest:=true;
+  end;
+
+  name:=nev;
+  tex:=nil;
+  if not LTFF(a_d3dDevice,dir+'/'+nev,tex) then
+   exit;
+  addfiletochecksum(dir+'/'+nev);
+
+  hmnev:=stuffjson.GetString(['materials',nev,'heightmap']);
+  if (hmnev<>'') then
+  begin
+   if not LTFF(a_d3dDevice,dir+'/'+hmnev,heightmap) then
+    exit;
+   addfiletochecksum(dir+'/'+hmnev);
+  end;
+ end;
+ result:=otnszam;
+end;
+
+constructor T3dojjektum.Create(fnev:string;a_d3ddevice:IDirect3DDevice9;scale,yscale:single;posok:array of TD3DXVector3;flags:cardinal);
  procedure inlinescale(var mit:TD3DXVector3);
  begin
   mit.x:=mit.x*scale;
@@ -178,7 +242,7 @@ type
   PD3DXMaterialArray = ^TD3DXMaterialArray;
   TD3DXMaterialArray = array[0..100] of TD3DXMaterial;
 var
-i,j:integer;
+i,j,k,tritex:integer;
 subsetszam:integer;
 szam,akarmi:integer;
 teg:TAABB;
@@ -230,73 +294,29 @@ begin
   subsetszam:=length(mymesh.attrtable);
 
   i:= 0;
-  texszam:=-1;
+  texszam:=subsetszam;
   {$R+}
-  lghtind:=-1;
   while (i < subsetszam) do
   begin
     akarmi:=-1;
     // Make the texture
-    if (mymesh.texturetable[i] <> '') and
-       (length(mymesh.texturetable[i]) > 0) then
-    begin
-     akarmi:=10000;
-     if (mymesh.texturetable[i]='lght.bmp') or
-        (mymesh.texturetable[i]='lght.jpg') then
-     begin
-      lghtind:=i;
-      inc(texszam);
-      akarmi:=0;
-      textures[texszam]:=akarmi;
-      inc(i);
-      continue;
-     end;
-     mystr:=ExtractFileDir(fnev)+'\'+string(mymesh.texturetable[i]);
-     for j:=0 to otnszam do
-      if ojjektumtextures[j].name=mystr then
-       akarmi:=j;
-     if akarmi=10000 then
-     begin
-      inc(otnszam);
-      ojjektumtextures[otnszam].name:=mystr;
-      ojjektumTextures[otnszam].tex:=nil;
-      if not LTFF(a_d3dDevice,mystr,ojjektumTextures[otnszam].tex) then exit;
-       addfiletochecksum(mystr);
-      mystr:=mystr+'.hm.jpg';
-      if fileexists(mystr) then
-      begin
-       if not LTFF(a_d3dDevice,mystr,ojjektumTextures[otnszam].heightmap) then exit;
-        addfiletochecksum(mystr);
-      end;
-
-      akarmi:=otnszam;
-     end;
-
-    end;
-    inc(texszam);
-
-    textures[texszam]:=akarmi;
+    textures[i]:=LoadOjjektumTexture(a_d3ddevice,string(mymesh.texturetable[i]),ExtractFileDir(fnev));
     Inc(i);
   end;
   {$R-}
 
-  if makebuffers then
-   if not LTFF(a_d3dDevice,fnev+'lm.bmp',lightmap) then exit;
-  // Done with the material buffer
-
-with mymesh do begin
+ with mymesh do
+ begin
 
   D3DXComputeboundingbox(pointer(@(vertices[0])),length(vertices),sizeof(Tojjektumvertex),vmi,vma);
 
   trinum:=length(indices) div 3;
-  if lghtind>=0 then
-   dec(trinum,attrtable[lghtind].FaceCount);
-
   setlength(triangles,trinum);
   setlength(indexes,trinum);
-  //setlength(acctriangles,trinum);
-  setlength(tmpflatverts,length(vertices));
   setlength(felestri,trinum);
+
+
+  setlength(tmpflatverts,length(vertices));
   if felestri=nil then exit;
   if triangles=nil then exit;
 
@@ -324,29 +344,38 @@ with mymesh do begin
    tmpflatverts[i].y:=0;
   end;
 
-
   j:=0;
   for i:=0 to trinum-1 do
   begin
 
-   if lghtind>=0 then
-    if (i>=integer(attrtable[lghtind].FaceStart)) and
-      (i<integer(attrtable[lghtind].FaceStart)+integer(attrtable[lghtind].FaceCount)) then
+   tritex:=-1;
+   for k:=0 to high(mymesh.attrtable) do
+    if (i>=integer(attrtable[k].FaceStart)) and
+      (i<integer(attrtable[k].FaceStart)+integer(attrtable[k].FaceCount)) then
+    begin
+     tritex:=textures[k];
+     break;
+    end;
+
+   if tritex<0 then
      continue;
 
-
-   triangles[j]:=makeacc(vertices[indices[i*3+0]].position,vertices[indices[i*3+1]].position,vertices[indices[i*3+2]].position);
+   triangles[j]:=makeacc(vertices[indices[i*3+0]].position,vertices[indices[i*3+1]].position,vertices[indices[i*3+2]].position,ojjektumtextures[tritex].collisionflags);
    if triangles[j].n.y>1.5 then continue;
    tv0:=vertices[indices[i*3+0]].position; tv0.y:=tv0.y*0.5;
    tv1:=vertices[indices[i*3+1]].position; tv1.y:=tv1.y*0.5;
    tv2:=vertices[indices[i*3+2]].position; tv2.y:=tv2.y*0.5;
 
-   felestri[j]:=makeacc(tv0,tv1,tv2);
+   felestri[j]:=makeacc(tv0,tv1,tv2,ojjektumtextures[tritex].collisionflags);
    indexes[j]:=j;
 
    j:=j+1;
   end;
-
+  
+  trinum:=j;
+  setlength(triangles,trinum);
+  setlength(indexes,trinum);
+  setlength(felestri,trinum);
 
   D3DXComputeboundingbox(pointer(@(vertices[0])),length(verticeS),sizeof(Tojjektumvertex),vmi,vma);
   D3DXComputeboundingsphere(pointer(@(vertices[0])),length(verticeS),sizeof(Tojjektumvertex),vce,rad);
@@ -378,64 +407,7 @@ with mymesh do begin
 
   stickmeshcomputentb(mymesh);
   //stickmeshinvertnormals(mymesh);
-  if makebuffers then
-  begin
-    if FAILED(a_d3dDevice.CreateVertexBuffer(length(vertices)*SizeOf(Tojjektumvertex2),
-                                             D3DUSAGE_WRITEONLY, 0,
-                                             D3DPOOL_DEFAULT, vertBuf, nil))
-    then Exit;
-
-    if Use32bitIndices then
-    begin
-     if FAILED(a_d3dDevice.CreateIndexBuffer(length(indices)*SizeOf(dword),
-                                            D3DUSAGE_WRITEONLY,D3DFMT_INDEX32,
-                                            D3DPOOL_DEFAULT , indBuf, nil))
-     then Exit;
-    end
-    else
-    begin
-     if FAILED(a_d3dDevice.CreateIndexBuffer(length(indices)*SizeOf(word),
-                                            D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,
-                                            D3DPOOL_DEFAULT , indBuf, nil))
-     then Exit;
-    end;
-
-    if FAILED(vertBuf.Lock(0, length(vertices)*sizeof(Tojjektumvertex2),pointer(pVertices), D3DLOCK_DISCARD))
-        then exit;
-    for i:=0 to high(vertices) do
-    begin
-     pvertices[i].position:=vertices[i].position;
-     pvertices[i].tu:=vertices[i].tu;
-     pvertices[i].tv:=vertices[i].tv;
-     pvertices[i].lu:=vertices[i].lu;
-     pvertices[i].lv:=vertices[i].lv;
-
-     pvertices[i].normal  :=normals[i].normal;
-     pvertices[i].tangent :=normals[i].tangent;
-     pvertices[i].binormal:=normals[i].binormal;
-    end;
-
-    vertBuf.Unlock;
-
-    if use32bitindices then
-    begin
-     if FAILED(indBuf.Lock(0, length(indices)*4, pointer(pindices), D3DLOCK_DISCARD))
-        then exit;
-     specialcopymem(pindices,@(indices[0]),4,2,length(indices));
-    end
-    else
-    begin
-     if FAILED(indBuf.Lock(0, length(indices)*2, pointer(pindices), D3DLOCK_DISCARD))
-        then exit;
-     specialcopymem(pindices,@(indices[0]),2,2,length(indices));
-    end;
-
-    indBuf.Unlock;
-  end;
-
-end;
-
-
+ end;
 
   setlength(indexes,0);
 
@@ -495,40 +467,7 @@ i,j:integer;
 matWorld:D3DMatrix;
 aabb:Taabb;
 begin
-// messagebox(0,'Elavult: T3dojjektum.Draw','Assert helyett',0);
-
-
-
- g_pd3ddevice.SetTexture(1,lightmap);
- g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_SELECTARG1);
- g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,   FAKE_HDR);
-
- g_pd3dDevice.SetStreamSource(0, vertBuf, 0, SizeOf(Tojjektumvertex2));
- g_pd3dDevice.SetVertexDeclaration(vertdeclgagyi);
- g_pd3ddevice.SetFVF(D3DFVF_OJJEKTUMVERTEX);
- g_pd3dDevice.SetIndices(indBuf);
- for j:=0 to texszam do
- begin
-  if j=lghtind then continue;
-
-   g_pd3ddevice.SetTexture(0,ojjektumTextures[textures[j]].tex);
-
-   for i:=0 to hvszam-1 do   //ebben a functionban erõsen feltehetõ, hogy hvszam=1
-   begin
-    d3dxvec3add(aabb.min,vmi,holvannak[i]);
-    d3dxvec3add(aabb.max,vma,holvannak[i]);
-
-    if not AABBvsfrustum(aabb,frust) then continue;
-
-    D3DXMatrixTranslation(matWorld,holvannak[i].x,holvannak[i].y,holvannak[i].z);
-    g_pd3dDevice.SetTransform(D3DTS_WORLD, matWorld);
-    g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,mymesh.Attrtable[j].VertexStart,
-                                                           mymesh.Attrtable[j].VertexCount,
-                                                           mymesh.Attrtable[j].FaceStart*3,
-                                                           mymesh.Attrtable[j].FaceCount);
-   end;
- end;
-
+ messagebox(0,'Elavult: T3dojjektum.Draw','Assert helyett',0);
 end;
 
 destructor T3dojjektum.Destroy;
@@ -550,7 +489,7 @@ begin
 end;
 
 
-function T3dojjektum.raytest(v1,v2:TD3DXVector3;melyik:integer):TD3DXVector3;
+function T3dojjektum.raytest(v1,v2:TD3DXVector3;melyik:integer;collision:cardinal):TD3DXVector3;
 var
 az,bz,hv:TD3DXVector3;
 al,bl:single;
@@ -589,7 +528,7 @@ begin
 
  NeedKD;
  
-  traverseKDTreelin(v1,v2,miket,KDData,KDTree,triangles);
+  traverseKDTreelin(v1,v2,miket,KDData,KDTree,triangles,collision);
 
  az:=v2;
  al:=100000;
@@ -600,7 +539,8 @@ begin
  for i:=0 to length(miket)-1 do
  begin
 
-  if intLineTri(triangles[miket[i]].v0,triangles[miket[i]].v1,triangles[miket[i]].v2,v1,az,bz) then
+  if ((triangles[miket[i]].collision and collision)<>0) and
+     intLineTri(triangles[miket[i]].v0,triangles[miket[i]].v1,triangles[miket[i]].v2,v1,az,bz) then
   begin
    bl:=tavPointPointsq(v1,bz);
    {$IFDEF testtrisd}
@@ -629,7 +569,7 @@ begin
 // result:=az;
 end;
 
-function T3dojjektum.raytestlght(v1:TD3DXVector3;var v2:TD3DXVector3;melyik:integer):integer;
+function T3dojjektum.raytestlght(v1:TD3DXVector3;var v2:TD3DXVector3;melyik:integer;collision:cardinal):integer;
 var
 az,bz,hv:TD3DXVector3;
 al,bl:single;
@@ -659,7 +599,7 @@ begin
 
   NeedKD;
 
-  traverseKDTreelin(v1,v2,miket,KDData,KDTree,triangles);
+  traverseKDTreelin(v1,v2,miket,KDData,KDTree,triangles,collision);
 
 
  az:=v2;
@@ -668,7 +608,8 @@ begin
  for i:=0 to length(miket)-1 do
  begin
 
-  if intLineTri(triangles[miket[i]].v0,triangles[miket[i]].v1,triangles[miket[i]].v2,v1,az,bz) then
+  if ((triangles[miket[i]].collision and collision)<>0) and
+     intLineTri(triangles[miket[i]].v0,triangles[miket[i]].v1,triangles[miket[i]].v2,v1,az,bz) then
   begin
    bl:=tavPointPointsq(v1,bz);
    if al>bl then
@@ -683,27 +624,13 @@ begin
 end;
 
 
-function T3dojjektum.raytestbol(v1,v2:TD3DXVector3;melyik:integer):boolean;
+function T3dojjektum.raytestbol(v1,v2:TD3DXVector3;melyik:integer;collision:cardinal):boolean;
 var
 az,bz,hv:TD3DXVector3;
 bl:single;
 i:integer;
 miket:TKDData;
 begin
-{ hv:=holvannak[melyik];
- d3dxvec3subtract(v1,v1,hv);
- d3dxvec3subtract(v2,v2,hv);
- az:=vce;
- if not tavpointlinesq(az,v1,v2,bz,bl) then
- begin
-  if not (tavpointpointsq(az,v1)<sqr(rad+1)) then
-   if not (tavpointpointsq(az,v2)<sqr(rad+1)) then
-   begin result:=false; exit; end;
- end
- else
- if bl>sqr(rad+1) then begin result:=false; exit; end;
- result:=false;  }
- ///////////////////////////////////////////////////////
  hv:=holvannak[melyik];
  result:=false;
  d3dxvec3subtract(v1,v1,hv);
@@ -717,25 +644,18 @@ begin
  else
  begin
   if bl>sqr(rad+1) then  exit;
- { bol:=true;
-  d3dxvec3subtract(tmp,v1,v2);
-  d3dxvec3normalize(tmp,tmp);
-  tmp1:=d3dxvector3(bz.x+tmp.x*(rad+1),bz.y+tmp.y*(rad+1),bz.z+tmp.z*(rad+1));
-  tmp2:=d3dxvector3(bz.x-tmp.x*(rad+1),bz.y-tmp.y*(rad+1),bz.z-tmp.z*(rad+1));  }
+
  end;
 
- //Egyszerûbb módszer
- {if bol then
-  traverseKDTreelin(tmp1,tmp2,miket,KDData,KDTree,triangles)
- else }
 
  NeedKD;
  
- traverseKDTreelin(v1,v2,miket,KDData,KDTree,triangles);
+ traverseKDTreelin(v1,v2,miket,KDData,KDTree,triangles,collision);
 
  for i:=0 to high(miket) do
  begin
-   if intlinetriacc(triangles[miket[i]],v1,v2) then
+   if ((triangles[miket[i]].collision and collision)<>0) and
+      intlinetriacc(triangles[miket[i]],v1,v2) then
     result:=true;
  end;
  setlength(miket,0);
@@ -771,66 +691,6 @@ begin
  end;
 
 end;
-
-//Asszemnincshasználva
-{
-function T3dojjektum.tavtest(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean;miket:TKDData):single;
-var
-az,bz,hv:TD3DXVector3;
-al,bl:single;
-i:integer;
-begin
-
- if feles then tmptri:=felestri else tmptri:=triangles;
-
- gmbnagy:=gmbnagy;
- //az:=poi;
- //az.x:=az.x+gmbnagy;
- if melyik=-1 then
-  hv:=D3DXVector3Zero
- else
-
- if melyik=-1 then
-  hv:=D3DXVector3Zero
- else
- hv:=holvannak[melyik];
-
- if feles then hv.y:=hv.y*0.5;
-
- d3dxvec3subtract(poi,poi,hv);
-
-
- az:=vce;
- if feles then  az.y:=az.y*0.5;
- if tavpointpointsq(az,poi)>sqr(rad+gmbnagy+1) then begin result:=tavpointpointsq(az,poi); exit; end;
-
-
- az:=poi;
- al:=sqr(rad+gmbnagy+1);
-
-
- //setlength(teszttris,length(miket));
- for i:=0 to high(miket) do
- begin
-  //teszttris[i,0]:=triangles[miket[i],0];
-  //teszttris[i,1]:=triangles[miket[i],1];
- // teszttris[i,2]:=triangles[miket[i],2];
-  if (poi.x-gmbnagy>tmptri[miket[i]].vmax.x) or (poi.x+gmbnagy<tmptri[miket[i]].vmin.x) or
-     (poi.z-gmbnagy>tmptri[miket[i]].vmax.z) or (poi.z+gmbnagy<tmptri[miket[i]].vmin.z) or
-     (poi.y-gmbnagy>tmptri[miket[i]].vmax.y) or (poi.y+gmbnagy<tmptri[miket[i]].vmin.y) then continue;
-   bl:=tavPointTrisq(tmptri[miket[i]],poi,bz);
-   if al>bl then
-   begin
-
-    al:=bl;
-    az:=bz;
-   end;
- end;
- setlength(miket,0);
- d3dxvec3add(pi,az,hv);
- result:=al;
-end;
-     //}
      
 function T3dojjektum.tavtestfromcurrent(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer):single;
 var
@@ -864,6 +724,7 @@ begin
   if (poi.x-gmbnagy>currenttriarr[i].vmax.x) or (poi.x+gmbnagy<currenttriarr[i].vmin.x) or
      (poi.z-gmbnagy>currenttriarr[i].vmax.z) or (poi.z+gmbnagy<currenttriarr[i].vmin.z) or
      (poi.y-gmbnagy>currenttriarr[i].vmax.y) or (poi.y+gmbnagy<currenttriarr[i].vmin.y) then continue;//}
+ 
    bl:=tavPointTrisq(currenttriarr[i],poi,bz);
    if al>bl then
    begin
@@ -877,33 +738,31 @@ begin
 end;
 
 
-procedure T3dojjektum.getacctris(var tris:Tacctriarr;miket:TKDData;plusz:TD3DXvector3);
+procedure T3dojjektum.getacctris(var tris:Tacctriarr;miket:TKDData;plusz:TD3DXvector3;collision:cardinal);
 var
 i,j:integer;
 begin
- {$IFDEF testtris}
-  setlength(teszttris,length(miket));
- {$ENDIF}
  setlength(tris,length(miket));
- for j:=0 to high(tris) do
+ j:=0;
+ for i:=0 to high(miket) do
  begin
-  i:=miket[j];
-  if i<length(triangles) then
-  tris[j]:=triangles[i];
+  if miket[i]>high(triangles) then
+   continue;
+  if (triangles[miket[i]].collision and collision)=0 then
+   continue;
+  tris[j]:=triangles[miket[i]];
+
   d3dxvec3add(tris[j].v0,tris[j].v0,plusz);
   d3dxvec3add(tris[j].v1,tris[j].v1,plusz);
   d3dxvec3add(tris[j].v2,tris[j].v2,plusz);
   d3dxvec3add(tris[j].vmin,tris[j].vmin,plusz);
   d3dxvec3add(tris[j].vmax,tris[j].vmax,plusz);
-  {$IFDEF testtris}
-  teszttris[j,0]:=tris[j].v0;
-  teszttris[j,1]:=tris[j].v1;
-  teszttris[j,2]:=tris[j].v2;
-  {$ENDIF}
+  j:=j+1;
  end;
+ setlength(tris,j);
 end;
 
-function T3dojjektum.tavtest(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean):single;
+function T3dojjektum.tavtest(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean;collision:cardinal):single;
 var
 az,bz,hv:TD3DXVector3;
 al,bl:single;
@@ -950,7 +809,7 @@ begin
 
  NeedKD;
  
-  traverseKDTree(gmbAABB,miket,KDData,KDTree);
+  traverseKDTree(gmbAABB,miket,KDData,KDTree,collision);
 
  setlength(teszttris,length(miket));
  for i:=0 to high(miket) do
@@ -963,6 +822,9 @@ begin
   if (poi.x-gmbnagy>tmptri[miket[i]].vmax.x) or (poi.x+gmbnagy<tmptri[miket[i]].vmin.x) or
      (poi.z-gmbnagy>tmptri[miket[i]].vmax.z) or (poi.z+gmbnagy<tmptri[miket[i]].vmin.z) or
      (poi.y-gmbnagy>tmptri[miket[i]].vmax.y) or (poi.y+gmbnagy<tmptri[miket[i]].vmin.y) then continue;//}
+
+  if (tmptri[miket[i]].collision and collision)=0 then
+   continue;
 
    bl:=tavPointTrisq(tmptri[miket[i]],poi,bz);
    if al>bl then
@@ -1356,7 +1218,12 @@ begin
        if FAILED(g_pIB.Lock(facestart*SizeOf(word)            , facecount*SizeOf(word)           ,pointer(pind16), CSICSA_LOCK_FLAG)) then exit;
       end;
       
-      if attrarr[j].AttribId=cardinal(lghtind) then begin facecount:=0; vertcount:=0; continue; end;
+      if textures[j]<0 then
+      begin
+       facecount:=0;
+       vertcount:=0;
+       continue;
+      end;
       tex:=textures[attrarr[j].AttribId];
       for l:=0 to facecount*3-1 do
       begin
@@ -1683,8 +1550,7 @@ vec:TD3DXVector3;
 begin
  g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iFalse);
  g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
- g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue);
-  g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $A0);
+ g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $A0);
  g_pd3ddevice.SetRenderState(D3DRS_ALPHAFUNC,  D3DCMP_GREATER);
                                                              
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_SELECTARG1);
@@ -1702,17 +1568,8 @@ begin
  g_pd3ddevice.SetRenderState(D3DRS_BLENDFACTOR,$505050);
  g_pd3ddevice.SetStreamSource(0,g_pVB,0,sizeof(Tojjektumvertex2));
  g_pd3ddevice.SetIndices(g_pIB);
- // a vertexdeclgagyi... hátöhm.
-{ if g_pEffect=nil then
- begin
-  //g_pd3ddevice.SetVertexdeclaration(vertdeclgagyi);
-  g_pd3ddevice.SetFVF(D3DFVF_OJJEKTUMVERTEX);
- end
- else
-  g_pd3ddevice.SetVertexdeclaration(vertdecl);  }
 
  g_pd3ddevice.SetTransform(D3DTS_WORLD,identmatr);
-// g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,osszvert,0,osszind div 3);
  g_pd3ddevice.SetTexture(1,lightmap);
 
  case FAKE_HDR of
@@ -1750,6 +1607,7 @@ begin
    if drawtable[i]. visible[j] and drawtable[i].RenderZ[j] then
     for k:=0 to drawtable[i].xasz-1 do
     if (drawtable[i].DIPdata[j+k].tex>=0) then
+    if not ojjektumtextures[drawtable[i].DIPdata[j+k].tex].alphatest then
      with drawtable[i].DIPdata[j+k] do
        g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,vertstart,0,vertcount,facestart,facecount);    //}
    end;
@@ -1761,6 +1619,10 @@ begin
  for k:=0 to OTnSzam do
  begin
 
+  if ojjektumtextures[k].alphatest then
+   g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue)
+  else
+   g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
   g_pd3ddevice.SetTexture(0,ojjektumtextures[k].tex);
 
   //g_pd3ddevice.SetTexture(0,imposters);

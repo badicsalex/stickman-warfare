@@ -120,7 +120,7 @@ procedure StopSound(mit:integer; aid:integer);
 procedure LoadSound(fnev:string;haromd,freq,effects:boolean;mindistance:single);
 procedure PlaceListener(vec:TD3DXvector3;szogx,szogy:single);
 procedure StopAll;
-procedure MainVolume(vol:single);
+procedure SetMainVolume(vol:single);
 procedure CommitDeferredSoundStuff;
 procedure CloseSound;
 procedure zeneinit;
@@ -156,6 +156,7 @@ var
  streams:array of T3DSoundStream;
  zenebuffer:Tsmallintdynarr;
 
+ mainvolume:integer;
 
 implementation
 {const
@@ -472,7 +473,7 @@ begin
  if failed(hib)then exit;
 
  DSBuf1.QueryInterface(IID_IDirectSound3DListener, listener);
- DSBuf1.SetVolume(0);
+ DSBuf1.SetVolume(0+mainvolume);
  Result:=S_OK;
 
 end;
@@ -606,7 +607,7 @@ begin
  end;
 end;
 
-                                                //1, ha nem érdekel  itt meg 0
+                                                //1, ha nem érdekel  
 procedure SetSoundProperties(mit:integer; aid:integer;vol:longint;freq:cardinal;effects:boolean;hol:TD3DXVector3);
 var
 mi:integer;
@@ -636,7 +637,7 @@ lastsoundaction:='SetSoundProperties('+inttostr(mit)+','+inttostr(aid)+')';
    DSbuf.SetFrequency(freq);
 
   if vol<>1 then
-   DSbuf.SetVolume(vol);
+   DSbuf.SetVolume(vol+mainvolume);
 
   if DS3d<>nil then
   if (hol.y<>0) or (hol.x<>0) or (hol.z<>0) then
@@ -652,7 +653,7 @@ lastsoundaction:='SetSoundProperties('+inttostr(mit)+','+inttostr(aid)+')';
    effbuf.SetFrequency(freq);
 
   if vol<>1 then
-   effbuf.SetVolume(vol);
+   effbuf.SetVolume(vol+mainvolume);
 
   if eff3d<>nil then
   if (hol.y<>0) or (hol.x<>0) or (hol.z<>0) then
@@ -802,8 +803,7 @@ begin
  begin
   if DSbuf=nil then exit;
 
-  if vol<>0 then
-     DSBuf.SetVolume(vol);
+  DSBuf.SetVolume(vol+mainVolume);
 
   DSbuf.GetCurrentPosition(@playpos,@writepos);
 
@@ -1048,7 +1048,7 @@ begin
      bufPlaying[i].state:=BUFFERSTATUS_QFORPLAY;
    bufPlaying[i].tav:=atav;
    BufPlaying[i].pos:=hol;
-   SetSoundProperties(mit,aid,1,0,effects,hol);
+   SetSoundProperties(mit,aid,0,0,effects,hol);
    exit;
   end;
    
@@ -1065,7 +1065,7 @@ begin
     bufPlaying[i].state:=BUFFERSTATUS_QFORPLAY;
    bufPlaying[i].tav:=atav;
    BufPlaying[i].pos:=hol;
-   SetSoundProperties(mit,aid,1,0,effects,hol);
+   SetSoundProperties(mit,aid,0,0,effects,hol);
    exit;
   end;
 
@@ -1115,7 +1115,7 @@ begin
     hangero:=0
    else
     hangero:=1/bufloaded[mit].mindis;
-   SetSoundProperties(mit,aid,1,0,effects,hol);
+   SetSoundProperties(mit,aid,0,0,effects,hol);
   end;
 
 end;
@@ -1141,7 +1141,7 @@ if BufPlaying[mi].state<>BUFFERSTATUS_STOPPED then
  BufPlaying[mi].state:=BUFFERSTATUS_QFORSTOP;
 end;
 
-procedure MainVolume(vol:single);
+procedure SetMainVolume(vol:single);
 var
 mire:single;
 begin
@@ -1149,7 +1149,7 @@ begin
   mire:=(vol-1)*5000;
  if DS=nil then exit;
  if DSBuf1=nil then exit;
-  DSbuf1.SetVolume(round(mire));
+ mainvolume:=round(mire);
 end;
 
 
