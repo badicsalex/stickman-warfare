@@ -26,12 +26,16 @@ type
   reconnect:cardinal;
   sock:TBufferedSocket;
   crypto:array [0..19] of byte; //kill csodacryptocucc
-
+  sentmedals:array of word;
   laststatus:cardinal; //idõ amikor utoljára lett státuszüzenet küldve
   procedure SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
   procedure SendChat(uzenet:string);
   procedure SendStatus(x,y:integer);
+
+  procedure NewCrypto;
   procedure SendKill(UID:integer);
+  procedure SendMedal(medal:word);
+
 
   procedure ReceiveLoginok(frame:TSocketFrame);
   procedure ReceivePlayerlist(frame:TSocketFrame);
@@ -56,6 +60,7 @@ type
   procedure Update(posx,posy:integer);
   procedure Chat(mit:string);
   procedure Killed(kimiatt:integer); //ez nem UID, hanem ppl index
+  procedure Medal(c1,c2:char);
  end;
 
  //megjegyzés: 20 bájtba kell beleférni egy ATM packethez, 68-ba kettõhöz
@@ -155,6 +160,12 @@ const
 	char [20] crypto
  }
 
+ CLIENTMSG_MEDAL=5;
+ {A kliens medált kér
+	int medál id
+	char [20] crypto
+ }
+
  SERVERMSG_LOGINOK=1;
  {
 	int UID
@@ -172,7 +183,6 @@ const
 		int fegyver
 		int fejrevalo
 		int killek
-
  }
 
  SERVERMSG_KICK=3;
@@ -254,7 +264,40 @@ begin
  frame.Free;
 end;
 
+procedure TMMOServerClient.NewCrypto;
+var
+i:integer;
+ ujcrypto:TSHA1Digest;
+begin
+ for i:=0 to 19 do
+  crypto[i]:=crypto[i] xor shared_key[i];
+ ujcrypto:=SHA1Hash(@crypto[0],20);
+ for i:=0 to 19 do
+  crypto[i]:=ujcrypto[i];
+
+end;
+
+
 procedure TMMOServerClient.SendKill(UID:integer);
+var
+ frame:TSocketFrame;
+ i:integer;
+begin
+ if (sock=nil) or not loggedin then
+  exit;
+
+ NewCrypto;
+
+ frame:=TSocketFrame.Create;
+ frame.WriteChar(CLIENTMSG_KILLED);
+ frame.WriteInt(UID);
+ for i:=0 to 19 do
+  frame.WriteChar(crypto[i]);
+ sock.SendFrame(frame);
+ frame.Free;
+end;
+
+procedure TMMOServerClient.SendMedal(medal:word);
 var
  frame:TSocketFrame;
  i:integer;
@@ -262,15 +305,12 @@ var
 begin
  if (sock=nil) or not loggedin then
   exit;
- for i:=0 to 19 do
-  crypto[i]:=crypto[i] xor shared_key[i];
- ujcrypto:=SHA1Hash(@crypto[0],20);
- for i:=0 to 19 do
-  crypto[i]:=ujcrypto[i];
+
+ NewCrypto;
 
  frame:=TSocketFrame.Create;
- frame.WriteChar(CLIENTMSG_KILLED);
- frame.WriteInt(UID);
+ frame.WriteChar(CLIENTMSG_MEDAL);
+ frame.WriteInt(medal);
  for i:=0 to 19 do
   frame.WriteChar(crypto[i]);
  sock.SendFrame(frame);
@@ -481,6 +521,20 @@ procedure TMMOServerClient.Killed(kimiatt:integer); //ez nem UID, hanem ppl inde
 begin
  if kimiatt>-1 then
   SendKill(ppl[kimiatt].net.UID);
+end;
+
+procedure TMMOServerClient.Medal(c1,c2:char);
+var
+medalid:word;
+i:integer;
+begin
+ medalid:=ord(c1) or (ord(c2) shl 8);
+ for i:=0 to high(sentmedals) do
+  if sentmedals[i]=medalid then
+   exit;
+ SendMedal(medalid);
+ setlength(sentmedals,length(sentmedals)+1);
+ sentmedals[high(sentmedals)]:=medalid;
 end;
 
 {
