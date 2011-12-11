@@ -433,7 +433,7 @@ begin
      //két alfázis: elindul
      D3DXVec3lerp(spcpos,beaconpos,vegpos,min(phstim/1000,1));
                                                //500/50=200/20
-     rnd:=randomvec((phstim-1500)/100,1500/100);
+     rnd:=randomvec((phstim-1000)/100,1500/400);
      D3DXVec3add(spcpos,spcpos,rnd);
      D3DXVec3lerp(spcpos,beaconpos,spcpos,min(phstim/300,1));
     end;
@@ -441,7 +441,7 @@ begin
   if phs=3 then
     begin
      //3: megáll és néz
-     rnd:=randomvec(phstim/100,(1500-phstim)/100);
+     rnd:=randomvec(phstim/100,(1500-phstim)/400);
      D3DXVec3add(spcpos,vegpos,rnd);
     end;
   if phs=4 then
@@ -459,9 +459,9 @@ begin
      randomplus(vec2,phstim+100,20);
      vec2.x:=vec1.x+150;
 
-     Particlesystem_add(fenycsikcreate(vec1,vec2,0.5,$A01010FF,50));
+     Particlesystem_add(fenycsikcreate(vec1,vec2,0.5,$A0FF1010,50));
      Particlesystem_add(fenycsikcreate(vec1,vec2,0.2,$A0A0A0A0,50));
-     Particlesystem_add(simpleparticleCreate(vec2,D3DXvector3zero,1,10,$FF3030FF,0,70));
+     Particlesystem_add(simpleparticleCreate(vec2,D3DXvector3zero,1,10,$FFFF3030,0,70));
 
      playsound(29,false,phstim,true,vec1);
    //  setSoundProperties(29,phstim,0,40000,true,D3DXVector3Zero)
@@ -481,19 +481,6 @@ begin
     if phstim=800 then playsound(33,false,phstim,true,spcpos);
   end;
 
- { if phs=6 then
-    begin
-     spcpos:=vegpos;
-     // tölt
-     rnd:=randomvec(phstim,1);
-     fastvec3normalize(rnd);
-     tmp:=D3DXVector3(vegpos.x-rnd.x*30+random(30)-10,vegpos.y-rnd.y*30,vegpos.z-rnd.z*30);
-     Particlesystem_add(ExpsebparticleCreate(tmp,rnd,20.0,0.0,0.97,0,$D0000000+(random($20)+$D0),40));
-     tmp:=D3DXVector3(vegpos.x+random(30)-10,vegpos.y,vegpos.z);
-     Particlesystem_add(SimpleparticleCreate(tmp,D3DXvector3zero,5.0,4.0,$002550C0,0,40));
-     playsound(31,true,123,true,spcpos);
-     setsoundproperties(31,123,-200,22000+100*phstim,true,spcpos);
-    end;   }
   if phs=6 then
     begin
      spcpos:=vegpos;
@@ -507,7 +494,7 @@ begin
      // töltés effekt
 
      tmp:=D3DXVector3(vegpos.x+random(phstim div 10)-10,vegpos.y,vegpos.z);
-     Particlesystem_add(SimpleparticleCreate(tmp,D3DXvector3zero,5.0,4.0,$002550C0,0,40));
+     Particlesystem_add(SimpleparticleCreate(tmp,D3DXvector3zero,5.0,4.0,$00C05025,0,40));
 
      for j:=0 to 2 do
      begin
@@ -520,7 +507,7 @@ begin
        randomplus(ap,phstim*0.5,(5-abs(i-5)));
        d3dxvec3lerp(eap,vec1,vec2,(i+1)/10);
        randomplus(eap,phstim*0.5,(5-abs(i-4)));
-       Particlesystem_add(fenycsikcreate(ap,eap,(6-abs(i-4.5))*0.2,$002040B0,5));
+       Particlesystem_add(fenycsikcreate(ap,eap,(6-abs(i-4.5))*0.2,$00B04020,5));
       end;
       vec1:=D3DXVector3(spcpos.x+9.7+j*7.7,spcpos.y+11,spcpos.z-9);
       vec2:=D3DXVector3(spcpos.x+9.7+j*7.7,spcpos.y-11,spcpos.z+9);
@@ -530,7 +517,7 @@ begin
        randomplus(ap,phstim*0.5,(5-abs(i-5)));
        d3dxvec3lerp(eap,vec1,vec2,(i+1)/10);
        randomplus(eap,phstim*0.5,(5-abs(i-4)));
-       Particlesystem_add(fenycsikcreate(ap,eap,(6-abs(i-4.5))*0.2,$002040B0,5));
+       Particlesystem_add(fenycsikcreate(ap,eap,(6-abs(i-4.5))*0.2,$00B04020,5));
       end;
      end;
 
@@ -544,9 +531,9 @@ begin
      randomplus(vec1,phstim,5);
      vec2:=vec1;
      vec2.x:=vec2.x+150;
-     Particlesystem_add(fenycsikcreate(vec1,vec2,3,$001020A0,20));
+     Particlesystem_add(fenycsikcreate(vec1,vec2,3,$00A02010,20));
 
-     Particlesystem_add(simpleparticleCreate(vec2,D3DXvector3zero,10.0,10.0,$002550C0,0,20));
+     Particlesystem_add(simpleparticleCreate(vec2,D3DXvector3zero,10.0,10.0,$00C05025,0,20));
      vec1:=vegpos;
      vec2:=vec1;
      vec2.x:=vec2.x+150;
@@ -556,7 +543,7 @@ begin
       randomplus(ap,phstim,15);
       d3dxvec3lerp(eap,vec1,vec2,(i+1)/10);
       randomplus(eap,phstim,15);
-      Particlesystem_add(fenycsikcreate(ap,eap,0.3,$002040B0,20));
+      Particlesystem_add(fenycsikcreate(ap,eap,0.3,$00B04020,20));
      end;
 
      r2:=tavpointpoint(vec2,DNSVec);
@@ -599,7 +586,7 @@ begin
 
       Particlesystem_add(Simpleparticlecreate(agpos[i],
                                           D3DXVector3Zero,
-                                          3,0,$00606060,$00600000,20));
+                                          3,0,$00606060,$00000060,20));
      end;
 
 
@@ -687,7 +674,7 @@ begin
      if phstim>745then alph:=max(round((1000-phstim)),0);
      pvert[i*3+j].position:=tmp;
      d3dxvec3scale(tmp,tmp,0.1);
-     pvert[i*3+j].col:=$01000000*alph+colorlerp(0,round((perlin.Noise(tmp.x,tmp.y+phstim/20,tmp.z)+1.1)*120),alph/255);
+     pvert[i*3+j].col:=$01000000*alph+colorlerp(0,round((perlin.Noise(tmp.x,tmp.y+phstim/20,tmp.z)+1.1)*120) shl 16,alph/255);
     end
   else
    for i:=0 to high(verts) do
