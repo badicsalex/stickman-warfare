@@ -4054,14 +4054,6 @@ begin
  end;
 end;
 
-
-procedure addbadge(mit:shortstring);
-begin
- if (checksum=datachecksum) or canbeadmin then
-   //!TODO
- ;
-end;
-
 procedure handleteleports;
 var
 i,k:integer;
@@ -4303,7 +4295,7 @@ begin
     if (halal=0) and (not autoban) then
     if cpy^>79.4 then
     begin
-     volthi:=true; addbadge('HI');
+     volthi:=true; multisc.Medal('H','I');
     end;
 
     if not iranyithato or (cpy^<amag) then
@@ -4552,7 +4544,7 @@ begin
   if not voltspeeder then
    if (autoban and (d3dxvec3lengthsq(tmp)>sqr(0.56))) then
    begin
-    addbadge('HS');
+    multisc.Medal('H','S');
     voltspeeder:=true;
    end;
 
@@ -4911,10 +4903,10 @@ begin
      inc(flipcount);
      if voltflip<flipcount then
      case flipcount of
-      1:Addbadge('F1');
-      2:Addbadge('F2');
-      3:Addbadge('F3');
-      4:Addbadge('F4');
+      1:multisc.Medal('F','1');
+      2:multisc.Medal('F','2');
+      3:multisc.Medal('F','3');
+      4:multisc.Medal('F','4');
      end;
      voltflip:=flipcount;
     end;
@@ -5163,6 +5155,10 @@ begin
 end;
 
 procedure handleMMO;
+const
+ killcnt:array [1..9] of integer =(10,30,90,250,750,2000,5000,10000,30000);
+var
+ i:integer;
 begin
   multisc.Update(round(cpx^),round(cpy^));
   if halal>0 then
@@ -5183,7 +5179,25 @@ begin
    felho.makenew;
   end;
 
-  //!TODO medal
+ case multisc.kills-multisc.killswithoutdeath of
+   3:multisc.Medal('W','1');
+   6:multisc.Medal('W','2');
+   9:multisc.Medal('W','3');
+  12:multisc.Medal('W','4');
+  15:multisc.Medal('W','5');
+  30:multisc.Medal('W','6');
+ end;
+
+ case multisc.kills-multisc.killscamping of
+   3:multisc.Medal('C','1');
+   6:multisc.Medal('C','2');
+   9:multisc.Medal('C','3');
+  15:multisc.Medal('C','4');
+ end;
+
+ for i:=1 to 9 do
+  if multisc.kills>=killcnt[i] then
+   multisc.Medal('K',inttostr(i)[1]);
 end;
 
 procedure handleMMOcars;
@@ -5966,7 +5980,7 @@ maxpont:single;
 begin
  lastzone:='';
  multisc.killscamping:=multisc.kills;
-
+ multisc.killswithoutdeath :=multisc.kills;
 
  zonechanged:=0;
  invulntim:=300;
@@ -5976,7 +5990,7 @@ begin
  mapmode:=0;
  mapbol:=false;
  halal:=0;
- multisc.killswithoutdeath :=multisc.kills;
+
  maxpont:=-1000000000000;
  maxpos:=D3DXVector3(0,100,0);
  for i:=0 to 5 do
@@ -9239,7 +9253,7 @@ try
     writeln(logfile,'Loaded geometry and data'); flush(logfile);
     //menü helye
     FillupMenu;
-    writeln(logfile,'Checksum:'+inttohex(checksum+1,8));
+    writeln(logfile,'Checksum:'+inttohex(checksum,8));
     {$IFDEF nochecksumcheck}
     checksum:=datachecksum;
     {$ENDIF}
