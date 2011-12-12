@@ -11,8 +11,8 @@
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
 {$DEFINE panthihogomb}
-{.$DEFINE undebug}
-{.$DEFINE nochecksumcheck}
+{$DEFINE undebug}
+{..$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
 {.$DEFINE repkedomod}
 {.$DEFINE godmode}
@@ -3774,7 +3774,8 @@ begin
  D3DXVec3Scale(s,s,0.02);
  D3DXVec3Scale(s2,s,300);
  D3DXVec3Subtract(v2,v1,s2);
- Particlesystem_add(Simpleparticlecreate(v2,s,0.03,0.03,$80FFFFFF,$80FFFFFF,300));
+ if tavpointpointsq(DNSVec,v2)<DNSRad*DNSRad then
+  Particlesystem_add(Simpleparticlecreate(v2,s,0.03,0.03,$80FFFFFF,$80FFFFFF,300));
 end;
 
 
@@ -4524,12 +4525,13 @@ begin
  felho.update;
 
  {$IFNDEF panthihogomb} ez baztata lett {$ENDIF}
- if tavpointpointsq(DNSVec,campos)<DNSRad*DNSRad then
+ if tavpointpointsq(DNSVec,campos)<DNSRad*DNSRad*2 then
  begin
    for j:=0 to 1 do
     addhopehely(30);
- end
- else
+ end;
+
+ if tavpointpointsq(DNSVec,campos)>DNSRad*DNSRad then
  begin
   d3dxvec3subtract(tmp,tegla.vpos,tegla.pos);
   if opt_rain then
@@ -6506,7 +6508,19 @@ begin
  aszin:=$FF;
 
  if length(chatmost)>0 then
-  menu.DrawSzinesChat('Chat:'+chatmost ,0,0.03,0.4,0.3,$FF000000+aszin);
+  if Copy(chatmost,1,4)=' /c ' then
+   menu.DrawSzinesChat(lang[36]+':'+Copy(chatmost,5,Length(chatmost)) ,0,0.03,0.4,0.3,$FF00FF00)
+  else
+  if Copy(chatmost,1,4)=' /r ' then
+   menu.DrawSzinesChat(lang[38]+':'+Copy(chatmost,5,Length(chatmost)) ,0,0.03,0.4,0.3,$FFFF00FF)
+  else
+  if (Copy(chatmost,1,4)=' /w ') and (pos(' ',Copy(chatmost,5,Length(chatmost)))>0) then
+  begin
+   rtmp:=pos(' ',Copy(chatmost,5,Length(chatmost)));
+   menu.DrawSzinesChat(lang[37]+'('+Copy(chatmost,5,rtmp-1)+'):'+Copy(chatmost,rtmp+4,Length(chatmost)) ,0,0.03,0.4,0.3,$FFFF00FF)
+  end
+  else
+   menu.DrawSzinesChat('Chat:'+chatmost ,0,0.03,0.4,0.3,$FF000000+aszin);
 
  for i:=0 to 7 do
  begin
