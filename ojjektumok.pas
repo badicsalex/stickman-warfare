@@ -172,12 +172,9 @@ var
  hmnev:string;
  special:string;
 begin
-
+  result:=-1;
   if (nev='') then
-  begin
-   result:=-1;
    exit;
-  end;
 
   for j:=0 to otnszam do
    if ojjektumtextures[j].name=nev then
@@ -196,10 +193,7 @@ begin
   begin
    special:=stuffjson.GetString(['materials',nev,'special',i]);
    if special='disabled' then
-   begin
-    result:=-1;
-    exit;
-   end
+    exit
    else
    if special='notbulletproof' then
     collisionflags:=collisionflags and (not COLLISION_BULLET)
@@ -222,11 +216,8 @@ begin
 
   hmnev:=stuffjson.GetString(['materials',nev,'heightmap']);
   if (hmnev<>'') then
-  begin
-   if not LTFF(a_d3dDevice,dir+'/'+hmnev,heightmap) then
-    exit;
-   addfiletochecksum(dir+'/'+hmnev);
-  end;
+   if LTFF(a_d3dDevice,dir+'/'+hmnev,heightmap) then
+    addfiletochecksum(dir+'/'+hmnev);
  end;
  result:=otnszam;
 end;
@@ -359,6 +350,20 @@ begin
 
    if tritex<0 then
      continue;
+
+   if (indices[i*3+0]<0) or
+      (indices[i*3+1]<0) or
+      (indices[i*3+2]<0) or
+      (indices[i*3+0]>high(vertices)) or
+      (indices[i*3+1]>high(vertices)) or
+      (indices[i*3+2]>high(vertices)) then
+      raise ERangeError.Create('Modding error: bad indices in model '+fnev);
+
+   if tritex>high(ojjektumtextures) then
+    raise ERangeError.Create('Alex error: bad texture index in model '+fnev);
+
+   if j>high(triangles) then
+    raise ERangeError.Create('Alex error: wtf @ '+fnev);
 
    triangles[j]:=makeacc(vertices[indices[i*3+0]].position,vertices[indices[i*3+1]].position,vertices[indices[i*3+2]].position,ojjektumtextures[tritex].collisionflags);
    if triangles[j].n.y>1.5 then continue;
