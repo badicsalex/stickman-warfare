@@ -11,7 +11,7 @@
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
 {$DEFINE panthihogomb}
-{$DEFINE undebug}
+{.$DEFINE undebug}
 {..$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
 {.$DEFINE repkedomod}
