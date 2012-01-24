@@ -1,0 +1,30 @@
+
+
+STICKMAN WARFARE MODELL KONVERTER v1.0
+
+
+Ez az ami a neve. .x vagy .3ds fájlokból csinál .sm0 (azaz stick-model v.0.) fájlokat a hozzátartozó árnyék adatokkal. Ezeket kell bemásolni a játék data mappájába és a .ini-ben elvégezni a megfelelõ beállításokat.
+
+!!!OLVASD EL FIGYELMESEN!!!
+--Indítsd el a programot
+--Válaszd ki az árnyékok felbonását, lehetõleg minél kisebb legyen, úgy, hogy még ne legyen túl homályos a játékban (némi kísérletezést igényel, de útmutatásként megnézheted a data mappában lévõ bentlévõ modellek _lm.bmp fájlok méretét). Összesen 256 egységnyi árnyék textúrának van elég hely összesen a játékban (jelenleg). A 64x64es 1 egység, a 128x128as 4 egység, a 256x256os 16 egység. Használd ki okosan.
+-- Nyomj rá a [Do your stuff] gombra
+-- Várd meg amíg mindennel végez a program, addig nem fog válaszolni az ablak sem, öntudatlanul dolgozik.
+-- Másold be a keletkezett .sm0 és lm.bmp fájlokat a data mappába (az esetleges olyan textúrákat is amit használtál, de még nincsenek ott)
+-- Minden változtatás után (ini-ben a méretváltás is annak számít, új pozíciók beírásánál viszont nem kell) törölni kell a .kd1 és .wp0 fájlokat (elõbbi a szilárdsági adatokat, utóbbi a botok adatait tartalmazza).
+-- Amikor elindítod a játékot, az legenerálja a törölt kd1 és wp0 fájlokat, és meg is vagy.
+-- (trükk: ha nem akarod végigvárni wp0 fájl generálását, tehát nem akarod, hogy a botok "ismerjék" a házad, akkor csak másold és nevezd át a kikoto.wp0 24 bájtos fájlt a te modelled nevére)
+-- Ha valami hibás, mindig újra lehet generálni a dolgokat, konvertáld újra, töröld a .kd1 és .wp0 fájlokat.
+
+Ojjektumok.ini tartalma: Jöjj rá, nem túl nehéz.
+
+De végre látjátok, nem is olyan egyszerû nekem se berakni egy modellt :D
+
+!!!SZÓVAL MÉGEGYSZER!!!
+modell.3ds => a te modelled
+modell.x =>ideiglenesen generált modell, le lehet törölni
+modell.sm0 => stickmodell, WOOT!
+modelllm.bmp => árnyékok, kis felbontás!
+modell.kd1 => szilárdsági adatok, újra kell generáltatni mindig
+modell.wp0 => BOT adatok, lehet másolni más modellekrõl, ha nem használszBOTokat
+ojjektumok.ini =>Modelleket összegyûjtõ leíró fájl, nem bonyolult
