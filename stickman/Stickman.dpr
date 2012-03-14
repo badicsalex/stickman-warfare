@@ -10,10 +10,9 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{$DEFINE panthihogomb}
-{.$DEFINE undebug}
-{..$DEFINE nochecksumcheck}
-{.$DEFINE speedhack}
+{$DEFINE undebug}
+{.$DEFINE nochecksumcheck}
+{.$DEFINE speedhack}                 
 {.$DEFINE repkedomod}
 {.$DEFINE godmode}
 {.$DEFINE palyszerk}
@@ -26,7 +25,6 @@ uses
   DinputE,
   DirectSound,
   Directinput,
-  DSUtil,
   eventscripts,
   fegyverek,
   filectrl,
@@ -112,8 +110,6 @@ var
   skytex:IDirect3DTexture9 = nil;
   skystrips: array [0..20] of array [0..31] of TSkyVertex;
 
-  {$IFNDEF panthihogomb} ezt a szart töröld le. {$ENDIF}
-  hogombmesh:ID3DXMesh = nil;
   bokrok,fuvek:Tfoliage; //Növényzet
   ojjektumrenderer:T3DORenderer;
   fegyv:Tfegyv = nil;
@@ -587,8 +583,8 @@ begin
  zz:=zz*scalfac;
  yy:=advwove(xx,zz);
  noNANInf(xx);noNANInf(yy);noNANInf(zz);
- if scalfac>10 then
-  vanottvalami(scalfac,yy,zz);
+ //if scalfac>10 then
+  //vanottvalami(scalfac,yy,zz);
 
  v24y:=advwove(xx,zz-(scalfac))- advwove(xx,zz+(scalfac));
  //v1-v3
@@ -1620,12 +1616,6 @@ begin
   loadspecials;
     menu.DrawLoadScreen(50);
 
-  if FAILED(D3DXCreateSphere(g_pD3DDevice,1,30,20,tempmesh,nil)) then Exit;
-  if tempmesh=nil then exit;
-  if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL,g_pd3ddevice,hogombmesh)) then exit;
-  if tempmesh<>nil then tempmesh:=nil;
-  normalizemesh(hogombmesh);
-
   if not LTFF(g_pd3dDevice, 'data\grass.jpg',futex) then exit;
   if not LTFF(g_pd3dDevice, 'data\gnoise.jpg',noise2tex) then exit;
   if not LTFF(g_pd3dDevice, 'data\rock.jpg',kotex) then exit;
@@ -2391,7 +2381,6 @@ begin
    ojjektumrenderer:=T3DORenderer.Create(G_pd3ddevice);
   {$ENDIF}
 
-
   if aimbot>0 then
   for i:=0 to high(ppl) do
    if (ppl[i].pls.fegyv xor myfegyv)>127 then
@@ -2399,13 +2388,20 @@ begin
     if (tavpointlinesq(ppl[i].pos.pos,hollo,v2,tmp,dst)) then
      if dst<aimbot then
      begin
-      D3DXVec3Scale(tmp,ppl[i].pos.seb,tavpointpoint(hollo, ppl[i].pos.pos)+50);
+      D3DXVec3Scale(tmp,ppl[i].pos.seb,sqrt(tavpointpoint(hollo, ppl[i].pos.pos))*20+30);
       tmp.y:=0;
       D3DXVec3Add(v2,ppl[i].pos.pos,D3DXVector3(0.0,1.0,0.0));
       D3DXVec3Add(v2,v2,tmp);
       randomplus2(v2,GetTickCount,aimbot_pontatlan);
      end;
    end;
+
+  if myfegyv=FEGYV_X72 then
+  begin
+   D3DXVec3Subtract(tmp,v2,hollo);
+   FastVec3Normalize(tmp);
+   D3DXVec3Add(v2,v2,tmp);
+  end;
 
   multip2p.Loves(hollo,v2);
   setlength(multip2p.lovesek,length(multip2p.lovesek)+1);
@@ -3281,8 +3277,7 @@ var
  alngt,rad:single;
  avec:TD3DXVector3;
 begin
-
- rad:=(x72proj[mi].eletkor/300+0.5);
+  rad:=(x72proj[mi].eletkor/300+0.5);
 
  Particlesystem_add(SimpleparticleCreate(x72proj[mi].v3,D3DXVector3Zero,rad*1.1,rad*0.8,$8080FF,$00000000,50));
 
@@ -3739,46 +3734,6 @@ begin
 end;
 
 
-{$IFNDEF panthihogomb} törölj le{$ENDIF}
-procedure addhopehely(tav:integer);
-var
-v,v1,v2,s,s2,tmpv:TD3DXVector3;
-pls1,pls2:single;
-j,k:integer;
-begin
- pls1:=(random(tav*1000)-500*tav)/1000;
- pls2:=(random(tav*1000)-500*tav)/1000;
-
- v:=D3DXVector3(campos.x+pls1,campos.y,campos.z+pls2);
-
- pls1:=(random(1000)-500)/1000;
- pls2:=(random(1000)-500)/1000;
- s:=D3DXVector3(pls1,-2,pls2);
- fastvec3normalize(s);
-
- D3DXVec3Scale(s2,s, 02.0);
- d3dxvec3add(v1,v,s2);
- D3DXVec3Scale(s2,s,-50.0);
- d3dxvec3add(v2,v,s2);
-
- for k:=0 to high(ojjektumnevek) do
- begin
-  for j:=0 to ojjektumarr[k].hvszam-1 do
-  begin
-   d3dxvec3add(tmpv,ojjektumarr[k].holvannak[j],ojjektumarr[k].vce);
-   if tavpointpointsq(campos,tmpv)<sqr(ojjektumarr[k].rad+20) then
-    v1:=ojjektumarr[k].raytest(v2,v1,j,COLLISION_SOLID);
-  end;
- end;
-
- D3DXVec3Scale(s,s,0.02);
- D3DXVec3Scale(s2,s,300);
- D3DXVec3Subtract(v2,v1,s2);
- if tavpointpointsq(DNSVec,v2)<DNSRad*DNSRad then
-  Particlesystem_add(Simpleparticlecreate(v2,s,0.03,0.03,$80FFFFFF,$80FFFFFF,300));
-end;
-
-
 procedure AddLAW(av1,av2:TD3DXvector3;akl:integer);
 begin
  setlength(lawproj, length(lawproj)+1);
@@ -3821,6 +3776,7 @@ begin
   v1:=av1;
   cel:=av2;
   d3dxvec3Subtract(v2,av2,av1);
+
 
   name:=XORHash2x12byte(av1,av2);
   name:=(name+1)*(name+2)*(name-1)*(name-2)*134775813;
@@ -4524,14 +4480,7 @@ begin
  laststate:='Weather';
  felho.update;
 
- {$IFNDEF panthihogomb} ez baztata lett {$ENDIF}
- if tavpointpointsq(DNSVec,campos)<DNSRad*DNSRad*2 then
- begin
-   for j:=0 to 1 do
-    addhopehely(30);
- end;
-
- if tavpointpointsq(DNSVec,campos)>DNSRad*DNSRad then
+ if felho.coverage<=5 then
  begin
   d3dxvec3subtract(tmp,tegla.vpos,tegla.pos);
   if opt_rain then
@@ -7630,11 +7579,13 @@ begin
     g_pd3dDevice.SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
 
     //if not (enableeffects and enableeffectso and (not heatvision)) then
-     renderautok(true);
+    renderautok(true);
     renderautok(false);
 
-    if currevent<>nil then currevent.RenderModels;
-    
+    if currevent<>nil then
+     currevent.RenderModels;
+
+
     setupidentmatr;
     // Render the vertex buffer contents
     g_pd3dDevice.SetStreamSource(0, g_pVB, 0, SizeOf(TCustomVertex));
@@ -7924,25 +7875,6 @@ begin
 
     g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
     g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_ONE);
-
-
-     {$IFNDEF panthihogomb} innen törölj még {$ENDIF}
-
-    g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP , D3DTOP_SELECTARG1 );
-    g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
-    g_pd3dDevice.SetTexture(0,nil);
-    g_pd3dDevice.SetRenderState(D3DRS_FOGENABLE , iFalse);
-    g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iTrue);
-    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, $101010);
-    mat_world:=identmatr;
-    mat_world._11:=DNSRad;
-    mat_world._22:=DNSRad;
-    mat_world._33:=DNSRad;
-    mat_world._41:=DNSVec.x;
-    mat_world._42:=DNSVec.y;
-    mat_world._43:=DNSVec.z;
-    g_pd3dDevice.SetTransform(D3DTS_WORLD, mat_World);
-    hogombmesh.DrawSubset(0);
 
     g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, $FFFFFFFF);
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);

@@ -127,7 +127,7 @@ begin
   if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_CUSTOMVERTEX,g_pd3ddevice,g_pMesh)) then exit;
   if tempmesh<>nil then tempmesh:=nil;
 
-  g_pMesh.LockVertexBuffer(D3DLOCK_DISCARD,pointer(pvert));
+  g_pMesh.LockVertexBuffer(0,pointer(pvert));
   D3DXComputeboundingbox(pointer(pvert),g_pMesh.GetNumVertices,g_pMesh.GetNumBytesPerVertex,vmi,vma);
   scl:=max(vma.x-vmi.x,max(vma.y-vmi.y,vma.z-vmi.z));
   scl:=scl/100;
@@ -717,26 +717,26 @@ begin
  if (phs>1) and ((phs<9) or (phstim<900)) or ((phs=1) and (phstim>745)) then
  begin
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_MODULATE );
- D3DXMatrixTranslation(mat1,spcpos.x,spcpos.y,spcpos.z);
- D3DXMatrixMultiply(mat,matrot,mat1);
+  D3DXMatrixTranslation(mat1,spcpos.x,spcpos.y,spcpos.z);
+  D3DXMatrixMultiply(mat,matrot,mat1);
 
- g_pd3ddevice.SetTransform(D3DTS_WORLD,mat);
- g_pd3ddevice.settexture(0,fotex);
- g_pmesh.DrawSubset(0);
+  g_pd3ddevice.SetTransform(D3DTS_WORLD,mat);
+  g_pd3ddevice.settexture(0,fotex);
+  g_pmesh.DrawSubset(0);
 
- g_pd3dDevice.SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
- mat1:=identmatr;
- mat1._31:=futotim*0.25;
- g_pd3ddevice.SetTransform(D3DTS_TEXTURE0,mat1);
- g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_SELECTARG1 );
- g_pd3ddevice.settexture(0,kekpirostex);
- g_pmesh.DrawSubset(2);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+  mat1:=identmatr;
+  mat1._31:=futotim*0.25;
+  g_pd3ddevice.SetTransform(D3DTS_TEXTURE0,mat1);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_SELECTARG1 );
+  g_pd3ddevice.settexture(0,kekpirostex);
+  g_pmesh.DrawSubset(2);
 
- mat1:=identmatr;
- mat1._31:=floor(futotim)*0.25;
- g_pd3ddevice.SetTransform(D3DTS_TEXTURE0,mat1);
- g_pd3ddevice.settexture(0,futotex);
- g_pmesh.DrawSubset(1);
+  mat1:=identmatr;
+  mat1._31:=floor(futotim)*0.25;
+  g_pd3ddevice.SetTransform(D3DTS_TEXTURE0,mat1);
+  g_pd3ddevice.settexture(0,futotex);
+  g_pmesh.DrawSubset(1);
  end;
 
 
