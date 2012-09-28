@@ -58,6 +58,7 @@ type
   killscamping:integer; //readwrite
   killswithoutdeath:integer; // readwrite
   weather:single;
+  opt_nochat:boolean;
   constructor Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
   destructor Destroy;override;
   procedure Update(posx,posy:integer);
@@ -401,10 +402,17 @@ end;
 procedure TMMOServerClient.ReceiveChat(frame:TSocketFrame);
 var
 i:integer;
+uzi:string;
 begin
+uzi := frame.ReadString;
+if opt_nochat then begin
+  for i:=0 to length(uzi)-1 do
+  if uzi[i]=#3 then exit;
+ end;
+
  for i:=high(chats) downto 1 do
   chats[i]:=chats[i-1];
- chats[0].uzenet:=frame.ReadString;
+ chats[0].uzenet:=uzi;
  chats[0].glyph:=frame.ReadInt;
 end;
 

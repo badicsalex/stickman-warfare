@@ -73,12 +73,14 @@ type
    keyb,lastkeyb:array [0..255]of boolean;
    loaded:boolean;
    lap:integer;
+   betoltokep:integer;
    mousepos:TD3DXvector2;
    sens:single;
    lclick,rclick,mclick:boolean;
-   items:array [0..30] of array of T3DMenuItem;
+   items:array [0..40] of array of T3DMenuItem;
    tegs:array [0..30] of array of Tmatteg;
-   cursor,splash,sarok,logo0,logo1,logo2:IDirect3DTexture9;
+   cursor,sarok,logo0,logo1,logo2:IDirect3DTexture9;
+   splash: array [0..3] of IDirect3DTexture9;
    el:boolean;
    constructor Create(aDevice:IDirect3DDevice9);
    procedure FinishCreate;
@@ -92,6 +94,7 @@ type
    procedure AddPasswordBox(aminx,aminy,amaxx,amaxy,scala:single;alap:integer;szoveghossz:integer;maxs:integer;amd5hex:string);
    procedure AddCsuszka(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;valu:single);
    procedure Addteg(aminx,aminy,amaxx,amaxy:single;alap:integer);
+   procedure RandomLoadScreen;
    procedure Draw;
    procedure DrawKerekitett(mit:Tmatteg);
    procedure DrawLoadScreen(szazalek:byte);
@@ -116,7 +119,8 @@ MFIEnumTyp=(MI_NEV,MI_TEAM,MI_FEGYV,MI_HEAD,MI_CONNECT,MI_REGISTERED,MI_PASS_LAB
            MI_VOL,MI_MP3_VOL,MI_TAUNTS,MI_R_ACTION,MI_R_AMBIENT,MI_R_CAR,
            MI_MOUSE_SENS,MI_MOUSE_SENS_LAB,MI_MOUSE_ACC,
            MI_GAZMSG,
-           MI_HEADBAL,MI_HEADJOBB);
+           MI_HEADBAL,MI_HEADJOBB,
+           MI_INTERFACE,MI_RADAR,MI_CHAT,MI_ZONES);
 var
  menufi:array [MFIEnumTyp] of T3DMenuItem;
  menufipass:T3DMIPasswordBox;
@@ -361,9 +365,27 @@ begin
    Exit;
  end;
 
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash1.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash[0])) then
  begin
-   writeln(logfile,'Could not load data/splash.jpg');flush(logfile);
+   writeln(logfile,'Could not load data/splash1.jpg');flush(logfile);
+   Exit;
+ end;
+
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash2.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash[1])) then
+ begin
+   writeln(logfile,'Could not load data/splash2.jpg');flush(logfile);
+   Exit;
+ end;
+
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash3.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash[2])) then
+ begin
+   writeln(logfile,'Could not load data/splash3.jpg');flush(logfile);
+   Exit;
+ end;
+
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash4.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash[3])) then
+ begin
+   writeln(logfile,'Could not load data/splash4.jpg');flush(logfile);
    Exit;
  end;
 
@@ -394,7 +416,11 @@ begin
    Exit;
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/cssin.jpg',256,32,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusz2tex)) then
    Exit;
- splash:=nil;
+
+ splash[0]:=nil;
+ splash[1]:=nil;
+ splash[2]:=nil;
+ splash[3]:=nil;
 end;
 
 procedure T3DMenu.Definishcreate;
@@ -477,7 +503,7 @@ begin
  case lap of
   0:lap:=3;
   1,2:lap:=0;
-  4,5,6:lap:=2;
+  4,5,6,7:lap:=2;
   3:items[3,4].clicked:=true; //exit gomb
  end
  else
@@ -571,6 +597,11 @@ begin
   g_psprite.draw(sarok,@(tegs[i]),nil,nil,$FFFFFFFF);
  end;
  g_pSprite.SetTransform(identmatr);
+end;
+
+procedure T3DMenu.RandomLoadScreen;
+begin
+betoltokep:= Random(4);
 end;
 
 procedure T3DMenu.Draw;
@@ -874,7 +905,6 @@ end;
 procedure T3DMenu.DrawLoadScreen(szazalek:byte);
 var
 mat:TD3DMatrix;
-txt:string;
 apos:TD3DXVector3;
 begin
    if szazalek<=100 then
@@ -889,17 +919,24 @@ begin
    begin
    g_psprite.SetTransform(mat);
    apos:=D3DXVector3(0,0,0);
-   g_pSprite.Draw(splash,nil,nil,@apos,$FFFFFFFF);
+   g_pSprite.Draw(splash[betoltokep],nil,nil,@apos,$FFFFFFFF);
 
    end;
    d3dxmatrixtranslation(mat,-20,-15,0);
    g_pSprite.SetTransform(mat);
-   Drawtext(lang[32],0.4,0.42,0.6,0.52,2,$FFF45E1B);
    if szazalek<=100 then
-   Drawtext(inttostr(szazalek)+'%',0.45,0.5,0.6,0.6,2,$FFF45E1B);
-   txt:='['+stringofchar('|',szazalek)+stringofchar('-',(100-szazalek))+']';
-   if szazalek<=100 then
-   Drawtext(txt,0.2,0.6,0.8,0.7,0,$FFF45E1B);
+   begin
+   Drawtext(lang[32]+' '+inttostr(szazalek)+'%',0.3265,0.972,0.6,1,0,$88000000);
+   Drawtext(lang[32]+' '+inttostr(szazalek)+'%',0.325,0.97,0.6,1,0,$FFF45E1B);
+   Drawtext(laststate,0.281,0.991,0.6,1,0,$88000000);
+   Drawtext(laststate,0.28,0.99,0.6,1,0,$FFF45E1B);
+   //if szazalek<=100 then
+   //Drawtext(txt,0.2,0.6,0.8,0.7,0,$FFF45E1B);
+   DrawRect(0.11,0.933,0.11+0.3*100*0.015,0.935,$FFF45E1B);
+   DrawRect(0.1085,0.927,0.1115+0.3*szazalek*0.015,0.942,$FFF45E1B);
+   DrawRect(0.11,0.928,0.11+0.3*szazalek*0.015,0.94,$FFF89030);
+
+  end;
 
  //  Drawtext(inttostr(g_pd3ddevice.GetAvailableTextureMem div (1024*1024)),0.4,0.7,0.6,0.8,1,$FF70C0FF);
    g_pSprite._End;

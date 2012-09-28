@@ -251,6 +251,7 @@ type
    vfrom,vto:TD3DXVector3;
    rad:single;
    vis:single;
+   tip:integer;
   end;
 
   Pbinmsg = ^Tbinmsg;
@@ -405,8 +406,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20201;
-  datachecksum=$6A108667;
+  PROG_VER=20301;
+  datachecksum=$376B3837;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -3285,13 +3286,13 @@ function readm3urecord(nam:string):string;
 var
  fil:textfile;
 begin
- result:='';
+ result:=' ';
  assignfile(fil,nam);
  reset(fil);
  while not eof(fil) do
  begin
   readln(fil,result);
-  if result[1]<>'#' then break;
+  if result[1]<>'#' then exit;
  end;
  closefile(fil);
 end;

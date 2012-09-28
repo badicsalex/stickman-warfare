@@ -111,6 +111,7 @@ type
   heightmap:IDirect3DTexture9;
   name:string;
   alphatest:boolean;
+  emitting:boolean;
   collisionflags:cardinal;
  end;
 
@@ -149,6 +150,7 @@ var
  posrads:array of Tposrad;
  lightmapbm:array [0..1023,0..1023,0..3] of byte;
  panthepulet:integer;
+ portalepulet:integer;
  DNSvec:TD3DXVector3;
  DNSrad:single;
 
@@ -205,7 +207,10 @@ begin
     collisionflags:=collisionflags and (not COLLISION_SHADOW)
    else
    if special='alphatest' then
-    alphatest:=true;
+    alphatest:=true
+   else
+      if special='emitting' then
+    emitting:=true;
   end;
 
   name:=nev;
@@ -918,6 +923,9 @@ begin
   if stuffjson.GetKey(['buildings'],i)='pantheon' then
    panthepulet:=i;
 
+  if stuffjson.GetKey(['buildings'],i)='kispiri' then
+   portalepulet:=i;
+
   for j:=0 to stuffjson.GetNum(['buildings',i,'special']) do
   begin
    special:=stuffjson.GetString(['buildings',i,'special',j]);
@@ -1552,7 +1560,9 @@ matViewProj:TD3DMatrix;
 trukkproj:TD3Dmatrix;
 hdrszorzo:single;
 vec:TD3DXVector3;
+emit:boolean;
 begin
+
  g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iFalse);
  g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
  g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $A0);
@@ -1612,9 +1622,12 @@ begin
    if drawtable[i]. visible[j] and drawtable[i].RenderZ[j] then
     for k:=0 to drawtable[i].xasz-1 do
     if (drawtable[i].DIPdata[j+k].tex>=0) then
-    if not ojjektumtextures[drawtable[i].DIPdata[j+k].tex].alphatest then
+    begin
+    if not ojjektumtextures[drawtable[i].DIPdata[j+k].tex].alphatest and
+    not ojjektumtextures[drawtable[i].DIPdata[j+k].tex].emitting then
      with drawtable[i].DIPdata[j+k] do
        g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,vertstart,0,vertcount,facestart,facecount);    //}
+       end;
    end;
    g_pd3dDevice.SetRenderState(D3DRS_COLORWRITEENABLE, 255);
   end;
@@ -1629,6 +1642,11 @@ begin
   else
    g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
   g_pd3ddevice.SetTexture(0,ojjektumtextures[k].tex);
+
+  if ojjektumtextures[k].emitting then
+  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE)
+  else
+  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, FAKE_HDR);
 
   //g_pd3ddevice.SetTexture(0,imposters);
    // g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
