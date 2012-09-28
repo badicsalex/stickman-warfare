@@ -251,10 +251,10 @@ begin
    tmp.z:=-(pvert[i].position.x-vmi.x)/scl;
    tmp.y:=(pvert[i].position.y-vma.y)/scl;
    tmp.x:=(pvert[i].position.z-vma.z+fc)/scl+0.001;
-   if abs(tmp.x)<0.005 then tmp.x:=0;
+   //if abs(tmp.x)<0.005 then tmp.x:=0;
    pvert[i].color:=RGB(200,200,200);
    pvert[i].position:=tmp;
-  end;
+ end;
   g_pMesh.UnlockVertexBuffer;
   getmem(adj,g_pmesh.getnumfaces*12);
   g_pMesh.generateadjacency(0.001,adj);
