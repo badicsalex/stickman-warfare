@@ -249,7 +249,7 @@ begin
   for i:=0 to g_pMesh.GetNumVertices-1 do
   begin
    tmp.z:=-(pvert[i].position.x-vmi.x)/scl;
-   tmp.y:=(pvert[i].position.y-vma.y)/scl;
+   tmp.y:=(pvert[i].position.y-vma.y)/scl+0.005;
    tmp.x:=(pvert[i].position.z-vma.z+fc)/scl+0.001;
    //if abs(tmp.x)<0.005 then tmp.x:=0;
    pvert[i].color:=RGB(200,200,200);
@@ -302,7 +302,7 @@ var
   matWorld,matWorld2: TD3DMatrix;
 begin
 
-   D3DXMatrixTranslation(matWorld,-0.00,-0.08,-0.7);
+   D3DXMatrixTranslation(matWorld,-0.00,-0.06,-0.7);
    D3DXMatrixScaling(matWorld2,siz/2,siz/2,siz);
    D3DXmatrixMultiply(matWorld,matWorld2,MatWorld);
    g_pd3dDevice.MultiplyTransform(D3DTS_WORLD, matWorld);

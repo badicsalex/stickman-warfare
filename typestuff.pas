@@ -219,6 +219,7 @@ type
   Tplayerpls = record
    lo:single;
    nev:string;
+   clan:string;
    fegyv:byte; //128 a csapat
    fejcucc:byte;                 // headstuff
    fejh:TD3DXVector3;             //feje hol van (headstuff)
@@ -406,8 +407,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20301;
-  datachecksum=$376B3837;
+  PROG_VER=20404;
+  datachecksum=$954271DF;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -1261,6 +1262,7 @@ function LTFF(adevice:IDirect3DDevice9;nev:string ;out tex:IDirect3DTexture9):bo
 var
 gotolni:boolean;
 probal:byte;
+eredm:HRESULT;
 label
 vissz;
 begin
@@ -1269,8 +1271,14 @@ begin
  vissz:
  gotolni:=false;
  try
-  if FAILED(D3DXCreateTextureFromFileEx(aDevice,PChar(nev),D3DX_DEFAULT ,D3DX_DEFAULT,D3DX_DEFAULT ,0,D3DFMT_A8R8G8B8,
-                                           fav3DPOOL,D3DX_DEFAULT,D3DX_DEFAULT ,0,nil,nil, tex)) then gotolni:=true;
+  eredm:=D3DXCreateTextureFromFileEx(aDevice,PChar(nev),D3DX_DEFAULT ,D3DX_DEFAULT,0 ,0,D3DFMT_A8R8G8B8,
+                                           fav3DPOOL,D3DX_DEFAULT,D3DX_DEFAULT ,0,nil,nil, tex);
+  if FAILED(eredm) then begin
+  if eredm=D3DERR_OUTOFVIDEOMEMORY then begin writeln(logfile,'Out of video memory'); flush(logfile); end;
+  if eredm=D3DERR_NOTAVAILABLE then begin writeln(logfile,'Not avaiable'); flush(logfile); end;
+  if eredm=D3DXERR_INVALIDDATA then begin writeln(logfile,'Invalid data'); flush(logfile); end;
+  if eredm=E_OUTOFMEMORY then begin writeln(logfile,'Out of ram'); flush(logfile); end;
+  gotolni:=true; end;
  except
  gotolni:=true;
  end;
@@ -2162,6 +2170,7 @@ begin
  freemem(tmppvert);
  
 end;
+
 
 function doSAT(box:T7pbox;var boxbol:T7pboxbol;tri:Tacctri;var vec:TD3DXvector3):single;
 var

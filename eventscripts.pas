@@ -71,6 +71,33 @@ type
     destructor Destroy;          override;
   end;
 
+  TPortalEvent = class (TStickmanEvent)
+   protected
+   framemesh:ID3DXMesh;
+    eventpos,beaconpos:TD3DXVector3;
+    darabok:array [0..7] of TD3DXVector3;
+    darabhely:array [0..7] of TD3DXVector3;
+    matrot:TD3DMatrix;
+    frametex:IDirect3DTexture9;
+    fordul,speed:single;
+    procedure sounds;
+   // procedure alapeffect;
+  //  procedure sounds;
+   public
+
+   vege:boolean;
+
+
+    constructor Create(adevice : IDirect3ddevice9;auto:boolean;dir:string);
+    procedure Phase(mi:integer); override;
+    procedure Step;              override;
+
+    procedure RenderModels;      override;
+    destructor Destroy;          override;
+
+
+  end;
+
 implementation
 
 constructor TStickmanEvent.Create;
@@ -96,7 +123,242 @@ begin
  //Virtaul
 end;
 
-                                                                        // data\event\
+constructor TPortalEvent.Create(adevice : IDirect3ddevice9;auto:boolean;dir:string);
+var
+a:integer;
+iii:TD3DXVector3;
+begin
+ inherited create;
+ g_pD3Ddevice:=adevice;
+ if not LTFF (g_pd3dDevice,'data/frame.jpg',frametex) then
+   Exit;
+  if FAILED(D3DXLoadMeshFromX(PChar(dir+'portal.x'),0,g_pd3ddevice,nil,nil,nil,nil,framemesh)) then exit;
+
+
+
+  eventpos:=ojjektumarr[ATportalhely].holvannak[0];
+  eventpos.z:=eventpos.z+7.5;
+  eventpos.y:=eventpos.y+18.5;
+  eventpos.x:=eventpos.x-9.7;
+  fordul:=0;
+  speed:=0;
+  matrot:=identmatr;
+
+  darabhely[0] := D3DXVector3(7,-2.64,-1);
+  darabhely[1] := D3DXVector3(9.5,-2.64,-6);
+  darabhely[2] := D3DXVector3(9,-2.64,-10);
+  darabhely[3] := D3DXVector3(10,-2.64,-5.5);
+  darabhely[4] := D3DXVector3(-5,-2.64,4);
+  darabhely[5] := D3DXVector3(-7.5,-2.64,-3);
+  darabhely[6] := D3DXVector3(-7,-2.64,-8.5);
+  darabhely[7] := D3DXVector3(9.5,-2.75,-17);
+
+  for a:=0 to 7 do begin
+      iii:= D3DXVector3(sin(a/4*D3DX_PI)*-2,0,cos(a/2*D3DX_PI)*-2);    //-sin(a/16*D3DX_PI)*5
+      D3DXVec3Add(darabhely[a],darabhely[a],iii);
+      // darabhely[a] := iii;
+      end;
+  
+  phase(0);
+end;
+
+procedure TPortalEvent.Phase(mi:integer);
+var
+vec1:TD3DXVector3;
+begin
+phs:=mi;
+if (phs=1) then phstim:=0;
+
+if phs=1 then
+begin
+ speed:=0.0018;
+ vec1 := ojjektumarr[panthepulet].holvannak[0];
+ playsound(40,false,phstim,false,vec1);
+end;
+
+
+
+end;
+
+procedure TPortalEvent.Rendermodels;
+var
+ a:integer;
+ cszam,szint:single;
+ hely,tmp:TD3DXVector3;
+ mat,mat1,mat2,mat3:TD3DMatrix;
+begin
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_SELECTARG1 );
+  g_pd3ddevice.settexture(0,frametex);
+
+  if phs>1 then
+  begin
+     mat2 := matrot;
+    D3DXMatrixTranslation(mat1,eventpos.x,eventpos.y,eventpos.z);
+    D3DXMatrixScaling(mat2,3.2,3.2,3.2);
+    D3DXMatrixMultiply(mat,mat2,mat1);
+    D3DXMatrixRotationZ(mat2,D3DX_PI*0.5);
+    //D3DXMatrixRotationX(mat2,D3DX_PI*-0.5);
+    D3DXMatrixMultiply(mat,mat2,mat);
+
+
+    g_pd3ddevice.SetTransform(D3DTS_WORLD,mat);
+    g_pd3ddevice.settexture(0,frametex);
+
+    for a:=0 to 7 do
+    begin
+      mat2 :=matrot;
+      D3DXMatrixRotationY(mat2,D3DX_PI*0.25*a+fordul);
+      D3DXMatrixMultiply(mat3,mat2,mat);
+      g_pd3ddevice.SetTransform(D3DTS_WORLD,mat3);
+     framemesh.DrawSubset(0);
+    end;
+  end
+  else
+  begin
+  for a:=0 to 7 do
+    begin
+    cszam:=phstim;
+    szint:=(phstim-a*250)/250;
+    if szint>1 then szint:=1;
+    if szint<0 then szint:=0;
+    szint:=szint*szint;
+    mat2 := matrot;
+    D3DXVec3Add(tmp,darabhely[a],eventpos);
+    D3DXVec3Lerp(hely,tmp,eventpos,szint);
+    D3DXMatrixTranslation(mat1,hely.x,hely.y,hely.z);
+    D3DXMatrixScaling(mat2,3.2,3.2,3.2);
+    D3DXMatrixRotationX(mat2,D3DX_PI/2);
+    D3DXMatrixMultiply(mat,mat2,mat1);
+
+
+
+    g_pd3ddevice.SetTransform(D3DTS_WORLD,mat);
+    g_pd3ddevice.settexture(0,frametex);
+
+
+      mat2 :=matrot;
+      D3DXMatrixRotationY(mat2,D3DX_PI*0.25*a+fordul*szint);
+      D3DXMatrixMultiply(mat3,mat2,mat);
+      g_pd3ddevice.SetTransform(D3DTS_WORLD,mat3);
+     framemesh.DrawSubset(0);
+    end;
+  end;
+
+  //framemesh.DrawSubset(1);
+end;
+
+
+
+procedure TPortalEvent.sounds;
+begin
+
+ if (phs=1) and ((phstim) mod 250=0) and (phstim>200) then
+   playsound(35,false,phstim,false,eventpos);
+
+ if phstim = 2000 then
+   playsound(37,false,555,true,eventpos);
+   
+ if phstim = 3350 then
+   playsound(36,false,556,true,eventpos);
+
+
+end;
+
+
+procedure TPortalEvent.Step;
+var
+m,i:integer;
+vec1,vec2,plsvec:TD3DXVector3;
+x,y:single;
+begin
+sounds;
+
+m:=0;
+ case phs of
+     //0 - darabokban hever, külsõ indítás
+  1:m:=2000;   //helyére másznak, lassan fordul
+  2:m:=3350;   //gyorsul,néhány részecske
+  3:m:=7000;   //kialakul az örvény, megnyílik a cucc
+
+ end;
+ if phstim>7000 then m:=3;
+
+ if (phs<>0) and (phstim>m) then phase(phs+1);
+ if phs=0 then phstim:=0;
+ 
+ if (phs=2) and (speed<0.012) then speed:=speed+0.00001;
+
+
+ if phstim=2000 then
+ for i:=0 to 32 do begin
+ vec1 := D3DXVector3(sin(i/16*D3DX_PI)*3,cos(i/16*D3DX_PI)*3,0);
+ D3DXVec3Add(vec1,eventpos,vec1);
+ Particlesystem_add(simpleparticleCreate(vec1,D3DXVector3(0,0,0),2,2,0,$FFFFFFFF,300))
+ end;
+
+  if phstim=2300 then
+ for i:=0 to 32 do begin
+ vec1 := D3DXVector3(sin(i/16*D3DX_PI)*3,cos(i/16*D3DX_PI)*3,0);
+ D3DXVec3Add(vec1,eventpos,vec1);
+ Particlesystem_add(simpleparticleCreate(vec1,D3DXVector3(0,0,0),2,2,$FFFFFFFF,0,300))
+ end;
+
+
+
+ if (phs=3) or ( ((phs=2) and (random(2000)<phstim-2000)))  then
+ begin
+ vec1 := D3DXVector3(0,cos(fordul+D3DX_PI*0.25*(phstim mod 8))*3,sin(fordul+D3DX_PI*0.25*(phstim mod 8))*3);
+  D3DXVec3Add(vec1,eventpos,vec1);
+ Particlesystem_add(simpleparticleCreate(vec1,D3DXVector3(0.05,0,0),0.2,0.02,$FF00FFFF,0,200));
+ end;
+
+ if (phs=3) and ((phstim mod 10) = 0) then
+ begin
+        plsvec.x:=random(200)-100;
+       plsvec.z:=random(200)-100;
+       plsvec.y:=random(200)-100;
+       fastvec3normalize(plsvec);
+       plsvec.x:=plsvec.x*2;
+       plsvec.y:=plsvec.z*2;
+       plsvec.z:=plsvec.z*2;
+       D3DXVec3Add(vec2,eventpos,plsvec);
+
+      // Particlesystem_Add_Villam(vec2,plsvec,0.2,0.25,5,0.1,$FFfffdce,100);
+ end;
+
+ if (phs=3) and ((phstim mod 2) = 0) then
+ begin
+ x:=cos(-fordul/2+D3DX_PI*0.1176*(phstim mod 17))*3;
+ y:=sin(-fordul/2+D3DX_PI*0.1176*(phstim mod 17))*3;
+ vec1 := D3DXVector3(0,x,y);
+ D3DXVec3Add(vec1,eventpos,vec1);
+ vec2.x := 0.035;
+ vec2.y := x*-0.004;
+ vec2.z := y*-0.004;
+ Particlesystem_add(simpleparticleCreate(vec1,vec2,0.2+random(10)/10,0.02,$FF00FFFF,0,220));
+ if ((phstim mod 30) = 0) then
+  Particlesystem_add(fenykorcreate(eventpos,D3DXVector3(0.04,0,0),d3dxvector3(0,1,0),d3dxvector3(0,0,1),2.85,2.85,0.3,$8866FFFF,0,300));
+
+ end;
+
+ if phs=3 then speed:=0.02;
+
+ fordul:= (fordul+D3DX_PI*speed);
+ if fordul>4*D3DX_PI then fordul:=0;
+
+ 
+ if phstim>6000 then phstim:=phstim-1000;
+ inc(phstim);
+end;
+
+destructor TPortalEvent.Destroy;
+begin
+ framemesh:=nil;
+ g_pd3ddevice:=nil;
+ inherited;
+end;
+
+                                                                    // data\event\
 constructor TSpaceshipEvent.Create(adevice : IDirect3ddevice9;auto:boolean;dir:string);
 var
 tempmesh:ID3DXMesh;
@@ -381,7 +643,7 @@ begin
  m:=0;
  if automatic then
  case phs of
-  0:m:=7000;
+  0:m:=7000;   //7000-re vissza!!!!!!!!444négy4
   1:m:=1000;
   2:m:=1000;
   3:m:=1500;
