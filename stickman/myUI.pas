@@ -73,6 +73,7 @@ type
    keyb,lastkeyb:array [0..255]of boolean;
    loaded:boolean;
    lap:integer;
+   safemode:boolean;
    betoltokep:integer;
    mousepos:TD3DXvector2;
    sens:single;
@@ -80,9 +81,9 @@ type
    items:array [0..40] of array of T3DMenuItem;
    tegs:array [0..30] of array of Tmatteg;
    cursor,sarok,logo0,logo1,logo2:IDirect3DTexture9;
-   splash: array [0..3] of IDirect3DTexture9;
+   splash: IDirect3DTexture9;
    el:boolean;
-   constructor Create(aDevice:IDirect3DDevice9);
+   constructor Create(aDevice:IDirect3DDevice9;sm:boolean);
    procedure FinishCreate;
    procedure Definishcreate;
    procedure HandleWMMouseMove(mit:lparam);
@@ -94,7 +95,6 @@ type
    procedure AddPasswordBox(aminx,aminy,amaxx,amaxy,scala:single;alap:integer;szoveghossz:integer;maxs:integer;amd5hex:string);
    procedure AddCsuszka(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;valu:single);
    procedure Addteg(aminx,aminy,amaxx,amaxy:single;alap:integer);
-   procedure RandomLoadScreen;
    procedure Draw;
    procedure DrawKerekitett(mit:Tmatteg);
    procedure DrawLoadScreen(szazalek:byte);
@@ -103,7 +103,7 @@ type
    procedure DrawChatsInGame(texts:array of string;pos:array of TD3DXVector3; alpha:array of single);
    procedure DrawChatGlyph(hash:cardinal;posx,posy:single;alpha:byte);
    procedure DrawText(mit:string;posx,posy,posx2,posy2:single;meret:byte;color:cardinal);
-   procedure DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal);
+   procedure DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal;shadow:bool=false);
    procedure DrawRect(ax1,ay1,ax2,ay2:single;color:cardinal);
    destructor Destroy;reintroduce;
   protected
@@ -314,9 +314,13 @@ begin
 end;
 
 
-constructor T3DMenu.Create(aDevice:IDirect3DDevice9);
+constructor T3DMenu.Create(aDevice:IDirect3DDevice9;sm:boolean);
+var
+szam:AnsiString;
+size:integer;
 begin
  inherited Create;
+ safemode:=sm;
  lap:=0;
  loaded:=false;
  sens:=0.002;
@@ -365,27 +369,14 @@ begin
    Exit;
  end;
 
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash1.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash[0])) then
+ betoltokep:= Random(7)+1;
+ Str(betoltokep,szam);
+ szam := 'data/splash' + szam + '.jpg';
+ size :=1024;
+ if safemode then size:=512;
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,Addr(szam[1]),size,size,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash)) then
  begin
-   writeln(logfile,'Could not load data/splash1.jpg');flush(logfile);
-   Exit;
- end;
-
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash2.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash[1])) then
- begin
-   writeln(logfile,'Could not load data/splash2.jpg');flush(logfile);
-   Exit;
- end;
-
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash3.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash[2])) then
- begin
-   writeln(logfile,'Could not load data/splash3.jpg');flush(logfile);
-   Exit;
- end;
-
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/splash4.jpg',512,512,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash[3])) then
- begin
-   writeln(logfile,'Could not load data/splash4.jpg');flush(logfile);
+   writeln(logfile,'Could not load data/splash'+IntToStr(betoltokep)+'.jpg');flush(logfile);
    Exit;
  end;
 
@@ -417,10 +408,7 @@ begin
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/cssin.jpg',256,32,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusz2tex)) then
    Exit;
 
- splash[0]:=nil;
- splash[1]:=nil;
- splash[2]:=nil;
- splash[3]:=nil;
+ splash:=nil;
 end;
 
 procedure T3DMenu.Definishcreate;
@@ -599,10 +587,6 @@ begin
  g_pSprite.SetTransform(identmatr);
 end;
 
-procedure T3DMenu.RandomLoadScreen;
-begin
-betoltokep:= Random(4);
-end;
 
 procedure T3DMenu.Draw;
 var
@@ -838,7 +822,7 @@ begin
  end;
 end;
 
-procedure T3DMenu.DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal);
+procedure T3DMenu.DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal;shadow:bool=false);
 var
 rect,crect,rect2:TRect;
 str:string;
@@ -869,28 +853,19 @@ begin
   if length(str)>0 then
   begin
    rect2:=rect;
-   {
-   rect2.Left:=rect.left-1;
-   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2 or $ffffff);
-   rect2.Left:=rect.left+1;
-   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2);
-   rect2.Left:=rect.left;
-   rect2.Top:=rect.Top-1;
-   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2 or $ffffff);
-   rect2.Top:=rect.Top+1;
-   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2);
-   }
-   {rect2.Left:=rect.left;
-   rect2.Left:=rect.left-1;
-   rect2.Top:=rect.Top-1;
-   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2 or $ffffff);
-   rect2.Top:=rect.Top+1;
-   rect2.Left:=rect.left+1;
-   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,alpha2);
-   }
 
-   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect,DT_NOCLIP,color);
-    
+   if shadow then begin
+   rect2.Top:=rect.Top+1;
+   rect2.Bottom:=rect.Bottom+1;
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,$55FFFFFF);
+   rect2:=rect;
+   rect2.Right:=rect.Right+1;
+   rect2.Left:=rect.Left+1;
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,$55FFFFFF);
+   end;
+
+   g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect,DT_NOCLIP,color);   //COLOR!!!
+
    zeromemory(@crect,sizeof(crect));
    if str[length(str)]=' ' then
     str[length(str)]:='l';//lol trailing space hack
@@ -906,6 +881,7 @@ procedure T3DMenu.DrawLoadScreen(szazalek:byte);
 var
 mat:TD3DMatrix;
 apos:TD3DXVector3;
+fullrect:Trect;
 begin
    if szazalek<=100 then
    g_pd3dDevice.Clear(0, nil, D3DCLEAR_TARGET or D3DCLEAR_ZBUFFER,
@@ -913,13 +889,20 @@ begin
   // Begin the scene
   if SUCCEEDED(g_pd3dDevice.BeginScene) then
   begin
+   if not safemode then
+   d3dxmatrixscaling(mat,SCWidth/1024,SCHeight/1024,1)
+   else
    d3dxmatrixscaling(mat,SCWidth/512,SCHeight/512,1);
    g_pSprite._Begin(D3DXSPRITE_ALPHABLEND);
    if szazalek<=100 then
    begin
    g_psprite.SetTransform(mat);
    apos:=D3DXVector3(0,0,0);
-   g_pSprite.Draw(splash[betoltokep],nil,nil,@apos,$FFFFFFFF);
+   fullrect.Left:=0;
+   fullrect.Top:=0;
+   fullrect.Right:=800;
+   fullrect.Bottom:=600;
+   g_pSprite.Draw(splash,nil,nil,@apos,$FFFFFFFF);
 
    end;
    d3dxmatrixtranslation(mat,-20,-15,0);

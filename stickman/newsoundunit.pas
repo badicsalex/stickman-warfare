@@ -481,7 +481,7 @@ begin
  zeromemory(@buf.format,sizeof(buf.format));
  copymemory(@buf.format,mfile.m_pwfx,sizeof(buf.format));
  if buf.format.nChannels>1 then
-  MessageBox(0,'shit','cunt',0);
+  MessageBox(0,'nem mono a hang','cunt',0);
  getmem(buf.data,buf.caps.dwBufferBytes);
 
 
@@ -1060,7 +1060,7 @@ begin
  if (hol.y=0) and (hol.x=0) and (hol.z=0) then
   atav:=0
  else
-  atav:=tavpointpointsq(hol,listenerpos)/bufloaded[mit].mindis;
+  atav:=tavpointpoint(hol,listenerpos)/bufloaded[mit].mindis;    //SQ??
 
  repeat
   max:=-1;

@@ -104,6 +104,13 @@ type
  Tposrad= record
   posx,posy,posz:single;
   radd,raddn:single;
+  //ground:boolean;
+ end;
+
+ Tbubble= record
+  posx,posy,posz:single;
+  rad:single;
+  gomb:ID3DXMesh;
  end;
 
  TOjjektumTexture = record
@@ -148,9 +155,11 @@ var
  otNszam:integer=-1;
  currenttriarr:Tacctriarr;
  posrads:array of Tposrad;
- lightmapbm:array [0..1023,0..1023,0..3] of byte;
+ bubbles:array of Tbubble;
+ lightmapbm:array [0..2047,0..2047,0..3] of byte;
  panthepulet:integer;
  portalepulet:integer;
+ ATportalhely:integer;
  DNSvec:TD3DXVector3;
  DNSrad:single;
 
@@ -926,6 +935,14 @@ begin
   if stuffjson.GetKey(['buildings'],i)='kispiri' then
    portalepulet:=i;
 
+  if stuffjson.GetKey(['buildings'],i)='portal_inst' then
+   ATportalhely:=i;
+
+
+
+
+
+
   for j:=0 to stuffjson.GetNum(['buildings',i,'special']) do
   begin
    special:=stuffjson.GetString(['buildings',i,'special',j]);
@@ -954,6 +971,7 @@ begin
     y:=stuffjson.GetFloat(['buildings',i,'position',j,'y']);
     z:=stuffjson.GetFloat(['buildings',i,'position',j,'z']);
    end;
+
 
  end;
 end;
@@ -1061,15 +1079,16 @@ begin
    end;
    inc(j,cursize)
   end;
+  write(logfile,'out of lightmaps :''(\n');flush(logfile);
   exit;
   breakall:
  end;
  Xbitmap:=TBitmap.Create;
  Xbitmap.PixelFormat:=pf24bit;
- Xbitmap.Height:=1024;
- Xbitmap.Width:=1024;
+ Xbitmap.Height:=2048;
+ Xbitmap.Width:=2048;
  Xbitmap.Canvas.brush.color:=clblack;
- Xbitmap.canvas.Rectangle(0,0,1023,1023);
+ Xbitmap.canvas.Rectangle(0,0,2047,2047);
  for i:=0 to high(ojjektumarr) do
  begin
   XBitmap.Canvas.Draw(lmapx[i,0],lmapx[i,1],lmaps[i]);
@@ -1251,8 +1270,8 @@ begin
       begin
        pvert[l].tu:=pvertojj[l+attrarr[j].vertexStart].tu;
        pvert[l].tv:=pvertojj[l+attrarr[j].vertexStart].tv;
-       pvert[l].lu:=pvertojj[l+attrarr[j].vertexStart].lu*lmapx[i,2]/1024+lmapx[i,0]/1024;
-       pvert[l].lv:=pvertojj[l+attrarr[j].vertexStart].lv*lmapx[i,2]/1024+lmapx[i,1]/1024;
+       pvert[l].lu:=pvertojj[l+attrarr[j].vertexStart].lu*lmapx[i,2]/2048+lmapx[i,0]/2048;
+       pvert[l].lv:=pvertojj[l+attrarr[j].vertexStart].lv*lmapx[i,2]/2048+lmapx[i,1]/2048;
        d3dxvec3add(tmp2,      pvertojj[l+attrarr[j].vertexStart].position,holvannak[k]);
 
        pvert[l].position:=tmp2;

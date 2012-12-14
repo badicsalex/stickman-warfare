@@ -21,7 +21,7 @@ type
  TMMOServerClient = class(TObject)
  private
   szerveraddr:TSockaddrIn;
-  host,nev,jelszo:string;
+  host,jelszo:string;
   fegyver,fejcucc:integer;
   reconnect:cardinal;
   sock:TBufferedSocket;
@@ -41,24 +41,33 @@ type
   procedure ReceivePlayerlist(frame:TSocketFrame);
   procedure ReceiveChat(frame:TSocketFrame);
   procedure ReceiveKick(frame:TSocketFrame);
+  procedure Receive1v1(frame:TSocketFrame);
   procedure ReceiveWeather(frame:TSocketFrame);
   procedure ReceiveSendUDP(frame:TSocketFrame);
   procedure ReceiveEvent(frame:TSocketFrame);
  public
+  nev:string;
   myport:integer; //általam kijelölt port
   myUID:integer;
   loggedin:boolean; //read only
   playersonserver:integer;
-  chats:array [0..8] of TChat; //detto
+  chats:array [0..24] of TChat; //detto
   kicked:string;       //olvasd majd töröld ki
   kickedhard:boolean;
   doevent:string;      //detto
   doeventphase:integer;
   kills:integer;
+  dailykills:integer;
   killscamping:integer; //readwrite
   killswithoutdeath:integer; // readwrite
   weather:single;
   opt_nochat:boolean;
+  state1v1,atrak:boolean;
+  limit:integer;
+
+  kihivas:string;
+  kihivszam:integer;
+
   constructor Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
   destructor Destroy;override;
   procedure Update(posx,posy:integer);
@@ -129,7 +138,7 @@ var
 implementation
 
 const
- shared_key:array [0..19] of byte=($25,$25,$25,$25,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19);
+ shared_key:array [0..19] of byte=($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00);
 
  CLIENT_VERSION=PROG_VER;
 
@@ -214,6 +223,13 @@ const
   int auth
  }
 
+ SERVERMSG_1V1=8;
+ {
+  string kihivo neve
+  int limit
+ }
+
+
  P2PMSG_HANDSHAKE=1;
  {
 	byte latlak
@@ -256,16 +272,22 @@ begin
  frame.WriteString(uzenet);
  sock.SendFrame(frame);
  frame.Free;
+
 end;
 
 procedure TMMOServerClient.SendStatus(x,y:integer);
 var
  frame:TSocketFrame;
+ i:integer;
 begin
  if (sock=nil) or not loggedin then
   exit;
+
+ NewCrypto;
  frame:=TSocketFrame.Create;
  frame.WriteChar(CLIENTMSG_STATUS);
+ for i:=0 to 19 do
+  frame.WriteChar(crypto[i]);
  frame.WriteInt(x);
  frame.WriteInt(y);
  sock.SendFrame(frame);
@@ -333,12 +355,13 @@ begin
  myUID:=frame.ReadInt;
  for i:=0 to 19 do
   crypto[i]:=frame.ReadChar;
+  kills:=frame.ReadInt;
 end;
 
 procedure TMMOServerClient.ReceivePlayerlist(frame:TSocketFrame);
 var
 i,j,n:integer;
-nev:string;
+nev,clan:string;
 ip:DWORD;
 port:WORD;
 uid,fegyver,fejrevalo,killek:integer;
@@ -359,6 +382,7 @@ begin
         (frame.ReadChar shl 8);
   uid:=frame.ReadInt;
   nev:=frame.ReadString;
+  clan:=frame.ReadString;
 	fegyver:=frame.ReadInt;
   fejrevalo:=frame.ReadInt;
   killek:=frame.ReadInt;
@@ -389,6 +413,7 @@ begin
   ujppl[i].net.port:=port;
   ujppl[i].net.UID:=uid;
   ujppl[i].pls.nev:=nev;
+  ujppl[i].pls.clan:=clan;
   ujppl[i].pls.fegyv:=fegyver;
   ujppl[i].pls.fejcucc:=fejrevalo;
   ujppl[i].pls.kills:=killek;
@@ -420,6 +445,31 @@ procedure TMMOServerClient.ReceiveKick(frame:TSocketFrame);
 begin
  kickedhard:=frame.ReadChar=1;
  kicked:=frame.ReadString;
+end;
+
+procedure TMMOServerClient.Receive1v1(frame:TSocketFrame);
+var
+kar:byte;
+begin
+  kihivas := frame.ReadString;
+  kar := frame.ReadChar;
+  limit := frame.ReadInt;
+  kihivszam:=3000;
+  
+  if (kar=1) then
+  begin
+   state1v1:=true;
+   kihivszam:=0;
+   multisc.kills:=0;
+   multisc.atrak:=true;
+  end;
+
+  if (kar=2) then
+  begin
+  state1v1:=false;
+  kihivszam:=0;
+  end;
+
 end;
 
 procedure TMMOServerClient.ReceiveWeather(frame:TSocketFrame);
@@ -523,6 +573,7 @@ begin
    SERVERMSG_WEATHER: ReceiveWeather(frame);
    SERVERMSG_SENDUDP: ReceiveSendUDP(frame);
    SERVERMSG_EVENT: ReceiveEvent(frame);
+   SERVERMSG_1V1: Receive1v1(frame);
   end;
  end;
  frame.Free;
@@ -558,6 +609,7 @@ begin
  setlength(sentmedals,length(sentmedals)+1);
  sentmedals[high(sentmedals)]:=medalid;
 end;
+
 
 {
 function packpos(mit:Tmukspos):Tpackedpos;
@@ -703,7 +755,7 @@ begin
  begin
    pos.vpos:=pos.megjpos;
    pos.vseb:=pos.seb;
-   pos.pos:=frame.ReadPackedPos;
+   pos.pos:=frame.ReadPackedPos();
    pos.seb:=frame.ReadPackedVector(1);
 
    pos.irany:= unpackfloatheavy(frame.ReadChar,D3DX_PI);
