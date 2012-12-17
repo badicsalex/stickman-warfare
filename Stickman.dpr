@@ -12,7 +12,7 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{$DEFINE undebug}
+{.$DEFINE undebug}
 {$DEFINE panthihogomb}
 {.$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
@@ -6161,7 +6161,8 @@ begin
    // !!!!!!!!!!!!!!!!!!!!!
   if (aloves.fegyv>=128) xor (myfegyv<128) then love:=-1 else
   case aloves.fegyv of
-   FEGYV_M4A1,FEGYV_M82A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,vst);
+   FEGYV_M4A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,vst);
+   FEGYV_M82A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.1);
    FEGYV_MPG: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.15);
    FEGYV_QUAD: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.15);
    FEGYV_MP5A3: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.02);
@@ -7053,7 +7054,7 @@ begin
     begin
     if (tabsort<=0) and (techsz<33) then
       begin
-      szcol:= $FF00FF00;
+      szcol:= $FF00A0FF;
       if (ppl[rendezve[i]].pls.nev = multisc.nev) then  szcol:= $FFFFFFFF;
       if (ppl[rendezve[i]].pls.nev = multisc.kihivas) then  szcol:= $FFFF0000;
       menu.DrawText(ppl[rendezve[i]].pls.clan ,0.5,menuplus+techsz*menuszor,0.85,menuplus+0.1+techsz*menuszor,kisTAB,$FF00FF00);
@@ -7076,7 +7077,7 @@ begin
       if (ppl[rendezve[i]].pls.nev = multisc.nev) then  szcol:= $FFFFFFFF;
       if (ppl[rendezve[i]].pls.nev = multisc.kihivas) then  szcol:= $FFFF0000;
       menu.DrawText(ppl[rendezve[i]].pls.clan ,0.11,menuplus+gunsz*menuszor,0.5,menuplus+0.1+gunsz*menuszor,kisTAB,$FF00FF00);
-      menu.DrawText(ppl[rendezve[i]].pls.nev ,0.6,menuplus+techsz*menuszor,0.85,menuplus+0.1+techsz*menuszor,kisTAB,szcol);
+      menu.DrawText(ppl[rendezve[i]].pls.nev ,0.21,menuplus+gunsz*menuszor,0.85,menuplus+0.1+gunsz*menuszor,kisTAB,szcol);
       menu.DrawText(fegyvernev(ppl[rendezve[i]].pls.fegyv),0.39,menuplus+gunsz*menuszor,0.5,menuplus+0.1+gunsz*menuszor,kisTAB,$FFFF6000);
       menu.DrawText(inttostr(ppl[rendezve[i]].pls.kills),0.46,menuplus+gunsz*menuszor,0.5,menuplus+0.1+gunsz*menuszor,kisTAB,$FFFF6000);
       inc(gunsz);
