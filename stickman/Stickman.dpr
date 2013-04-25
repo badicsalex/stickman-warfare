@@ -13,7 +13,7 @@
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
 {.$DEFINE undebug}
-{$DEFINE panthihogomb}
+{.$DEFINE panthihogomb}
 {.$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
 {.$DEFINE repkedomod}
@@ -86,7 +86,10 @@ POSTPROC_MAX=4;
 //-----------------------------------------------------------------------------
 var
 
+  //TODO remove
+  ft:integer;
 
+  
   g_pD3D: IDirect3D9 = nil; // Used to create the D3DDevice
   g_pd3dDevice: IDirect3DDevice9 = nil; // Our rendering device
   g_pVB:IDirect3DVertexBuffer9 = nil; // Buffer to hold vertices
@@ -98,6 +101,8 @@ var
   vizszin:cardinal;
   ambientszin:cardinal;
   futex:IDirect3DTexture9 = nil;
+  betontex:IDirect3DTexture9 = nil;
+  metaltex:IDirect3DTexture9 = nil;
   futexa:IDirect3DTexture9 = nil;
   kotex:IDirect3DTexture9 = nil;
   noisetex:IDirect3DTexture9 = nil;
@@ -108,9 +113,11 @@ var
   cartex:IDirect3DTexture9 = nil;
   antigravtex:IDirect3DTexture9 = nil;
   kerektex:IDirect3DTexture9 = nil;
+  flagtex:IDirect3DTexture9 = nil;
   g_pautomesh:ID3DXMesh=nil;
   g_pantigravmesh:ID3DXMesh=nil;
   g_pkerekmesh:ID3DXMesh=nil;
+  g_pflagmesh:ID3DXMesh=nil;
   singtc,cosgtc,plsgtc:single; //hullámzás
   skytex:IDirect3DTexture9 = nil;
   skystrips: array [0..20] of array [0..31] of TSkyVertex;
@@ -275,6 +282,8 @@ var
   vegeffekt:integer;
 
   teleports:array of TTeleport;
+
+  flags:array of TFlagPos;
   
   opt_taunts:boolean;
 
@@ -1149,6 +1158,20 @@ begin
    tip:=stuffjson.GetInt(['teleports',i,'type']);
   end;
 
+
+
+ n:=stuffjson.GetNum(['flags']);
+ setlength(flags,n);
+ for i:=0 to n-1 do
+  with flags[i] do
+  begin
+   with pos do
+   begin
+    x:=stuffjson.GetFloat(['flags',i,'pos','x']);
+    y:=stuffjson.GetFloat(['flags',i,'pos','y']);
+    z:=stuffjson.GetFloat(['flags',i,'pos','z']);
+   end;
+  end;
 end;
 
 function loadojjektumok:boolean;
@@ -1707,6 +1730,8 @@ begin
   bubbleeffect;
 
   if not LTFF(g_pd3dDevice, 'data\grass.jpg',futex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\concrete.jpg',betontex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\metal.jpg',metaltex) then exit;
   if not LTFF(g_pd3dDevice, 'data\gnoise.jpg',noise2tex) then exit;
   if not LTFF(g_pd3dDevice, 'data\rock.jpg',kotex) then exit;
   if not LTFF(g_pd3dDevice, 'data\rnoise.jpg',noisetex) then exit;
@@ -1737,6 +1762,10 @@ begin
   normalizemesh(g_pautomesh);
   normalizemesh(g_pantigravmesh);
 
+  if FAILED(D3DXLoadMeshFromX('data\flag.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
+  if tempmesh=nil then exit;if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL or D3DFVF_TEX1,g_pd3ddevice,g_pflagmesh)) then exit;
+  if tempmesh<>nil then tempmesh:=nil;
+
 
   if FAILED(D3DXLoadMeshFromX('data\rocket003.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
   if tempmesh=nil then exit;if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL + D3DFVF_DIFFUSE ,g_pd3ddevice,lawmesh)) then exit;
@@ -1754,6 +1783,7 @@ begin
   if not LTFF(g_pd3dDevice, 'data\hummer.jpg', cartex) then exit;
   if not LTFF(g_pd3dDevice, 'data\antigrav.jpg', antigravtex) then exit;
   if not LTFF(g_pd3dDevice, 'data\kerektex.jpg', kerektex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\flag.jpg', flagtex) then exit;
   writeln(logfile,'Loaded vehicles');
                            
   result:=D3DXCreateTexture(g_pd3ddevice,SCWidth div 2,SCheight div 2,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,effecttexture);
@@ -2252,7 +2282,7 @@ begin
 
  if ID=0 then
  begin
-  multisc.Killed(kimiatt);
+  multisc.Killed(kimiatt,true);
   multip2p.Killed(apos,vpos,szogx,mstat,animstat,mlgmb,gmbvec,kimiatt);
  end;
 
@@ -2986,7 +3016,7 @@ begin
 
     case myfegyv of
      FEGYV_M4A1:begin lovok:=0.5; cooldown:=1/8; hatralok:=0.05; end;
-     FEGYV_M82A1:begin lovok:=1; cooldown:=1/1.5; hatralok:=0.15; end;
+     FEGYV_M82A1:begin lovok:=1; cooldown:=1/1.5; hatralok:=0.15; rezg:=1; end;
      FEGYV_MPG:begin lovok:=0; cooldown:=1/1.5; hatralok:=0.10; end;
      FEGYV_quad:begin lovok:=1; cooldown:=1/7.7; hatralok:=0.04; end;
      FEGYV_LAW:begin
@@ -3055,8 +3085,8 @@ begin
       else
        if gugg then
        begin
-        szogX:=szogx+(100-random(200))/20000;
-        szogY:=szogy+(100-random(200))/20000;
+        szogX:=szogx+(100-random(200))/23000;
+        szogY:=szogy+(100-random(200))/23000;
        end
        else
        begin
@@ -3086,6 +3116,11 @@ begin
      {$ENDIF}
    end;
   end;
+
+  if (myfegyv=FEGYV_M82A1) and not csipo then begin
+   szogX:=szogX + sin((volttim mod 3200)*D3DX_PI*2/3200)/10000;
+   szogY:=szogY + cos((volttim mod 2500)*D3DX_PI*2/2500)/10000;
+ end;
 
   dec(LAWkesleltetes);
   if Not ((halal=0) and (not nemlohet)) or (LAWkesleltetes<0) or autoban then LAWkesleltetes:=-1;
@@ -3274,7 +3309,7 @@ begin
  {$ENDIF}
 end;
 
-procedure DoLAWRobbanas(mi:integer;rippl:boolean);
+procedure DoLAWRobbanas(mi:integer;rippl,dirt:boolean);
 var
  t:TD3DXVector3;
  i:integer;
@@ -3330,6 +3365,18 @@ begin
     tim:=50;
    end;
   end;
+
+  if opt_detail=DETAIL_MAX then
+  if dirt then
+   for i:=0 to 100 do
+    begin
+    t:=randomvec(animstat*2+i*3,0.42);
+    col := $FF884400;
+    if lawproj[mi].v3.y<15 then col := $FFFFF6B5;
+    Particlesystem_add(GravityparticleCreate(lawproj[mi].v3,t,random(10)/90+0.1,0.1,0.163,col,$00000000,random(100)+130));
+
+
+    end;
 
  handlerobbanas(lawproj[mi].v3,lawproj[mi].kilotte,FEGYV_LAW,0);
  undebug_registers;
@@ -3655,10 +3702,10 @@ laststate:='Docollisiontests 6';
   laststate:='Docollisiontests 6a';
    if advwove(v1.x,v1.z)>v1.y then
     begin
-      DoLAWRobbanas(i,false);
+      DoLAWRobbanas(i,false,true); // földdel
       goto lawskip;
      end;
-    laststate:='Docollisiontests 6b';
+    laststate:='Docollisiontests 6b';        // panthi?
    if tavpointpointsq(v1,DNSvec)<sqr(DNSrad) then
    begin
     if tavpointpointsq(v1,DNSvec)<sqr(DNSrad-5) then
@@ -3667,18 +3714,18 @@ laststate:='Docollisiontests 6';
      setlength(lawproj,high(lawproj));
     end
     else
-     DoLAWRobbanas(i,true);
+     DoLAWRobbanas(i,true,false);
     goto lawskip;
    end;
 
-   laststate:='Docollisiontests 6c';
+   laststate:='Docollisiontests 6c';  // épület
 
    for l:=0 to high(ojjektumnevek) do
    for j:=0 to ojjektumarr[l].hvszam-1 do
    begin
       if ojjektumarr[l].raytestbol(v1,v3,j,COLLISION_BULLET) then
        begin
-        DoLAWRobbanas(i,false);
+        DoLAWRobbanas(i,false,false);
         goto lawskip;
        end;
    end;
@@ -4227,6 +4274,16 @@ begin
      v1.y:=vfrom.y;
      v1.z:=vfrom.z+(Random(200)-100)/100*(rad);
      Particlesystem_add(simpleparticleCreate(v1,D3DXVector3(0,0.03,0),0.11,0.13,$002222FF,$00000000,random(50)+100));
+    end;
+
+
+    if tip=3 then
+    if (hanyszor and 5)=5 then
+    begin
+      v1.x:=vfrom.x+(Random(200)-100)/100*(rad);
+     v1.y:=vfrom.y;
+     v1.z:=vfrom.z+(Random(200)-100)/100*(rad);
+    Particlesystem_add(CoolingparticleCreate(v1,D3DXVector3(random(10)*0.01-0.05,0.03,random(10)*0.01-0.05),1.5,8.5+random(15)*0.1,random(60)*0.001+0.12,$FFAAAAAA+random(32)*$010101,$00000000,random(230)+900));
     end;
 
     if tip=0 then
@@ -4835,9 +4892,9 @@ begin
   tmp:=v1;
      //gyorsuló
 
-  v1.x:=(v1.x-v2.x)*1.02+v1.x;
-  v1.y:=(v1.y-v2.y)*1.02+v1.y;
-  v1.z:=(v1.z-v2.z)*1.02+v1.z;
+  v1.x:=(v1.x-v2.x)*1.0215+v1.x;
+  v1.y:=(v1.y-v2.y)*1.0215+v1.y;
+  v1.z:=(v1.z-v2.z)*1.0215+v1.z;
 
   v2:=tmp;
 
@@ -5210,10 +5267,12 @@ begin
  hvolt:=false;
  i:=hanyszor*10-timegettime;
 
+ //TODO: valami
+ //{
  if i>0 then sleep(i)
  else
   hanyszor:=timegettime div 10;
-
+ //}
  anticheat2:=round(time*86400000)-timegettime;
 
  if abs(anticheat1-anticheat2)>5000 then
@@ -6161,10 +6220,10 @@ begin
    // !!!!!!!!!!!!!!!!!!!!!
   if (aloves.fegyv>=128) xor (myfegyv<128) then love:=-1 else
   case aloves.fegyv of
-   FEGYV_M4A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,vst);
-   FEGYV_M82A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.1);
+   FEGYV_M4A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.033);
+   FEGYV_M82A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.088);
    FEGYV_MPG: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.15);
-   FEGYV_QUAD: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.15);
+   FEGYV_QUAD: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.16);
    FEGYV_MP5A3: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.02);
   end;
 
@@ -6185,6 +6244,7 @@ begin
   {$IFNDEF godmode}
   {$IFNDEF aiparancsok}
   if invulntim=0 then
+  begin
   if love>=0 then
    if halal=0 then
    begin
@@ -6202,12 +6262,33 @@ begin
    LatszonaKL:=200;
    kitlottemle:=lang[65]+' '+ppl[aloves.kilotte].pls.nev;
   end;
+  end
+  else
+  if (halal=0)  then  begin                  
+  writeln(logfile,'doing');flush(logfile);
+  explosionripple(d3dxvector3(cpx^,cpy^,cpz^),false);
+  multip2p.Blocked(d3dxvector3(cpx^,cpy^,cpz^));
+  end;
   {$ENDIF}
     {$ENDIF}
    {$ENDIF}
  end;
  
  setlength(multip2p.lovesek,0);
+end;
+
+
+procedure Handleblocks;
+var
+i:integer;
+begin
+
+ for i:=0 to high(multip2p.blockok) do
+ begin
+    explosionripple(multip2p.blockok[i],false);
+ end;
+ setlength(multip2p.blockok,0);
+
 end;
 
 procedure handledoglodesek;
@@ -6974,7 +7055,7 @@ begin
   drawmessage(kitlottemle,$1000000*latszonaKL+$FF0000);
 
  //  menu.g_pSprite.Draw(inttostr(sizeof(TD3DXAttributeRange)),nil,nil,nil,$80FFFFFF);
- //menu.drawtext(inttostr(sizeof(TD3DXAttributeRange)),0.2,0.8,0.8,0.9,2,$70000000+betuszin);
+ //menu.drawtext(inttostr(ft),0.2,0.8,0.8,0.9,2,$70000000+betuszin);
  //if (portalevent <> nil) then menu.drawtext(inttostr(portalevent.phs),0.2,0.9,0.8,1,2,$70000000+betuszin);
  //if (currevent <> nil) then menu.drawtext(inttostr(currevent.phs),0.7,0.9,1,1,2,$70000000+betuszin);
   //menu.drawtext(multisc.kicked,0.2,0.9,0.8,1,2,$70000000+betuszin);
@@ -7934,6 +8015,8 @@ begin
   Handlelovesek;
   laststate:='Handledoglodesek';
   Handledoglodesek;
+  laststate:='Handleblocks';
+  Handleblocks;
   laststate:='HandleDS';
   handleSounds;
   laststate:='Physics';
@@ -7986,10 +8069,11 @@ procedure RenderScene;
 const
 magicfuertek:array [0..4] of byte = (0,13,45,119,181);
 var
- i:integer;
+ i,n:integer;
  pos:TD3DVector;
  matViewproj:TD3DMatrix;
  tmplw:longword;
+ mat,mat1,mat2,mat3:TD3DMatrix;
 begin
    laststate:='Rendering reflections';
 
@@ -8119,13 +8203,57 @@ begin
 
 
 
-        // a bubblékat is ki kéne raj-zolni
+
+
+    //  draw flag
+    laststate:='Rendering Flags';
+      n:= length(flags);
+      for i:=0 to n-1 do
+      with flags[i] do
+      begin
+         g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_SELECTARG1 );
+         g_pd3ddevice.settexture(0,flagtex);
+
+         D3DXMatrixTranslation(mat1,pos.x,pos.y,pos.z);
+         D3DXMatrixScaling(mat2,1,1,1);
+         D3DXMatrixMultiply(mat,mat2,mat1);
+
+         g_pd3ddevice.SetTransform(D3DTS_WORLD,mat);
+
+         g_pd3ddevice.settexture(0,betontex);
+         g_pflagmesh.DrawSubset(0);
+         g_pd3ddevice.settexture(0,metaltex);
+         g_pflagmesh.DrawSubset(1);
+
+         // dasz flag shader
+
+         if FAILED(g_peffect.SetTechnique('Flag')) then
+         begin
+          g_peffect:=nil ;
+          g_pd3ddevice.settexture(0,flagtex);
+         g_pflagmesh.DrawSubset(2);
+          end
+         else
+        begin
+         d3dxmatrixmultiply(matViewproj,matView,matProj);
+         g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
+         g_pd3ddevice.SetVertexdeclaration(vertdecl);
+         g_pEffect.SetTexture('g_MeshTexture',flagtex);
+         g_peffect._Begin(@tmplw,0);
+         g_peffect.BeginPass(0);
+
+         g_pflagmesh.DrawSubset(2);
+
+         g_peffect.Endpass;
+         g_peffect._end;
+        end
+
+        
+      end;
 
 
 
 
-
-   
     laststate:='Rendering Stickman and ragdolls';
 
     muks.init;
@@ -8243,15 +8371,14 @@ begin
      begin
       setupmyfegyvprojmat;
       if not nofegyv then
-       fegyv.drawfegyv(myfegyv);
+       fegyv.drawfegyv(myfegyv,false,g_pEffect,matView,matProj,mfm);
       setupprojmat;
      end
     else
-     if not (enableeffects and (opt_postproc>0)) then
      begin
-      setupmyfegyvprojmat;
+      //setupmyfegyvprojmat;
       if not nofegyv then
-       fegyv.drawfegyv(myfegyv);
+       fegyv.drawfegyv(myfegyv,false,g_pEffect,matView,matProj,mfm);
       setupprojmat;
      end;
     end;
@@ -8267,7 +8394,7 @@ begin
      pos:=ppl[i].pos.pos;
    //  if (abs(pos.x-MMO.mypos.pos.x)+abs(pos.z-MMO.mypos.pos.z))<0.5 then continue;
      SetupFegyvmatr(i,0<(ppl[i].pos.state and MSTAT_CSIPO));
-     fegyv.drawfegyv(ppl[i].pls.fegyv);
+     fegyv.drawfegyv(ppl[i].pls.fegyv,false,g_pEffect,matView,matProj,mfm);
     end;
 
     pos:=D3DXVector3(cpx^,cpy^,cpz^);
@@ -8592,7 +8719,7 @@ begin
      g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
      setupmyfegyvmatr;
 
-      fegyv.drawfegyv(myfegyv);
+      fegyv.drawfegyv(myfegyv,false,nil,matView,matProj,mfm);
 
     end;
 
@@ -9613,6 +9740,7 @@ var
   tmpthdid:cardinal;
   virt:pdword;
   hostfile:Textfile;
+  frametime:integer;
 {$IFDEF undebug}
 type TNtSetInformationThread= Function(hProcess: THandle;ProcessInformationClass: Integer;ProcessInformation:pointer;ProcessInformationLength: Integer): Integer; stdcall;
 var
@@ -9939,6 +10067,8 @@ try
           DispatchMessage(msg);
         end else
         begin
+          // TODO timer start
+          frametime := getTickCount;
           GameLoop;
 
           //beginthread(nil,0,zenefresh,pointer(@(menufi[MI_MP3_VOL].elx)),0,tmpthdid);
@@ -9967,6 +10097,8 @@ try
             //zenestop;
             goto men;
           end;
+
+           ft := getTickCount - frametime;
 
         end;
       end;

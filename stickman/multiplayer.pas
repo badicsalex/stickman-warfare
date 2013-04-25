@@ -72,7 +72,7 @@ type
   destructor Destroy;override;
   procedure Update(posx,posy:integer);
   procedure Chat(mit:string);
-  procedure Killed(kimiatt:integer); //ez nem UID, hanem ppl index
+  procedure Killed(kimiatt:integer;died:bool); //ez nem UID, hanem ppl index
   procedure Medal(c1,c2:char);
  end;
 
@@ -110,12 +110,14 @@ type
   roundrobinindex:integer;
   procedure ReceiveHandshake(port:word;frame:TUDPFrame);
   procedure ReceivePos(kitol:integer;frame:TUDPFrame);
+  procedure ReceiveBlock(frame:TUDPFrame);
   procedure ReceiveRongybaba(kitol:integer;frame:TUDPFrame);
   procedure CalculatePriorities(campos,lookatpos:TD3DXVector3);
   procedure SendFrame(frame:TUDPFrame;kinek:integer);
  public
   lovesek:array of Tloves; //kilotte: Index, kívülrõl olvasandó és törlendõ
   hullak:array of Thulla; //rongybabák. Detto.
+  blockok:array of TD3DXVector3; // blokk pozíciók
   constructor Create(port,fegyv:integer);
   destructor Destroy;override;
   procedure Update(posx,posy,posz,oposx,oposy,oposz,iranyx,iranyy:single;state:integer;
@@ -125,6 +127,7 @@ type
   procedure Killed(apos,vpos:TD3DXVector3;irany:single;state:byte;animstate:single;
                    mlgmb:byte;gmbvec:TD3DXVector3;
                    kimiatt:integer);
+  procedure Blocked(apos:TD3DXVector3);
   procedure Loves(v1,v2:TD3DXVector3);
   procedure SendUDPToServer(frame:TUDPFrame);   //ez valójában a multiscs, multip2p közötti együttmûködéshez kell.
  end;
@@ -138,7 +141,7 @@ var
 implementation
 
 const
- shared_key:array [0..19] of byte=($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00);
+ shared_key:array [0..19] of byte=($ab,$ba,$aa,$bb,$12,$21,$11,$22,$cd,$dc,$cc,$dd,$67,$76,$66,$77,$ef,$fe,$ee,$ff);
 
  CLIENT_VERSION=PROG_VER;
 
@@ -239,6 +242,8 @@ const
  P2PMSG_POS=2;
 
  P2PMSG_RONGYBABA=3;
+
+ P2PMSG_BLOCK = 4;
 
 procedure TMMOServerClient.SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
 var
@@ -590,7 +595,7 @@ begin
  SendChat(copy(mit,2,256));
 end;
 
-procedure TMMOServerClient.Killed(kimiatt:integer); //ez nem UID, hanem ppl index
+procedure TMMOServerClient.Killed(kimiatt:integer;died:bool); //ez nem UID, hanem ppl index
 begin
  if kimiatt>-1 then
   SendKill(ppl[kimiatt].net.UID);
@@ -741,6 +746,11 @@ begin
  ppl[kitol].net.overrideport:=port;
 end;
 
+procedure TMMOPeerToPeer.ReceiveBlock(frame:TUDPFrame);
+begin
+setlength(blockok,length(blockok)+1);
+blockok[high(blockok)] := frame.ReadVector;
+end ;
 
 procedure TMMOPeerToPeer.ReceivePos(kitol:integer;frame:TUDPFrame);
 var
@@ -854,6 +864,8 @@ begin
   ppl[kitol].pos.pos:=D3DXVector3Zero;
  end;
 end;
+
+
 
 procedure TMMOPeerToPeer.CalculatePriorities(campos,lookatpos:TD3DXVector3);
 var
@@ -1066,6 +1078,20 @@ begin
     leszkikuldjon:=false;
  end;
  roundrobinindex:=i;
+end;
+
+procedure TMMOPeerToPeer.Blocked(apos:TD3DXVector3);
+var
+frame:TUDPFrame;
+i:integer;
+begin
+ frame:=TUDPFrame.Create;
+ frame.WriteChar(P2PMSG_BLOCK);
+ frame.WriteVector(apos);
+ for i:=0 to high(ppl) do
+  if ppl[i].net.connected then
+   SendFrame(frame,i);
+ frame.Free;
 end;
 
 procedure TMMOPeerToPeer.Killed(apos,vpos:TD3DXVector3;irany:single;state:byte;animstate:single;

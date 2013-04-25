@@ -18,7 +18,7 @@ interface
 
   Tparticle = record
    vispls,vispls2:TD3DXVector3;
-   k,kp,bszor,bszor2,ssz:single;
+   k,kp,bszor,bszor2,ssz,weight:single;
    col,batch:cardinal;   //a batch M4nél a szikra-boolean
    v1,v2:TD3DXVector3;
    tex,ido:word;
@@ -43,6 +43,8 @@ function MPGcreate (av1,av2:TD3DXVector3;aido:single;acol:cardinal):Tparticle;
 function Quadcreate (av1,av2:TD3DXVector3;seb,sebszorzo:single;acol:cardinal):Tparticle;
 //function Gunmuzzcreate (honnan,merre:TD3DXVector3; frames:cardinal):Tparticle;
 function Simpleparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
+function Gravityparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,weig:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
+function Coolingparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,temperature:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
 function ExpSebparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,sebmul:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
 
 function Langcreatorparticlecreate (pos,pos2:TD3DXVector3;szorzo:single):Tparticle;
@@ -845,6 +847,35 @@ end;  }
   end;
  end;
 
+ procedure Gravityparticleupdate(mit:integer);
+ begin
+  with particles[mit] do
+  begin
+   d3dxvec3add(v2,v2,d3dxvector3(0,-0.02*weight,0));
+   d3dxvec3add(v1,v1,v2);
+   dec(ido);
+   k:=k+kp;
+   bszor:=bszor+bszor2;
+  end;
+ end;
+
+  procedure Coolingparticleupdate(mit:integer);
+ begin
+  with particles[mit] do
+  begin
+   weight:=weight*0.994;
+   D3DXVec3Scale(v2,v2,0.98);
+   d3dxvec3add(v2,v2,d3dxvector3(0.0009,+0.02*weight,0.0009));
+   d3dxvec3add(v1,v1,v2);
+   dec(ido);
+   k:=k+kp;
+   bszor:=bszor+bszor2;
+  end;
+ end;
+
+
+
+
  procedure Simpleparticlerender(mit:integer);
  var
   vu,vl:TD3DXVector3;
@@ -908,6 +939,51 @@ begin
 
 
  update:=simpleparticleupdate;
+ render:=simpleparticlerender;
+ end;
+end;
+
+
+function Gravityparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,weig:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
+begin
+ with result do
+ begin
+   v1:=pos;
+   v2:=vec;
+   weight:=weig;
+   col:=startcolor;
+   batch:=endcolor;
+   ido:=lifetime;
+   k:=0;
+   kp:=1/lifetime;
+   bszor:=startsiz;
+   bszor2:=(endsiz-startsiz)/lifetime;
+ tex:=TX_HOMALY;
+
+
+ update:=gravityparticleupdate;
+ render:=simpleparticlerender;
+ end;
+end;
+
+function Coolingparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,temperature:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
+begin
+ with result do
+ begin
+   v1:=pos;
+   v2:=vec;
+   weight:=temperature;
+   col:=startcolor;
+   batch:=endcolor;
+   ido:=lifetime;
+   k:=0;
+   kp:=1/lifetime;
+   bszor:=startsiz;
+   bszor2:=(endsiz-startsiz)/lifetime;
+ tex:=TX_HOMALY;
+
+
+ update:=coolingparticleupdate;
  render:=simpleparticlerender;
  end;
 end;
