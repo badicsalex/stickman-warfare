@@ -26,7 +26,7 @@ type
   fc:single;
   muzzez:array of TCustomvertex;
   constructor Create(a_D3Ddevice:IDirect3ddevice9;fnev:string);
-  procedure draw;
+  procedure draw(effect:bool;g_pEffect:ID3DXEffect;matView,matProj,mfm:TD3DMatrix);
   procedure pluszmuzzmatr(siz:single);
   procedure drawmuzzle(siz:single);
   destructor Destroy;reintroduce;
@@ -199,7 +199,7 @@ type
  public
    betoltve:boolean;
    constructor Create(a_D3Ddevice:IDirect3ddevice9);
-   procedure drawfegyv(mit:byte);
+   procedure drawfegyv(mit:byte;kelleffect:bool;g_pEffect:ID3DXEffect;matView,matProj,mfm:TD3DMatrix);
    procedure drawscope(mit:byte);
    procedure preparealpha;
    procedure drawfegyeffekt(mit:byte;mekkora:single);
@@ -291,10 +291,39 @@ makemuzzlequad(12,CustomVertex(   0,   0,   0,0,0,0,ARGB(255,255,255,255),0,0,0,
 
 end;
 
-procedure TF_M4A1.draw;
+procedure TF_M4A1.draw(effect:bool;g_pEffect:ID3DXEffect;matView,matProj,mfm:TD3DMatrix);
+var
+tmplw:longword;
+matViewProj:TD3DMatrix;
 begin
  g_pd3dDevice.Settexture(0,m4tex);
- g_pMesh.DrawSubset(0);
+
+  if (effect) then
+    begin
+
+      d3dxmatrixmultiply(matViewproj,matView,matProj);
+      d3dxmatrixmultiply(matViewproj,matViewproj,mfm);
+
+      g_peffect.SetTechnique('Shine');
+      g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
+      g_pEffect.SetTexture('g_MeshTexture', m4tex);
+
+     g_peffect._Begin(@tmplw,0);
+     g_peffect.BeginPass(0);
+
+     g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,itrue);
+     //g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iFalse);
+     g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,iTrue);
+     g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,iFalse);
+
+      g_pMesh.DrawSubset(0);
+     g_peffect.Endpass;
+     g_peffect._end;
+     end
+  else
+  g_pMesh.DrawSubset(0);
+
+ //g_pMesh.DrawSubset(0);
 end;
 
 procedure TF_M4A1.pluszmuzzmatr(siz:single);
@@ -1280,10 +1309,10 @@ begin
  betoltve:=true;
 end;
 
-procedure TFegyv.drawfegyv(mit:byte);
+procedure TFegyv.drawfegyv(mit:byte;kelleffect:bool;g_pEffect:ID3DXEffect;matView,matProj,mfm:TD3DMatrix);
 begin
  case mit of
-  FEGYV_M4A1:M4A1.draw;
+  FEGYV_M4A1:M4A1.draw(kelleffect,g_pEffect,matView,matProj,mfm);
   FEGYV_M82A1:M82A1.draw;
   FEGYV_LAW:LAW.draw;
   FEGYV_MPG :MPG .draw;
