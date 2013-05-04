@@ -141,7 +141,7 @@ var
 implementation
 
 const
- shared_key:array [0..19] of byte=($ab,$ba,$aa,$bb,$12,$21,$11,$22,$cd,$dc,$cc,$dd,$67,$76,$66,$77,$ef,$fe,$ee,$ff);
+ shared_key:array [0..19] of byte=($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00);
 
  CLIENT_VERSION=PROG_VER;
 
