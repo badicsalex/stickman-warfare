@@ -286,6 +286,7 @@ begin
    if lowercase(copy(mit,1,8))='icy-name' then
     nev:=copy(mit,10,length(mit)-11);
 
+   mit:='';
    elsostr:=false;
   end;
   if headwait+maxwait<integer(gettickcount) then begin recvd:=0; break; end;

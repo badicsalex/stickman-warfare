@@ -481,10 +481,6 @@ begin
 end;
 
 procedure T3dojjektum.Draw(g_pd3ddevice:IDirect3DDevice9;cp:TD3DXVector3;frust:TFrustum);
-var
-i,j:integer;
-matWorld:D3DMatrix;
-aabb:Taabb;
 begin
  messagebox(0,'Elavult: T3dojjektum.Draw','Assert helyett',0);
 end;
