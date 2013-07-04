@@ -110,7 +110,6 @@ type
   roundrobinindex:integer;
   procedure ReceiveHandshake(port:word;frame:TUDPFrame);
   procedure ReceivePos(kitol:integer;frame:TUDPFrame);
-  procedure ReceiveBlock(frame:TUDPFrame);
   procedure ReceiveRongybaba(kitol:integer;frame:TUDPFrame);
   procedure CalculatePriorities(campos,lookatpos:TD3DXVector3);
   procedure SendFrame(frame:TUDPFrame;kinek:integer);
@@ -141,7 +140,8 @@ var
 implementation
 
 const
- shared_key:array [0..19] of byte=($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00);
+ shared_key:array [0..19] of byte=($AB, $BA, $AA, $BB, $12, $21, $11, $22, $CD, $DC, $CC, $DD, $67, $76, $66, $77, $EF, $FE, $EE, $FF);
+
 
  CLIENT_VERSION=PROG_VER;
 
@@ -336,7 +336,6 @@ procedure TMMOServerClient.SendMedal(medal:word);
 var
  frame:TSocketFrame;
  i:integer;
- ujcrypto:TSHA1Digest;
 begin
  if (sock=nil) or not loggedin then
   exit;
@@ -746,11 +745,6 @@ begin
  ppl[kitol].net.overrideport:=port;
 end;
 
-procedure TMMOPeerToPeer.ReceiveBlock(frame:TUDPFrame);
-begin
-setlength(blockok,length(blockok)+1);
-blockok[high(blockok)] := frame.ReadVector;
-end ;
 
 procedure TMMOPeerToPeer.ReceivePos(kitol:integer;frame:TUDPFrame);
 var

@@ -255,10 +255,6 @@ type
    tip:integer;
   end;
 
-  TFlagPos = record
-   pos:TD3DXVector3;
-  end;
-
   Pbinmsg = ^Tbinmsg;
   Tbinmsg =packed array [0..511] of byte;
 
@@ -411,8 +407,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20406;
-  datachecksum=$F43ECADB;
+  PROG_VER=20501;
+  datachecksum=$350502E3;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -3266,7 +3262,7 @@ begin
   a:=recv(sck,tbtop^,length-most,0);
   inc(tbtop,a);
   inc(most,a);
-  sleep(3);
+  sleep(20);
  until (most>=length) or (a<=0) or (timeout<gettickcount);
 
  if a>=0 then result:=integer(most);

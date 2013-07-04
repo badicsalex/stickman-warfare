@@ -76,11 +76,12 @@ type
    safemode:boolean;
    betoltokep:integer;
    mousepos:TD3DXvector2;
+   lowermenutext:String;
    sens:single;
    lclick,rclick,mclick:boolean;
    items:array [0..40] of array of T3DMenuItem;
    tegs:array [0..30] of array of Tmatteg;
-   cursor,sarok,logo0,logo1,logo2:IDirect3DTexture9;
+   cursor,sarok,logo0,logo2:IDirect3DTexture9;
    splash: IDirect3DTexture9;
    el:boolean;
    constructor Create(aDevice:IDirect3DDevice9;sm:boolean);
@@ -115,7 +116,7 @@ type
 
 MFIEnumTyp=(MI_NEV,MI_TEAM,MI_FEGYV,MI_HEAD,MI_CONNECT,MI_REGISTERED,MI_PASS_LABEL,
            MI_GRAPHICS,MI_SOUND,MI_CONTROLS,
-           MI_EFFECTS,MI_DETAIL,MI_RAIN,MI_WIDESCREEN,
+           MI_EFFECTS,MI_DETAIL,MI_RAIN,MI_WIDESCREEN,MI_SCREENSHOT,
            MI_VOL,MI_MP3_VOL,MI_TAUNTS,MI_R_ACTION,MI_R_AMBIENT,MI_R_CAR,
            MI_MOUSE_SENS,MI_MOUSE_SENS_LAB,MI_MOUSE_ACC,
            MI_GAZMSG,
@@ -391,9 +392,7 @@ end;
 
 procedure T3DMenu.Finishcreate;
 begin
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/logo0.png',256,256,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo0)) then
-   Exit;
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/logo1.png',256,256,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo1)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/logo0.png',512,256,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo0)) then
    Exit;
 
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/4919.png',256,128,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo2)) then
@@ -414,7 +413,6 @@ end;
 procedure T3DMenu.Definishcreate;
 begin
  logo0:=nil;
- logo1:=nil;
  cursor:=nil;
  boxtex:=nil;
  csusztex:=nil;
@@ -611,8 +609,6 @@ begin
    g_pSprite.SetTransform(mat);
    apos:=D3DXVector3(512-256,-20,0);
    g_pSprite.Draw(logo0,nil,nil,@apos,$FFFFFFFF);
-   apos:=D3DXVector3(512,-20,0);
-   g_pSprite.Draw(logo1,nil,nil,@apos,$FFFFFFFF);
 
    apos:=D3DXVector3(1024-256,768-100,0);
    g_pSprite.Draw(logo2,nil,nil,@apos,$FFFFFFFF);
@@ -635,7 +631,10 @@ begin
 
    g_pSprite.SetTransform(identmatr);
 
-   Drawtext('Music: Unreal Superhero III Symphonic version by Jaakko Takalo',0.005,0.98,1,0.9,0,$FF000000);
+//   Drawtext('Music: Unreal Superhero III Symphonic version by Jaakko Takalo',0.005,0.98,1,0.9,0,$FF000000);
+   Drawtext(lowermenutext,0.005,0.98,1,0.9,0,$FF000000);
+   //stuffjson.GetString(['lower_menu_text'])
+
    Drawtext('v2.'+inttostr((PROG_VER div 100) mod 100)+'.'+inttostr(PROG_VER  mod 100)+'.',0.8,0.85,1,0.9,1,$FF000000);
    mat._22:=a;
    g_pSprite.SetTransform(mat);

@@ -470,7 +470,7 @@ begin
 
  bszor:=vst;
  col:=acol;
- //OMFGWTF
+ //OMFGWTF 
  tex:=TX_HOMALY;
 
  update:=bulletupdate;
