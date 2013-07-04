@@ -2134,11 +2134,6 @@ begin
   else
    D3DXMatrixTranslation(mat2,0,0,0.05+hatralok*0.5);
 
-   
-  if not csipo and (myfegyv=FEGYV_M4A1) then  //m4a1 spéci zoom helyzet
-  begin  D3DXMatrixTranslation(mat2,-0.0,-0.001,+0.35) end;
-
-
   mat2._41:=mat2._41-sin(mszogx-szogx)*0.3;
   mat2._42:=mat2._42-sin(mszogy-szogy)*0.3;
   if (myfegyv=FEGYV_MP5A3) and (not csipo) then mat2._43:=mat2._43+0.05;
@@ -4655,6 +4650,12 @@ begin
   rbido:=rbido mod (rbszam+1);
   for i:=0 to rbszam do  begin
   if (rongybabak[i].gmbk[0].y<10)  then
+
+     for j:=0 to length(bubbles) do
+   with bubbles[j] do
+   if (bubbles <> nil) and (tavpointpointsq(D3DXVector3(posx,posy,posz),D3DXVector3(rongybabak[i].gmbk[0].x,rongybabak[i].gmbk[0].y,rongybabak[i].gmbk[0].z))<rad*rad) then
+    tuleli:=true;
+
 
   rongybabak[i].step(advwove,i=rbido, false); //TODO
 
