@@ -10,6 +10,9 @@ uses
   muksoka;
 const
  koteshossz:array [0..9] of single = (0.4,0.4,0.4,0.4,0.6,0.3,0.3,0.3,0.3,0.1);
+ felshiftek:array [1..5] of integer = (0,35,85,130,180);
+ leshiftek:array [1..5] of integer = (15,70,110,150,1000);
+ fordulatok:array [1..5] of single = (0,3.8729,6.3245,8.9442,10.6189);
 type
 
  TRongybaba = class (TObject)
@@ -65,6 +68,9 @@ type
   elore,fek,jobb,bal,iranyitjak:boolean;
   kerekfor:single;
   atlagseb:TD3DXVector3;
+  fordulatszam,porgetes:single;
+  pillspd:single;
+  shift:integer;
   agx:boolean;
   kerekfriction:single;
   function kerektransformmatrix(mit:integer):TD3DMatrix;
@@ -350,7 +356,7 @@ begin
  axearany[2]:=tavpointpoint(axes[2],axes[0])*8;
 
  pos:=apos;
-
+ 
  remakepontokfromaxes;
  //remakeaxesfrompontok;
 
@@ -553,6 +559,9 @@ begin
  k1:=kereknagy/axehossz[0];
  k3:=kereknagy/axehossz[2];
  kerekiranyszorzo:=0.6;
+ fordulatszam := 0;
+ porgetes :=0;
+ shift := 1;
  for i:=0 to 31 do
  begin
   d3dxvec3lerp(tmp,axes[0],axes[1],i*kerekiranyszorzo/32);
@@ -590,7 +599,7 @@ end;
 procedure Tauto.usekerekek;
 var
 tmp,tmp2,a1,a2:TD3DXVector3;
-i:integer;
+i,j:integer;
 elorescale,tt:single;
 begin
 
@@ -629,13 +638,13 @@ begin
    d3dxvec3subtract(kerekek[i],kerekek[i],tmp2);
    if elore then
    begin
-
+    if porgetes<1.0 then porgetes:= porgetes + 0.005;
     d3dxvec3scale(tmp2,a1,elorescale);
     if not agx then
     tmp2.y:=tmp2.y*2;
     d3dxvec3add(kerekek[i],kerekek[i],tmp2);
    end;
-
+   if porgetes>0.501 then porgetes:= porgetes - 0.001;
    if not iranyitjak then
    begin
     kerekek[i].x:=kerekek[i].x+(vkerekek[i].x-kerekek[i].x)*0.5;
@@ -645,6 +654,7 @@ begin
    if fek then
    if tavpointpointsq(kerekek[i],vkerekek[i])<0.1*0.1 then
    begin
+    if porgetes>0.52 then porgetes:= porgetes - 0.01;
     d3dxvec3scale(tmp2,a1,-0.02);
     d3dxvec3add(kerekek[i],kerekek[i],tmp2);
    end
@@ -663,6 +673,19 @@ begin
   vpontok[i].x:=vpontok[i].x+(tmp2.x-tmp.x)*felfdamp;
   vpontok[i].y:=vpontok[i].y+(tmp2.y-tmp.y)*felfdamp;
   vpontok[i].z:=vpontok[i].z+(tmp2.z-tmp.z)*felfdamp;
+
+
+  pillspd:=tavpointpoint(pos,vpos);
+  for j:=shift to 5 do
+  if pillspd*360>felshiftek[j] then begin
+    shift:=j;
+    end;
+
+  for j:=shift downto 1 do
+  if pillspd*360<leshiftek[j] then begin
+    shift:=j;
+    end;
+  fordulatszam:=(sqrt(pillspd*360)-fordulatok[shift]+1)*porgetes;//+porgetes;
  end;
 end;
 

@@ -2,7 +2,7 @@ unit multiplayer;
 
 interface
 
-uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1, winsock2;
+uses sysutils, socketstuff, typestuff, D3DX9, Direct3D9, windows, sha1, winsock2;
 const
  TOKEN_RATE=10; //ezredmásodpercenkénti tokenek száma
  TOKEN_LIMIT=2000; //bucket max mérete
@@ -45,6 +45,7 @@ type
   procedure ReceiveWeather(frame:TSocketFrame);
   procedure ReceiveSendUDP(frame:TSocketFrame);
   procedure ReceiveEvent(frame:TSocketFrame);
+  procedure ReceiveMedal(frame:TSocketFrame);
  public
   nev:string;
   myport:integer; //általam kijelölt port
@@ -56,6 +57,7 @@ type
   kickedhard:boolean;
   doevent:string;      //detto
   doeventphase:integer;
+  redtext:string;   //detttto
   kills:integer;
   dailykills:integer;
   killscamping:integer; //readwrite
@@ -63,6 +65,9 @@ type
   weather:single;
   opt_nochat:boolean;
   state1v1,atrak:boolean;
+
+  medallist:array [0..2] of string;
+  
   limit:integer;
 
   kihivas:string;
@@ -111,24 +116,32 @@ type
   procedure ReceiveHandshake(port:word;frame:TUDPFrame);
   procedure ReceivePos(kitol:integer;frame:TUDPFrame);
   procedure ReceiveRongybaba(kitol:integer;frame:TUDPFrame);
+  procedure ReceiveStatus(kitol:integer;frame:TUDPFrame);
   procedure CalculatePriorities(campos,lookatpos:TD3DXVector3);
   procedure SendFrame(frame:TUDPFrame;kinek:integer);
  public
   lovesek:array of Tloves; //kilotte: Index, kívülrõl olvasandó és törlendõ
   hullak:array of Thulla; //rongybabák. Detto.
-  blockok:array of TD3DXVector3; // blokk pozíciók
+
+
+  medal_prof_active:byte;
+  medal_prof_count:integer;
+  medal_spd_kills:integer;
+  medal_lastkilltime:cardinal;
+
   constructor Create(port,fegyv:integer);
   destructor Destroy;override;
   procedure Update(posx,posy,posz,oposx,oposy,oposz,iranyx,iranyy:single;state:integer;
                    campos:TD3DXvector3;//a prioritásokhoz
                    autoban:boolean; vanauto:boolean;
-                   autopos:TD3DXVector3;autoopos:TD3DXVector3; autoaxes:array {0..2} of TD3DXVector3);
+                   autopos:TD3DXVector3;autoopos:TD3DXVector3; autoaxes:array {0..2} of TD3DXVector3;fordulat:single);
   procedure Killed(apos,vpos:TD3DXVector3;irany:single;state:byte;animstate:single;
                    mlgmb:byte;gmbvec:TD3DXVector3;
                    kimiatt:integer);
-  procedure Blocked(apos:TD3DXVector3);
+  procedure ToggleChat(toggle:boolean);
   procedure Loves(v1,v2:TD3DXVector3);
   procedure SendUDPToServer(frame:TUDPFrame);   //ez valójában a multiscs, multip2p közötti együttmûködéshez kell.
+
  end;
 
 var
@@ -140,7 +153,7 @@ var
 implementation
 
 const
- shared_key:array [0..19] of byte=($AB, $BA, $AA, $BB, $12, $21, $11, $22, $CD, $DC, $CC, $DD, $67, $76, $66, $77, $EF, $FE, $EE, $FF);
+ shared_key:array [0..19] of byte=($00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00);
 
 
  CLIENT_VERSION=PROG_VER;
@@ -231,7 +244,8 @@ const
   string kihivo neve
   int limit
  }
-
+ SERVERMSG_MEDAL=9;
+ 
 
  P2PMSG_HANDSHAKE=1;
  {
@@ -243,7 +257,14 @@ const
 
  P2PMSG_RONGYBABA=3;
 
- P2PMSG_BLOCK = 4;
+ P2PMSG_STATUS = 4;
+
+
+ // a P2PMSG_STATUS hoz tartozó üzenetek
+
+ STATUS_CHATON = 1;
+
+ STATUS_CHATOFF = 2;
 
 procedure TMMOServerClient.SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
 var
@@ -431,7 +452,12 @@ end;
 procedure TMMOServerClient.ReceiveChat(frame:TSocketFrame);
 var
 i:integer;
+t:byte;
 uzi:string;
+begin
+t := frame.ReadChar;
+
+if t=0 then
 begin
 uzi := frame.ReadString;
 if opt_nochat then begin
@@ -443,6 +469,11 @@ if opt_nochat then begin
   chats[i]:=chats[i-1];
  chats[0].uzenet:=uzi;
  chats[0].glyph:=frame.ReadInt;
+ end
+else
+ begin
+ redtext:=frame.ReadString;
+ end;
 end;
 
 procedure TMMOServerClient.ReceiveKick(frame:TSocketFrame);
@@ -499,6 +530,24 @@ begin
  doeventphase:=frame.ReadInt;
 end;
 
+procedure TMMOServerClient.ReceiveMedal(frame:TSocketFrame);
+var
+i:integer;
+c1,c2:byte;
+begin
+ for i:=0 to 2 do
+   if medallist[i]='' then
+   begin
+   c1:=frame.ReadChar;
+   c2:=frame.ReadChar;
+   medallist[i]:= Chr(c1) + Chr(c2);
+   frame.ReadChar;
+   frame.ReadChar;
+   break;
+   end;
+   //remélem senki sem fog egyszerre 4 medált szerezni.
+end;
+
 constructor TMMOServerClient.Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
 begin
  inherited Create;
@@ -546,7 +595,8 @@ begin
    szerveraddr.sin_addr:=gethostbynamewrap(servername);
    szerveraddr.sin_port := htons(25252);
    sock:=TBufferedSocket.Create(CreateClientSocket(szerveraddr));
-   SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
+   //SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
+   SendLogin(nev,jelszo,fegyver,fejcucc,myport,datachecksum);
   end;
   exit;
  end;
@@ -578,6 +628,7 @@ begin
    SERVERMSG_SENDUDP: ReceiveSendUDP(frame);
    SERVERMSG_EVENT: ReceiveEvent(frame);
    SERVERMSG_1V1: Receive1v1(frame);
+   SERVERMSG_MEDAL: ReceiveMedal(frame);
   end;
  end;
  frame.Free;
@@ -813,6 +864,8 @@ begin
     auto.seb:=frame.ReadPackedVector(1);
     for i:=0 to 2 do
      auto.axes[i]:=frame.ReadPackedVector(20);
+
+    auto.fordszam:=frame.ReadFloat();
     if D3DXVec3Lengthsq(auto.seb)<0.002*0.002 then
      auto.seb:=D3DXVector3Zero;
    net.avtim:=(gtc-net.aatim) div 10;
@@ -854,12 +907,42 @@ begin
   mlgmb:=frame.ReadChar;
   gmbvec:=frame.ReadVector;
   enlottemle:=frame.ReadChar<>0;
+
+  if enlottemle and (medal_prof_active=1) then
+  begin
+  inc(medal_prof_count);
+  medal_prof_active:=2;
+  end;
+
+  if enlottemle then
+  begin
+  if GetTickCount-medal_lastkilltime<2500 then inc(medal_spd_kills)
+        else medal_spd_kills:=0;
+  medal_lastkilltime :=GetTickCount;
+
+  end;
+
   index:=kitol;
   ppl[kitol].pos.pos:=D3DXVector3Zero;
  end;
 end;
 
+procedure TMMOPeerToPeer.ReceiveStatus(kitol:integer;frame:TUDPFrame);
+var
+i:integer;
+k:byte;
+begin
+ k := frame.ReadChar;
+ case k of
+ STATUS_CHATON:begin
+  ppl[kitol].isTyping :=true;
+ end;
+ STATUS_CHATOFF:begin
+  ppl[kitol].isTyping :=false;
+  end;
+ end;
 
+end;
 
 procedure TMMOPeerToPeer.CalculatePriorities(campos,lookatpos:TD3DXVector3);
 var
@@ -923,10 +1006,11 @@ begin
 end;
 
 
+
 procedure TMMOPeerToPeer.Update(posx,posy,posz,oposx,oposy,oposz,iranyx,iranyy:single;
                    state:integer;campos:TD3DXvector3;//a prioritásokhoz
                    autoban:boolean; vanauto:boolean;
-                   autopos:TD3DXVector3;autoopos:TD3DXVector3; autoaxes:array {0..2} of TD3DXVector3);
+                   autopos:TD3DXVector3;autoopos:TD3DXVector3; autoaxes:array {0..2} of TD3DXVector3;fordulat:single);
 var
 i,j:integer;
 leszkikuldjon:boolean;
@@ -954,6 +1038,7 @@ begin
    P2PMSG_HANDSHAKE: ReceiveHandshake(port,frame);
    P2PMSG_POS: if kitoljott>=0 then ReceivePos(kitoljott,frame);
    P2PMSG_RONGYBABA: if kitoljott>=0 then ReceiveRongybaba(kitoljott,frame);
+   P2PMSG_STATUS: if kitoljott>=0 then ReceiveStatus(kitoljott,frame);
   end;
 
   frame.Free;
@@ -1052,6 +1137,7 @@ begin
     frame.WritePackedVector(autoopos,1);
     for j:=0 to 2 do
      frame.WritePackedVector(autoaxes[j],20);
+    frame.WriteFloat(fordulat);
    end;
 
    SendFrame(frame,i);
@@ -1074,18 +1160,22 @@ begin
  roundrobinindex:=i;
 end;
 
-procedure TMMOPeerToPeer.Blocked(apos:TD3DXVector3);
+procedure TMMOPeerToPeer.ToggleChat(toggle:boolean);
 var
 frame:TUDPFrame;
 i:integer;
 begin
  frame:=TUDPFrame.Create;
- frame.WriteChar(P2PMSG_BLOCK);
- frame.WriteVector(apos);
+ 
+ frame.WriteChar(P2PMSG_STATUS);
+
+ if toggle=false then begin frame.WriteChar(STATUS_CHATOFF); end;
+ if toggle=true then begin frame.WriteChar(STATUS_CHATON); end;
+
+
  for i:=0 to high(ppl) do
   if ppl[i].net.connected then
    SendFrame(frame,i);
- frame.Free;
 end;
 
 procedure TMMOPeerToPeer.Killed(apos,vpos:TD3DXVector3;irany:single;state:byte;animstate:single;

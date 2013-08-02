@@ -24,6 +24,7 @@ type
    rect:Trect;
    value:single;
    valueS:string;
+
    color:cardinal;
    visible:boolean;
    procedure HandleChar(mit:char);virtual;
@@ -67,6 +68,7 @@ type
    g_pfont,g_pfontmini,g_pfontchat:ID3DXFont;
   public
    fckep:IDirect3DTexture9;
+   chatbubble:IDirect3DTexture9;
    glyphs,cglyphs:IDirect3DTexture9;
    chtalultex:IDirect3DTexture9;
    g_pSprite:ID3DXSprite;
@@ -78,6 +80,12 @@ type
    mousepos:TD3DXvector2;
    lowermenutext:String;
    sens:single;
+
+   medal:string;
+   medaltex:IDirect3DTexture9;
+   medalanimstart:integer;
+   
+   
    lclick,rclick,mclick:boolean;
    items:array [0..40] of array of T3DMenuItem;
    tegs:array [0..30] of array of Tmatteg;
@@ -99,7 +107,8 @@ type
    procedure Draw;
    procedure DrawKerekitett(mit:Tmatteg);
    procedure DrawLoadScreen(szazalek:byte);
-   procedure DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean);
+   procedure DrawMedal;
+   procedure DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean; isTyping:array of boolean);
    procedure DrawGlyphsInGame(glyphsarr:array of Tglyph);
    procedure DrawChatsInGame(texts:array of string;pos:array of TD3DXVector3; alpha:array of single);
    procedure DrawChatGlyph(hash:cardinal;posx,posy:single;alpha:byte);
@@ -586,6 +595,40 @@ begin
 end;
 
 
+
+procedure T3DMenu.DrawMedal;
+var
+y,state:integer;
+a:single;
+mat:TD3DMatrix;
+apos:TD3DXvector3;
+begin
+
+
+   a:=SCwidth/1024;
+ mat._11:=a;mat._12:=0;mat._13:=0;mat._14:=0;
+ mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
+ mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
+ mat._41:=0;mat._42:=0;mat._43:=0;mat._44:=1;
+
+  g_pSprite.SetTransform(mat);
+  state := GetTickCount - medalanimstart;
+  if state>2000 then
+    medalanimstart:=0;
+
+  if (state>400) and (state<1600) then y:=465
+  else
+  if state<400 then y:=600-round(135*state/400)
+  else
+  if state>1600 then y:=465+round(135*(state-1600)/400);
+
+  apos:=D3DXVector3(300/a,y/a,0);
+   g_pSprite.Draw(medaltex,nil,nil,@apos,$FFFFFFFF);
+   
+  g_pSprite.SetTransform(identmatr);
+end;
+
+
 procedure T3DMenu.Draw;
 var
 a:single;
@@ -654,12 +697,13 @@ begin
  // g_pd3dDevice.Present(nil, nil, 0, nil);
 end;
 
-procedure T3DMenu.DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean);
+procedure T3DMenu.DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean; isTyping:array of boolean);
 var
 i:integer;
 mat:TD3DMatrix;
 rect:TRect;
 a:single;
+cent:TD3DXVector2;
 begin
   for I:=low(texts) to high(texts) do
   begin
@@ -684,6 +728,14 @@ begin
     rect.right:=+200;
     rect.top:=-20;
     rect.bottom:=0;
+
+    if isTyping[i] then
+    begin
+    cent.x := -35;
+    cent.y := -70;
+    g_pSprite.Draw(chatbubble,nil,nil,@cent,$FFFFFFFF);
+    end;
+
     if micro then
      g_pfontchat.DrawTextA(g_psprite,Pchar(texts[i]),length(texts[i]),@rect,DT_VCENTER or DT_CENTER,round(alpha[i]*$FF)*$1000000+betuszin)
     else
@@ -691,11 +743,14 @@ begin
    end;
 end;
 
+
+
 procedure T3DMenu.DrawChatsInGame(texts:array of string;pos:array of TD3DXVector3; alpha:array of single);
 var
 i:integer;
 rect:array of TRect;
 wdt:integer;
+
 begin
   setlength(rect,length(texts));
   for I:=low(texts) to high(texts) do
