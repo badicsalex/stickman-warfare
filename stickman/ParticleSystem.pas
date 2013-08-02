@@ -2,6 +2,15 @@ unit ParticleSystem;
 interface
  uses sysutils,windows,math,direct3D9,D3DX9,typestuff;
 
+
+ const
+ TX_SEMMI=0;
+ TX_HOMALY=1;
+ TX_CSEPP=2;
+ TX_FIRE=3;
+ TX_SMOKE=4;
+ D3DFVF_PARTICLEVERTEX = (D3DFVF_XYZ or D3DFVF_DIFFUSE or D3DFVF_TEX1 );
+
  type
   Tparticlevertex = record
    pos:TD3DXVector3;
@@ -42,9 +51,9 @@ function bulletcreate (av1,av2:TD3DXVector3;seb,sebszorzo,vst:single;acol:cardin
 function MPGcreate (av1,av2:TD3DXVector3;aido:single;acol:cardinal):Tparticle;
 function Quadcreate (av1,av2:TD3DXVector3;seb,sebszorzo:single;acol:cardinal):Tparticle;
 //function Gunmuzzcreate (honnan,merre:TD3DXVector3; frames:cardinal):Tparticle;
-function Simpleparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
-function Gravityparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,weig:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
-function Coolingparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,temperature:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
+function Simpleparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz:single;startcolor,endcolor:cardinal;lifetime:word;texture:integer=TX_HOMALY):Tparticle;
+function Gravityparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,weig:single;startcolor,endcolor:cardinal;lifetime:word;texture:integer=TX_HOMALY):Tparticle;
+function Coolingparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,temperature:single;startcolor,endcolor:cardinal;lifetime:word;texture:integer=TX_HOMALY):Tparticle;
 function ExpSebparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,sebmul:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
 
 function Langcreatorparticlecreate (pos,pos2:TD3DXVector3;szorzo:single):Tparticle;
@@ -57,11 +66,6 @@ function fenycsikubercreate (av1,av2,seb1,seb2:TD3DXVector3;vst,vst2:single;acol
 
 function fenykorcreate (pos,seb,szel,hossz:TD3DXVector3;szor1,szor2,vstszor:single;acol,acol2:cardinal;lifetime:word):Tparticle;
 
-const
- D3DFVF_PARTICLEVERTEX = (D3DFVF_XYZ or D3DFVF_DIFFUSE or D3DFVF_TEX1 );
- TX_SEMMI=0;
- TX_HOMALY=1;
- TX_CSEPP=2;
 var
 particles,rparticles,tparticles:array of Tparticle;
  particlehgh:integer=-1;
@@ -75,7 +79,7 @@ var
  sortind:integer;
 
  g_pd3ddevice:IDirect3DDevice9;
- ps_texes:array [0..3] of IDirect3DTexture9;
+ ps_texes:array [0..4] of IDirect3DTexture9;
  //TODO: VERTEX BUFFER DOLOG
  
 procedure ParticleSystem_Init(a_pd3ddevice:IDirect3DDevice9);
@@ -93,9 +97,13 @@ begin
 
   addfiletochecksum('data\homaly.png');
   addfiletochecksum('data\csepp2.png');
+  addfiletochecksum('data\fire.png');
+  addfiletochecksum('data\smoke.png');
 
   LTFF(g_pd3ddevice,'data\homaly.png',ps_texes[1]);
   LTFF(g_pd3ddevice,'data\csepp2.png',ps_texes[2]);
+  LTFF(g_pd3ddevice,'data\fire.png',ps_texes[3]);
+  LTFF(g_pd3ddevice,'data\smoke.png',ps_texes[4]);
 end;
 
 procedure ParticleSystem_Add(mit:Tparticle);
@@ -231,7 +239,7 @@ begin
   vertszam:=0;
    laststate:='Drawing Particle System';
 
-  for j:=0 to TX_CSEPP do
+  for j:=0 to TX_SMOKE do
   for i:=0 to particlehgh do
   begin
    if particles[i].tex<>j then continue;
@@ -470,7 +478,7 @@ begin
 
  bszor:=vst;
  col:=acol;
- //OMFGWTF 
+ //OMFGWTF
  tex:=TX_HOMALY;
 
  update:=bulletupdate;
@@ -865,7 +873,7 @@ end;  }
   begin
    weight:=weight*0.994;
    D3DXVec3Scale(v2,v2,0.98);
-   d3dxvec3add(v2,v2,d3dxvector3(0.0009,+0.02*weight,0.0009));
+   d3dxvec3add(v2,v2,d3dxvector3(-0.0009,+0.02*weight,-0.0009));
    d3dxvec3add(v1,v1,v2);
    dec(ido);
    k:=k+kp;
@@ -922,7 +930,7 @@ end;  }
  end;
  end;
                                                                                   //ms
-function Simpleparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
+function Simpleparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz:single;startcolor,endcolor:cardinal;lifetime:word;texture:integer=TX_HOMALY):Tparticle;
 begin
  with result do
  begin
@@ -935,7 +943,7 @@ begin
    kp:=1/lifetime;
    bszor:=startsiz;
    bszor2:=(endsiz-startsiz)/lifetime;
- tex:=TX_HOMALY;
+ tex:=texture;
 
 
  update:=simpleparticleupdate;
@@ -944,7 +952,7 @@ begin
 end;
 
 
-function Gravityparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,weig:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
+function Gravityparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,weig:single;startcolor,endcolor:cardinal;lifetime:word;texture:integer=TX_HOMALY):Tparticle;
 begin
  with result do
  begin
@@ -958,7 +966,7 @@ begin
    kp:=1/lifetime;
    bszor:=startsiz;
    bszor2:=(endsiz-startsiz)/lifetime;
- tex:=TX_HOMALY;
+ tex:=texture;
 
 
  update:=gravityparticleupdate;
@@ -966,7 +974,7 @@ begin
  end;
 end;
 
-function Coolingparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,temperature:single;startcolor,endcolor:cardinal;lifetime:word):Tparticle;
+function Coolingparticlecreate (pos,vec:TD3DXVector3;startsiz,endsiz,temperature:single;startcolor,endcolor:cardinal;lifetime:word;texture:integer=TX_HOMALY):Tparticle;
 begin
  with result do
  begin
@@ -980,7 +988,7 @@ begin
    kp:=1/lifetime;
    bszor:=startsiz;
    bszor2:=(endsiz-startsiz)/lifetime;
- tex:=TX_HOMALY;
+ tex:=texture;
 
 
  update:=coolingparticleupdate;

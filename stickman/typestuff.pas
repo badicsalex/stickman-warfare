@@ -235,13 +235,15 @@ type
    enabled:boolean;
    pos,seb,vpos,vseb:TD3DXVector3;
    axes,vaxes:array [0..2] of TD3DXVector3;
+   fordszam:single;
   end;
 
   Tplayer = record
    pos:Tplayerpos;
    net:Tplayernet;
    pls:Tplayerpls;
-   auto:Tplayerauto
+   auto:Tplayerauto;
+   isTyping:boolean;
   end;
 
   const uresplayer:Tplayer=();
@@ -253,6 +255,16 @@ type
    rad:single;
    vis:single;
    tip:integer;
+  end;
+
+  TParticleSys = record
+    from,spd:TD3DXVector3;
+    tipus:integer;
+    scolor,ecolor,rcolor:cardinal;
+    szorzo,rnd,spdrnd:single;
+    amount,period,lifetime,rndlt:integer;
+    ssize,esize,vis:single;
+    texture:integer;
   end;
 
   Pbinmsg = ^Tbinmsg;
@@ -407,8 +419,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20502;
-  datachecksum=$44E1C799;
+  PROG_VER=20503;
+  datachecksum=$7F9282B9;
 var
   checksum:Dword=0;
   nyelv:integer;
