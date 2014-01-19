@@ -17,6 +17,7 @@ type
    protected
     g_pD3Ddevice:IDirect3ddevice9;
    public
+    error:integer;
     vege:boolean;
     phs,phstim:integer;
     kivec:TD3DXVector3;
@@ -73,7 +74,7 @@ type
 
   TPortalEvent = class (TStickmanEvent)
    protected
-   framemesh:ID3DXMesh;
+    framemesh:ID3DXMesh;
     eventpos,beaconpos:TD3DXVector3;
     darabok:array [0..7] of TD3DXVector3;
     darabhely:array [0..7] of TD3DXVector3;
@@ -132,7 +133,7 @@ begin
  g_pD3Ddevice:=adevice;
  if not LTFF (g_pd3dDevice,'data/frame.jpg',frametex) then
    Exit;
-  if FAILED(D3DXLoadMeshFromX(PChar(dir+'portal.x'),0,g_pd3ddevice,nil,nil,nil,nil,framemesh)) then exit;
+  if FAILED(D3DXLoadMeshFromX(PChar(dir+'portal.x'),0,g_pd3ddevice,nil,nil,nil,nil,framemesh)) then Exit;
 
 
 
@@ -160,6 +161,7 @@ begin
       end;
   
   phase(0);
+  error := 0;
 end;
 
 procedure TPortalEvent.Phase(mi:integer);
@@ -189,6 +191,10 @@ var
 begin
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_SELECTARG1 );
   g_pd3ddevice.settexture(0,frametex);
+
+
+  if framemesh=nil then exit;
+
 
   if phs>1 then
   begin

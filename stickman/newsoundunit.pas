@@ -58,6 +58,7 @@ type
   caps:DSBCaps;
   mindis:single;
   data:pointer;
+  freq:cardinal;
  end;
 
  TDSCapture = class(Tobject)
@@ -144,7 +145,7 @@ type
 function InitSound(hwindow:HWND):Hresult;
 procedure PlaySound(mit:integer;loop:boolean;aid:integer;effects:boolean;hol:TD3DXVector3);
                                                        //1,1, ha nem érdekes...            Vec3Zero ha nem érdekes
-procedure SetSoundProperties(mit:integer; aid:integer;vol:longint;freq:cardinal;effects:boolean;hol:TD3DXVector3);
+procedure SetSoundProperties(mit:integer; aid:integer;vol:longint;freq:single;effects:boolean;hol:TD3DXVector3);
 procedure SetSoundVelocity(mit:integer; aid:integer;vel:TD3DXVector3);
 
 procedure WriteToStreamBuffered(aid:integer;const mit:Tsmallintdynarr;samplerate:integer = 0;vol:integer =0);
@@ -182,6 +183,7 @@ wfx:TWaveformatex=
   WAVEFILE_READ   = 1;
   WAVEFILE_WRITE  = 2;
 var
+ tempfreq:cardinal;
  mp3filelist:array of string;
  mp3strms:array [0..2] of array of string;
  mp3strmp:array [0..2] of integer;
@@ -479,7 +481,8 @@ begin
  buf.caps.dwBufferBytes:=mfile.m_dwSize;
 
  zeromemory(@buf.format,sizeof(buf.format));
- copymemory(@buf.format,mfile.m_pwfx,sizeof(buf.format));
+ copymemory(@buf,mfile.m_pwfx,sizeof(buf.format));
+ tempfreq:= buf.format.nSamplesPerSec;
  if buf.format.nChannels>1 then
   MessageBox(0,'nem mono a hang','cunt',0);
  getmem(buf.data,buf.caps.dwBufferBytes);
@@ -536,6 +539,7 @@ begin
  //if effects then flags:=flags or DSBCAPS_CTRLFX;
  loadbuf(bufloaded[high(bufLoaded)],flags,'data\snd\'+fnev+'.wav');
  bufloaded[high(bufLoaded)].mindis:=mindistance;
+ bufloaded[high(bufLoaded)].freq:=tempfreq;
 end;
 
 procedure LoadStrm(fnev:string);
@@ -651,7 +655,7 @@ begin
 end;
 
                                                 //1, ha nem érdekel  
-procedure SetSoundProperties(mit:integer; aid:integer;vol:longint;freq:cardinal;effects:boolean;hol:TD3DXVector3);
+procedure SetSoundProperties(mit:integer; aid:integer;vol:longint;freq:single;effects:boolean;hol:TD3DXVector3);
 var
 mi:integer;
 i:integer;
@@ -677,7 +681,7 @@ lastsoundaction:='SetSoundProperties('+inttostr(mit)+','+inttostr(aid)+')';
   if DSBuf=nil then exit;
 
   if freq<>1 then
-   DSbuf.SetFrequency(freq);
+   DSbuf.SetFrequency(round(bufloaded[mit].freq * freq));
 
   if vol<>1 then
    DSbuf.SetVolume(vol+mainvolume);
@@ -693,7 +697,7 @@ lastsoundaction:='SetSoundProperties('+inttostr(mit)+','+inttostr(aid)+')';
   if effbuf=nil then exit;
 
   if freq<>1 then
-   effbuf.SetFrequency(freq);
+   effbuf.SetFrequency(round(bufloaded[mit].freq * freq));
 
   if vol<>1 then
    effbuf.SetVolume(vol+mainvolume);

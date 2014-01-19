@@ -248,9 +248,9 @@ begin
   fc:=(vma.z-vmi.z)*0.5;
   for i:=0 to g_pMesh.GetNumVertices-1 do
   begin
-   tmp.z:=-(pvert[i].position.x-vmi.x)/scl;
-   tmp.y:=(pvert[i].position.y-vma.y)/scl+0.005;
-   tmp.x:=(pvert[i].position.z-vma.z+fc)/scl+0.001;
+   tmp.z:=-(pvert[i].position.x-vmi.x)/scl-0.04;
+   tmp.y:=(pvert[i].position.y-vma.y)/scl+0.001;
+   tmp.x:=(pvert[i].position.z-vma.z+fc)/scl;
    //if abs(tmp.x)<0.005 then tmp.x:=0;
    pvert[i].color:=RGB(200,200,200);
    pvert[i].position:=tmp;
@@ -807,12 +807,12 @@ end;
 
 procedure TF_MPG.makemuzzle(alpha:byte);
 begin
- muzz[0]:=CustomVertex(-0.5,-0.5,   0,0,0,0,ARGB(alpha,0,50,250),0,0,0,0);
- muzz[1]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,50,250),1,0,0,0);
- muzz[2]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,50,250),0,1,0,0);
- muzz[3]:=CustomVertex( 0.5, 0.5,   0,0,0,0,ARGB(alpha,0,50,250),1,1,0,0);
- muzz[4]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,50,250),1,0,0,0);
- muzz[5]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,50,250),0,1,0,0);
+ muzz[0]:=CustomVertex(-0.5,-0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,0,0,0,0);//$000032FA
+ muzz[1]:=CustomVertex( 0.5,-0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,1,0,0,0);
+ muzz[2]:=CustomVertex(-0.5, 0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,0,1,0,0);
+ muzz[3]:=CustomVertex( 0.5, 0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,1,1,0,0);
+ muzz[4]:=CustomVertex( 0.5,-0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,1,0,0,0);
+ muzz[5]:=CustomVertex(-0.5, 0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,0,1,0,0);
 end;
 
 procedure TF_MPG.draw;
@@ -1256,7 +1256,6 @@ begin
  addfiletochecksum('data\noobcannon.x');
  noobcannon:=TF_noobcannon.create(a_D3Ddevice,'data\noobcannon');
  if not noobcannon.betoltve then exit;
- addfiletochecksum('data\flamethrower.x');
  Mp5a3:=TF_Mp5a3.create(a_D3Ddevice,'data\Mp5');
  if not Mp5a3.betoltve then exit;
  addfiletochecksum('data\x72.x');
