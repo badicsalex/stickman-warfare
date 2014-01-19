@@ -118,6 +118,7 @@ type
   heightmap:IDirect3DTexture9;
   name:string;
   alphatest:boolean;
+  decal:boolean;
   emitting:boolean;
   collisionflags:cardinal;
  end;
@@ -217,6 +218,9 @@ begin
    else
    if special='alphatest' then
     alphatest:=true
+      else
+   if special='decal' then
+    decal:=true
    else
       if special='emitting' then
     emitting:=true;
@@ -1045,7 +1049,7 @@ begin
 
   write(logfile,'lightmaps...');flush(logfile);
 
- lmapsize:=16;
+ lmapsize:=32;
  for i:=0 to high(ojjektumnevek) do
  begin
   retry:
@@ -1534,7 +1538,7 @@ begin
  g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iFalse);
  g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
  g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
- g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFALSE);
+ g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
 
 
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
@@ -1655,7 +1659,16 @@ begin
   if ojjektumtextures[k].alphatest then
    g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue)
   else
+  if ojjektumtextures[k].decal then begin
+   g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
+   g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse)
+   end
+  else
+  begin
    g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
+   g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse)
+  end;
+
   g_pd3ddevice.SetTexture(0,ojjektumtextures[k].tex);
 
   if ojjektumtextures[k].emitting then

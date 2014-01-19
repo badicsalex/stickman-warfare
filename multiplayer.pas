@@ -138,7 +138,7 @@ type
   procedure Killed(apos,vpos:TD3DXVector3;irany:single;state:byte;animstate:single;
                    mlgmb:byte;gmbvec:TD3DXVector3;
                    kimiatt:integer);
-  procedure ToggleChat(toggle:boolean);
+  //procedure ToggleChat(toggle:boolean);
   procedure Loves(v1,v2:TD3DXVector3);
   procedure SendUDPToServer(frame:TUDPFrame);   //ez valójában a multiscs, multip2p közötti együttmûködéshez kell.
 
@@ -257,17 +257,17 @@ const
 
  P2PMSG_RONGYBABA=3;
 
- P2PMSG_STATUS = 4;
+ P2PMSG_STATUS = 4;   // pillanatnyilag használaton kívül.
 
 
  // a P2PMSG_STATUS hoz tartozó üzenetek
 
- STATUS_CHATON = 1;
+ STATUS_CHATON = 1; // már nem használt
 
- STATUS_CHATOFF = 2;
+ STATUS_CHATOFF = 2; // már nem használt
 
 procedure TMMOServerClient.SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
-var
+var          
  frame:TSocketFrame;
 begin
  if (sock=nil) or loggedin then
@@ -596,7 +596,7 @@ begin
    szerveraddr.sin_port := htons(25252);
    sock:=TBufferedSocket.Create(CreateClientSocket(szerveraddr));
    //SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
-   SendLogin(nev,jelszo,fegyver,fejcucc,myport,datachecksum);
+   SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
   end;
   exit;
  end;
@@ -1159,14 +1159,14 @@ begin
  end;
  roundrobinindex:=i;
 end;
-
+  {
 procedure TMMOPeerToPeer.ToggleChat(toggle:boolean);
 var
 frame:TUDPFrame;
 i:integer;
 begin
  frame:=TUDPFrame.Create;
- 
+
  frame.WriteChar(P2PMSG_STATUS);
 
  if toggle=false then begin frame.WriteChar(STATUS_CHATOFF); end;
@@ -1177,6 +1177,7 @@ begin
   if ppl[i].net.connected then
    SendFrame(frame,i);
 end;
+}
 
 procedure TMMOPeerToPeer.Killed(apos,vpos:TD3DXVector3;irany:single;state:byte;animstate:single;
                    mlgmb:byte;gmbvec:TD3DXVector3;
@@ -1269,3 +1270,4 @@ begin
 end;
 
 end.
+

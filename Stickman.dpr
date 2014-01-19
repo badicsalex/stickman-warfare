@@ -1,4 +1,4 @@
-(* Stickman Warfare Source Code              *
+  (* Stickman Warfare Source Code              *
  * ----------------------------------------- *
  * All rights reserved                       *
  *                                           *
@@ -12,12 +12,13 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{$DEFINE undebug}
-{.$DEFINE panthihogomb}
-{.$DEFINE nochecksumcheck}
+{.$DEFINE undebug}
+{$DEFINE panthihogomb}
+{$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
-{.$DEFINE repkedomod}
-{.$DEFINE godmode}
+{$DEFINE repkedomod}
+{$DEFINE godmode}
+{.$DEFINE admingun}
 {.$DEFINE palyszerk}
 {.$DEFINE ajandekok}
 {.$DEFINE alttabengedes}
@@ -88,6 +89,7 @@ PSYS_GRAVITY=2;
 PSYS_COOLING=3;
 PSYS_LIGHTNING=4;
 PSYS_FIRE=5;
+PSYS_LIGHT=6;
 
 
 //-----------------------------------------------------------------------------
@@ -157,6 +159,7 @@ var
   hardkick:boolean;
 
   portalpos:TD3DXVector3;
+  portalstarted:boolean = false;
 
 
 
@@ -208,6 +211,7 @@ var
   tulnagylokes:boolean;
   lovok:single;
   cooldown:single;
+  kiszall_cooldown:single;
 
   halal,playrocks,vizben:single;
 
@@ -274,6 +278,7 @@ var
   enableeffects:boolean;
   opt_detail, opt_postproc:integer;
   opt_rain,opt_widescreen:boolean;
+  opt_imposters:boolean;
   png_screenshot:boolean;
   opt_radar,opt_nochat,opt_zonename:boolean;
   explosionbubbles:array of TDBubble;
@@ -313,6 +318,7 @@ var
   
   {$IFDEF repkedomod}
   repszorzo:Single=0.5;
+  repules:boolean=false;
   {$ENDIF}
 //  re_gk:TD3DXVector3;
 //  re_pos:TD3DXVector3;
@@ -1209,8 +1215,9 @@ begin
    tipus:=PSYS_SIMPLE;
    if tmp='gravity' then tipus:=PSYS_GRAVITY;
    if tmp='cooling' then tipus:=PSYS_COOLING;
-   if tmp='lightning' then tipus:=PSYS_LIGHTNING;
+   if tmp='electric' then tipus:=PSYS_LIGHTNING;
    if tmp='fire' then tipus:=PSYS_FIRE;
+   if tmp='light' then tipus:=PSYS_LIGHT;
 
    tmp:= stuffjson.GetString(['particle_systems',i,'texture']);
 
@@ -1218,6 +1225,7 @@ begin
    if tmp='fire' then texture:=3;
    if tmp='csepp' then texture:=2;
    if tmp='smoke' then texture:=4;
+   if tmp='light' then texture:=5;
 
   end;
 
@@ -1265,9 +1273,10 @@ begin
 
   result:=true;
   writeln(logfile,'Loaded objects');flush(logfile);
+  laststate:= 'Loading objectrenderer ';
    menu.DrawLoadScreen(45);
   ojjektumrenderer:=T3DORenderer.Create(g_pd3ddevice);
-  laststate:= 'Loading objectrenderer ';
+
  
   writeln(logfile,'Loaded objectrenderer');flush(logfile);
 
@@ -1630,6 +1639,7 @@ begin
   3:muks.SideWalk(animstat,(mstat and MSTAT_GUGGOL)>0);
   4:muks.SideWalk(1-animstat,(mstat and MSTAT_GUGGOL)>0);
   5:muks.Runn(animstat,true);
+  else muks.stand((mstat and MSTAT_GUGGOL)>0);
  end;
 
  pos:=d3dxvector3(ccpx,ccpy,ccpz);
@@ -1706,11 +1716,11 @@ begin
   grass_dust:=stuffjson.GetInt(['color_grass_dust']);
   sand_dust:=stuffjson.GetInt(['color_sand_dust']);
 
-  if grass_dust=0 then
-  begin
-   sand_dust:=$FFDCB9B2;
-   grass_dust:=$FF55772D;
-  end;
+
+  if grass_dust=0 then grass_dust:=$FF55772D;
+  if sand_dust=0 then sand_dust:=$FFDCB9B2;
+
+
 
   setlength(posrads,stuffjson.GetNum(['terrain_modifiers']));
   for i:=0 to stuffjson.GetNum(['terrain_modifiers'])-1 do
@@ -1771,6 +1781,7 @@ begin
   if not loadojjektumok then exit;
   tempmesh:=nil;
 
+  laststate:='Loading the island';
   loadspecials;
     menu.DrawLoadScreen(50);
   {$IFDEF panthihogomb}
@@ -2004,6 +2015,7 @@ begin
    cloud_speed:=0.00003;
   end;
   felho:=Tfelho.create(g_pd3ddevice,sky_ambient,cloud_speed,cloud_color);
+  laststate:='Loading hats';
   writeln(logfile,'Initialized sky');flush(logfile);
 
   fejcuccrenderer:=Tfejcuccrenderer.Create(g_pd3ddevice);
@@ -2020,7 +2032,7 @@ begin
   writeln(logfile,'Initilazing geometry succesful');flush(logfile);
 
 
-
+  laststate:='Loading sounds';
   writeln(logfile,'Loading sounds');flush(logfile);
   loadsounds;    //  menu.DrawLoadScreen(85);-tõl 95-ig
 
@@ -2206,6 +2218,14 @@ begin
   mat2._41:=mat2._41-sin(mszogx-szogx)*0.3;
   mat2._42:=mat2._42-sin(mszogy-szogy)*0.3;
   if (myfegyv=FEGYV_MP5A3) and (not csipo) then mat2._43:=mat2._43+0.05;
+  if (myfegyv=FEGYV_M4A1) and (not csipo) then mat2._43:=mat2._43+0.06;//beta
+//  if (myfegyv=FEGYV_M4A1) and (not csipo) then mat2._42:=mat2._42+0.0002;//beta
+
+  if kiszall_cooldown>0.02 then //sajt
+  begin
+  mat2._42:=mat2._42-kiszall_cooldown;
+  mat2._43:=mat2._43+kiszall_cooldown;
+  end;
 
   D3DXMatrixMultiply(mat,mat2,mat);
 
@@ -2303,7 +2323,7 @@ procedure SetupFegyvlights(lit:integer);
   light: TD3DLight9;
   v:single;
 begin
-  v:=lit/10;
+  v:=lit/5;//sajt
   ZeroMemory(@light, SizeOf(TD3DLight9));
   light._Type      := D3DLIGHT_DIRECTIONAL;
   D3DXColorLerp(light.Diffuse,
@@ -2746,7 +2766,7 @@ begin
   else
    dine.update(point(400,400));
 
-  iranyithato:= iranyithato and (mapmode=0) and not (portalevent.vege);
+  iranyithato:= iranyithato and (mapmode=0) and (portalevent<>nil) and not (portalevent.vege);
 
   if ((dine.mouss.rgbButtons[0] and $80)=$80) then chatmost:='';
   if length(chatmost)>0 then zeromemory(addr(dine.keys),sizeof(dine.keys));
@@ -2792,8 +2812,10 @@ begin
   if (halal>0) then mstat:=0;
 
   {$IFDEF repkedomod}
+  if repules then begin
   mstat:=0;
   px:=px*repszorzo; py:=py*repszorzo;
+  end;
   {$ENDIF}
 
   if not iranyithato then
@@ -2821,6 +2843,7 @@ begin
   end;
 
   {$ELSE}
+  if repules then begin
   cpox^:=cpox^+0.01*(cpx^-cpox^);
   cpoy^:=cpoy^+0.01*(cpy^-cpoy^);
   cpoz^:=cpoz^+0.01*(cpz^-cpoz^);
@@ -2833,11 +2856,27 @@ begin
     begin
       cpoy^:=cpoy^+0.03*repszorzo;
     end;
+   end
+  else
+if (iranyithato) and (length(chatmost)=0) and (halal=0) then
+  begin
+   if dine.keyd2(DIK_SPACE) and not gugg then
+    begin
+      cpox^:=cpox^+0.3*(cpx^-cpox^);
+      cpoz^:=cpoz^+0.3*(cpz^-cpoz^);
+      cpy^:=cpy^+0.11;
+      cpoy^:=cpy^-0.09;
+      {$IFDEF speedhack}
+      cpoy^:=cpy^-0.7;
+      {$ENDIF}
+    end;
+  end;
   {$ENDIF}
+
   if (length(chatmost)=0) and autoban then
   begin
     tegla.iranyit(dine.keyd(DIK_W),dine.keyd(DIK_S),dine.keyd(DIK_D),dine.keyd(DIK_A),true);
-    if (tegla.axes[2].y<0) and dine.keyd(DIK_F) then
+    if (tegla.axes[2].y<0) and dine.keyd(DIK_F) and (recovercar=0) then//beta
      recovercar:=1;
   end
    else
@@ -2959,10 +2998,12 @@ begin
     csipo:=true;
 	
    {$IFDEF repkedomod}
+   if repules then begin
   if (dine.MousMovScrl<0) then
   repszorzo:=repszorzo*0.9;
   if (dine.MousMovScrl>0) then
   repszorzo:=repszorzo*(1/0.9);
+  end;
   {$ENDIF}	
 	
   if not dine.keyd(DIK_TAB) then
@@ -3060,7 +3101,7 @@ begin
     if myfegyv=FEGYV_X72 then x72gyrs:=x72gyrs+1/8;
 
     case myfegyv of
-     FEGYV_M4A1:begin lovok:=0.5; cooldown:=1/8; hatralok:=0.05; end;
+     FEGYV_M4A1:begin lovok:=0.5; cooldown:=1/7.44; hatralok:=0.05; end;
      FEGYV_M82A1:begin
       lovok:=1;
       cooldown:=1/1.5;
@@ -3069,10 +3110,18 @@ begin
       if multip2p.medal_prof_active=1 then multip2p.medal_prof_count:=0;
       multip2p.medal_prof_active:=1;
       end;
-     FEGYV_MPG:begin lovok:=0; cooldown:=1/1.5; hatralok:=0.10; end;
-     FEGYV_quad:begin lovok:=1; cooldown:=1/7.7; hatralok:=0.04; end;
+     {$IFDEF admingun} FEGYV_MPG:begin lovok:=0; cooldown:=1/6; hatralok:=0.01; end;
+     {$ELSE}
+     FEGYV_MPG:begin lovok:=0; cooldown:=1/1.5; hatralok:=0.01; end;
+     {$ENDIF}
+
+     FEGYV_quad:begin lovok:=1; cooldown:=1/7.93; hatralok:=0.04; end;
      FEGYV_LAW:begin
-                LAWkesleltetes:=75;
+        {$IFDEF admingun}
+        LAWkesleltetes:=10;
+        {$ELSE}
+        LAWkesleltetes:=75;
+        {$ENDIF}
                 rezg:=2;
                 lovok:=0.5;
                 cooldown:=3;
@@ -3080,8 +3129,8 @@ begin
                 setsoundproperties(26,1,1,1,true,D3DXVector3(campos.x+cos(szogx),campos.y,campos.z-sin(szogx)));
 
                end;
-     FEGYV_X72:begin lovok:=1; cooldown:=max(x72gyrs-0.5,1/6); hatralok:=0.1; end;
-     FEGYV_Mp5a3:begin lovok:=0.5; cooldown:=1/8; hatralok:=0.05; end;
+     FEGYV_X72:begin lovok:=1; cooldown:=max(x72gyrs-0.6,1/6.25); hatralok:=0.1; end;
+     FEGYV_Mp5a3:begin lovok:=0.5; cooldown:=1/8.32; hatralok:=0.05; end;
     end;
 
     if myfegyv<>FEGYV_LAW then
@@ -3170,8 +3219,8 @@ begin
   end;
   
   if (myfegyv=FEGYV_M82A1) and not csipo then begin
-   szogX:=szogX + sin((volttim mod 3200)*D3DX_PI*2/3200)/10000;
-   szogY:=szogY + cos((volttim mod 2500)*D3DX_PI*2/2500)/10000;
+   szogX:=szogX + sin((volttim mod 3200)*D3DX_PI*2/3200)/20000;
+   szogY:=szogY + cos((volttim mod 2500)*D3DX_PI*2/2500)/20000;
   end;
 
   dec(LAWkesleltetes);
@@ -3179,7 +3228,11 @@ begin
   if LAWkesleltetes=0 then
   begin
    lojjranged;
-   hatralok:=0.3;
+     {$IFDEF admingun} hatralok:=0.0;
+     {$ELSE}
+     hatralok:=0.3;
+     {$ENDIF}
+
    szogX:=szogx+(100-random(200))/500;
    szogY:=szogy+(100-random(200))/500-0.2;
   end;
@@ -3320,8 +3373,8 @@ begin
 
   if (kilotte=-1) or ((lovesfegyv xor myfegyv)>=128) then
   case lovesfegyv of
-   FEGYV_LAW :love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),4);
-   FEGYV_NOOB:love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),5);
+   FEGYV_LAW :love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),4.2);
+   FEGYV_NOOB:love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),5.3);
    FEGYV_X72:love:=felrobbanva(muks.gmbk,muks.kapcsk,hol,D3DXVector3(cpx^,cpy^,cpz^),x72eletkor/100+0.41);        // x72eletkor/300+0.3
   end;
 
@@ -3373,18 +3426,18 @@ begin
  begin
   t:=lawproj[mi].v3;
   randomplus(t,animstat+i,15);
-  Particlesystem_add(Bulletcreate(lawproj[mi].v3,t,10,10,0.03,$00A0A050,0));
+  Particlesystem_add(Bulletcreate(lawproj[mi].v3,t,10,10,0.03,$00A0A050,0,true));
  end;
 
  for i:=0 to 100 do
  begin
   t:=lawproj[mi].v3;
-  randomplus(t,animstat*10+i,7);
+  randomplus(t,animstat*10+i,7.35);
   Particlesystem_add(SimpleparticleCreate(t,randomvec(animstat*10+i,0.05),2,0,$00FFFF00,$01FF0000,random(20)+20));
  end;
  for i:=0 to 200 do
  begin
-  t:=randomvec(animstat*2+i*3,0.5);
+  t:=randomvec(animstat*2+i*3,0.525);
   col:=round((-t.x+t.y)*300+120);
   Particlesystem_add(ExpsebparticleCreate(lawproj[mi].v3,t,random(100)/200+1.0,1.0,0.95,$FF000000+$10101*col {(random(50))},$00000000,random(100)+100));
  end;
@@ -3447,7 +3500,7 @@ begin
  for j:=0 to 3 do
   for i:=0 to 50 do
   begin
-   t:=randomvec(animstat*2+i/30+j,i/70);
+   t:=randomvec(animstat*2+i/30+j,i/66);
    Particlesystem_add(ExpsebparticleCreate(noobproj[mi].v3,t,0.5,0.5,0.95,$50FF6020,$00000000,i+100));
   end;
 
@@ -3455,7 +3508,7 @@ begin
  begin
   t:=randomvec(animstat*2+i*3,1);
   fastvec3normalize(t);
-  Particlesystem_add(ExpsebparticleCreate(noobproj[mi].v3,t,1.0,1.0,0.8,$50FF6020,$00000000,random(50)+20));
+  Particlesystem_add(ExpsebparticleCreate(noobproj[mi].v3,t,1.0,1.0,0.83,$50FF6020,$00000000,random(50)+20));
  end;
 
  alngt:=tavpointpointsq(d3dxvector3(cpx^,cpy^,cpz^),noobproj[mi].v3);
@@ -4210,7 +4263,7 @@ begin
   randomplus(vec1,hanyszor+0.5,5);
   vec2:=vec1;
   vec2.y:=vec2.y+34;
-  Particlesystem_add(bulletcreate(vec1,vec2,0.05,50,0.03,$FFFFFFFF,0));
+  Particlesystem_add(bulletcreate(vec1,vec2,0.05,50,0.03,$FFFFFFFF,0,false));
  end;
 
 end;
@@ -4328,6 +4381,7 @@ begin
       PSYS_GRAVITY:for b:=0 to amount do Particlesystem_add(Gravityparticlecreate(from,tmp,ssize,esize,szorzo,scolor+rcolor*random(10),ecolor,lt,texture));
       PSYS_COOLING:for b:=0 to amount do Particlesystem_add(Coolingparticlecreate(from,tmp,ssize,esize,szorzo,scolor+rcolor*random(10),ecolor,lt,texture));
       PSYS_LIGHTNING:Particlesystem_Add_Villam(from,tmp,ssize,szorzo,amount,esize,scolor+rcolor*random(10),lifetime);
+      PSYS_LIGHT:for b:=0 to amount do Particlesystem_add(fenylightcreate(from,tmp,ssize,esize,scolor+rcolor*random(10),ecolor,lt,texture));
       end;
   end;
 
@@ -4610,6 +4664,11 @@ begin
      if tmp.y<15 then
       Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,sand_dust,$0,100))
      else
+     {$IFDEF panthihogomb}
+     if tavpointpointsq(DNSVec,tmp)<DNSrad*DNSRad then
+      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FFFFFFFF,$0,100))
+     else
+     {$ENDIF}
       Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,grass_dust,$0,100))
 
    end;
@@ -4656,7 +4715,8 @@ begin
   end;
   yandnorm(cpx^,amag,cpz^,norm,1);
   {$IFDEF repkedomod}
-  cpy^:=cpy^*2-cpoy^;
+  if repules then  cpy^:=cpy^*2-cpoy^
+    else cpy^:=cpy^*2-cpoy^-GRAVITACIO;
   {$ELSE}
   cpy^:=cpy^*2-cpoy^-GRAVITACIO;
   {$ENDIF}
@@ -4680,6 +4740,13 @@ begin
     cpx^:=cpx^+norm.x*0.001;
     cpz^:=cpz^+norm.z*0.001;
    end;
+  {$ELSE}
+   if not repules and (norm.y<0.83) then
+   begin
+    cpx^:=cpx^+norm.x*0.001;
+    cpz^:=cpz^+norm.z*0.001;
+   end;
+
   {$ENDIF}
   end;
 
@@ -4703,15 +4770,18 @@ begin
    cpz^:=cpz^*2-cpoz^;
   end;
   {$ELSE}
+  if repules or not iranyithato then
+  begin
    cpx^:=cpx^*2-cpox^;
    cpz^:=cpz^*2-cpoz^;
+  end;
   {$ENDIF}
   cpox^:=ox;cpoy^:=oy;cpoz^:=oz;
   if halal>0 then
   begin cpx^:=cpox^; cpy^:=cpoy^; cpz^:=cpoz^; end;
 
   {$IFDEF repkedomod}
-   iranyithato:=true;
+  if repules then iranyithato:=true;
   {$ENDIF}
   playrocks:=playrocks-0.01;
  // if playrocks>1 then playrocks:=1;
@@ -4784,6 +4854,10 @@ begin
     inc(i);
   end;
   cooldown:=cooldown-0.01;
+
+  if (kiszall_cooldown>0) then
+  kiszall_cooldown:=kiszall_cooldown-0.01;
+
   if hanyszor*10<(timegettime-100) then
   begin
    hanyszor:=(timegettime div 10) +1;
@@ -4861,6 +4935,7 @@ begin
     addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3((cpox^+cpx^)/2,cpy^-0.5,(cpoz^+cpz^)/2),d3dxvector3(-sin(szogx)*0.3,-0.1,-cos(szogx)*0.3),myfegyv,0,0,-1);
   end;
   cooldown:=3;
+  kiszall_cooldown:=3;
   autoban:=false;
   kulsonezet:=false;
   kiszallas:=0;
@@ -5010,8 +5085,8 @@ begin
   tmp:=noobtoltpos;
   tmp:=D3DXVector3(tmp.x+norm.x*0.3,tmp.y+norm.y*0.3,tmp.z+norm.z*0.3);
  // d3dxvec3scale(norm,-0.01);
-  Particlesystem_add(bulletcreate(tmp,noobtoltpos,0.01,20,0.004,$50FF6020,0));
-  Particlesystem_add(bulletcreate(tmp,noobtoltpos,0.01,20,0.001,$FFFFFFFF,0));
+  Particlesystem_add(bulletcreate(tmp,noobtoltpos,0.01,20,0.004,$50FF6020,0,false));
+  Particlesystem_add(bulletcreate(tmp,noobtoltpos,0.01,20,0.001,$FFFFFFFF,0,false));
  end;
 
 
@@ -5389,6 +5464,7 @@ begin
   if (hanyszor mod 50)=0 then updateterrain;
  // sleep(10);
 
+  //if opt_imposters then
   ojjektumRenderer.RefreshImposters(D3DXVector3(cpx^,cpy^,cpz^));
 
  
@@ -5466,6 +5542,7 @@ korlat:=0;
   inc(korlat);
   inc(hanyszor);
 
+   //if opt_imposters then
    ojjektumRenderer.RefreshImposters(D3DXVector3(cpx^,cpy^,cpz^));
 
  until (hanyszor*10>timegettime) or (korlat>4);
@@ -5748,11 +5825,11 @@ begin
  if ((mstat and  MSTAT_MASK)>0) and (halal=0) then
  begin
   playsound(1,false,25,true,D3DXvector3(cpx^,cpy^,cpz^)) ;
-  if (mstat and MSTAT_MASK)=(MSTAT_FUT) then setSoundProperties(1,25,0,40000,true,D3DXVector3Zero)
+  if (mstat and MSTAT_MASK)=(MSTAT_FUT) then setSoundProperties(1,25,0,1.81,true,D3DXVector3Zero)//beta
   else
-  if (mstat and MSTAT_GUGGOL)>0 then SetSoundProperties(1,25,-2000,16000,true,D3DXVector3Zero)
+  if (mstat and MSTAT_GUGGOL)>0 then SetSoundProperties(1,25,-2000,0.73,true,D3DXVector3Zero)
   else
-  SetSoundProperties(1,25,-1000,0,true,D3DXVector3Zero)
+  SetSoundProperties(1,25,-1000,1,true,D3DXVector3Zero)
  end
  else
  stopsound(1,25);
@@ -5761,7 +5838,7 @@ begin
   if lovok>0 then
   begin
    playsound(15,false,25,true,D3DXvector3(cpx^,cpy^,cpz^)) ;
-   SetSoundProperties(15,25,0,round(100000*lovok),true,D3DXVector3Zero);
+   SetSoundProperties(15,25,0,4.535*lovok,true,D3DXVector3Zero);
   end
   else
    stopSound(15,25);
@@ -5803,11 +5880,11 @@ begin
   begin
    //id:=ppl[i].sin_addr.S_addr xor ppl[i].sin_port shl 15;
    playsound(1,false,id,true,ppl[sorrend[i]].pos.pos);
-   if (ppl[sorrend[i]].pos.state and MSTAT_MASK)=(MSTAT_FUT) then SetSoundProperties(1,id,0,40000,true,D3DXVector3Zero)
+   if (ppl[sorrend[i]].pos.state and MSTAT_MASK)=(MSTAT_FUT) then SetSoundProperties(1,id,0,1.81,true,D3DXVector3Zero)
    else
-    if (ppl[sorrend[i]].pos.state and MSTAT_GUGGOL)>0 then SetSoundProperties(1,id,-2000,16000,true,D3DXVector3Zero)
+    if (ppl[sorrend[i]].pos.state and MSTAT_GUGGOL)>0 then SetSoundProperties(1,id,-2000,0.73,true,D3DXVector3Zero)
     else
-     SetSoundProperties(1,id,-1000,0,true,D3DXVector3Zero)
+     SetSoundProperties(1,id,-1000,1,true,D3DXVector3Zero)
   end
   else
    stopSound(1,id);
@@ -5897,7 +5974,7 @@ begin
  begin
   //d3dxvec3lerp(tmp,hol,noobproj[sorrend[i]].v1,0.3);
   playsound(15,false,i,false,noobproj[sorrend[i]].v1);
-  setsoundproperties(15,i,0,40000,false,d3dxvector3zero);
+  setsoundproperties(15,i,0,1.81,false,d3dxvector3zero);
   d3dxvec3subtract(tmp,noobproj[sorrend[i]].v2,noobproj[sorrend[i]].v1);
   d3dxvec3scale(tmp,tmp,-100);
   setsoundvelocity(15,i,tmp);
@@ -5941,7 +6018,7 @@ begin
   begin
    playsound(8,false,i,false,tobbiekautoi[sorrend[i]].pos);
    spd:=tavpointpoint(tobbiekautoi[sorrend[i]].pos,tobbiekautoi[sorrend[i]].vpos);
-    SetSoundProperties(8,i,1,round((tobbiekautoi[i].fordulatszam*0.22+0.5)*30000),true,D3DXVector3Zero);
+    SetSoundProperties(8,i,1,(tobbiekautoi[i].fordulatszam*0.22+0.5)*0.68,true,D3DXVector3Zero);
   end
    else
     StopSound(8,i);
@@ -5980,7 +6057,7 @@ begin
   if sorrend[i]>=0 then
   begin
    playsound(7,false,i,false,tobbiekautoi[sorrend[i]].pos);
-    SetSoundProperties(7,i,0,round((0.3+min(tavpointpoint(tobbiekautoi[sorrend[i]].pos,tobbiekautoi[sorrend[i]].vpos),0.25))*50000),true,D3DXVector3Zero);
+    SetSoundProperties(7,i,0,(0.3+min(tavpointpoint(tobbiekautoi[sorrend[i]].pos,tobbiekautoi[sorrend[i]].vpos),0.25))*1.36,true,D3DXVector3Zero);
   end
    else
     StopSound(7,i);
@@ -5991,7 +6068,7 @@ begin
  if (playrocks>0) and (halal=0) then
  begin
   playsound(2,false,25,true,D3DXvector3(cpx^,cpy^,cpz^));
-  SetSoundProperties(2,25,round(-2000*(1-playrocks)),round(playrocks*22000),true,D3DXVector3Zero)
+  SetSoundProperties(2,25,round(-2000*(1-playrocks)),playrocks,true,D3DXVector3Zero)
  end
  else
    StopSound(2,25);
@@ -5999,7 +6076,7 @@ begin
  if ((vizben>0) and (not nemviz)) and (halal=0)  then
  begin
   playsound(3,false,25,true,D3DXvector3(cpx^,cpy^,cpz^));
-  SetSoundProperties(3,25,round(-2000*(1.7-vizben)),round(20000+vizben*2000),true,D3DXVector3Zero)
+  SetSoundProperties(3,25,round(-2000*(1.7-vizben)),1+(vizben/10),true,D3DXVector3Zero)
  end
  else
    StopSound(3,25);
@@ -6009,7 +6086,7 @@ begin
  if not tegla.disabled then
  begin
   playsound(abuft,true,125,true,tegla.pos);
-  SetSoundProperties(abuft,125,round(tegla.pillspd),round((tegla.fordulatszam*0.22+0.5)*30000),true,D3DXVector3Zero);
+  SetSoundProperties(abuft,125,round(tegla.pillspd),(tegla.fordulatszam*0.22+0.5)*0.68,true,D3DXVector3Zero);
   //round((0.3+min(tavpointpoint(tegla.pos,tegla.vpos),0.25))*50000)
  end
  else
@@ -6024,7 +6101,7 @@ begin
  {$ENDIF}
  begin
   playsound(12,true,125,true,D3DXVector3Zero);
-  SetSoundProperties(12,125,round(-1200-felho.coverage*400),0,true,D3DXVector3Zero);
+  SetSoundProperties(12,125,round(-1200-felho.coverage*400),1,true,D3DXVector3Zero);
  end
  else
   StopSound(12,125);
@@ -6318,17 +6395,21 @@ begin
 
   case aloves.fegyv of                                                         //////
    FEGYV_M4A1,FEGYV_M82A1,FEGYV_MP5A3: begin
-   Particlesystem_add(Bulletcreate(aloves.pos,aloves.v2,3,5,0.01,$00A0A050,1));
+   Particlesystem_add(Bulletcreate(aloves.pos,aloves.v2,3,20,0.01,$00A0A050,1,false)); //sajt 3. (6 > 20) (40 lenne reális)
      tmp := sikmetsz(aloves.pos,aloves.v2,10);
   if tmp.y<>0 then
   begin
   for j:=0 to 15 do
     ParticleSystem_Add(Gravityparticlecreate(tmp,d3dxvector3(-0.0167+random(10)/300,0.06+random(10)/270,-0.0167+random(10)/300),0.3,0.05,0.09,$FFDDDDFF,$FFFFFFFF,100));
   end;
+
+  if (opt_postproc>=POSTPROC_GREYSCALE) then //sajt
+  begin
   d3dxvec3subtract(tmp2,aloves.pos,aloves.v2);
   D3DXVec3Normalize(tmp2,tmp2);
   D3DXVec3Scale(tmp2,tmp2,0.10);
   ParticleSystem_Add(Coolingparticlecreate(aloves.v2,tmp2,0.03,0.24,0.05,$FFAAAAAA+random(32)*$010101,$00000000,20));
+  end;
 
   end;
    FEGYV_MPG:begin
@@ -6385,7 +6466,7 @@ begin
    begin
     if aloves.fegyv>127 then snd:=27 else snd:=14;
     playsound(snd,false,atc,true,tmp);
-    SetSoundProperties(snd,atc,1,15000+random(10000),true,tmp);
+    SetSoundProperties(snd,atc,1,0.34+(random(22)/100),true,tmp);
     if (aloves.fegyv xor myfegyv)>=128 then
     inc(zeneintensity,300);
     rezg:=max(rezg,(25-dst)/20);
@@ -6403,7 +6484,7 @@ begin
   if (aloves.fegyv>=128) xor (myfegyv<128) then love:=-1 else
   case aloves.fegyv of
    FEGYV_M4A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.033);
-   FEGYV_M82A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.086);
+   FEGYV_M82A1:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.065);
    FEGYV_MPG: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.15);
    FEGYV_QUAD: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.16);
    FEGYV_MP5A3: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.02);
@@ -6897,7 +6978,7 @@ begin
   //d3dxmatrixidentity(mv2);
   menu.g_pSprite.SetTransform(identmatr);
 
-  if portalevent.vege then begin
+  if (portalevent<>nil) and (portalevent.vege) then begin
   vegeffekt := vegeffekt+1;
   menu.DrawRect(0.0,0.0,1.0,1.0,$01000000*cardinal(min(vegeffekt,255))+$00FFFFFF);
   end;
@@ -6980,7 +7061,7 @@ begin
     else
       ar[i]:= ppl[i].pls.nev;
 
-  isTyping[i]:= (tavpointpointsq(ppl[i].pos.pos,camvec)<sqr(25)) and ppl[i].isTyping;
+  isTyping[i]:= (tavpointpointsq(ppl[i].pos.pos,camvec)<sqr(25)) and (ppl[i].pos.state=MSTAT_CHAT);
 
 
   if bol then
@@ -7149,11 +7230,11 @@ begin
  begin
   if (multisc.chats[i].glyph<>0) then begin
     //cghash:=(((13)*16+12)*16+14)*16+15   {szin}+29*65536
-   menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.02,$1F*cardinal(8-i));
-   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$1F000000*cardinal(8-i)+aszin);
+   menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.022,$1F*cardinal(8-i));
+   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$1F000000*cardinal(8-i)+aszin);
      end
   else
-   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$1F000000*cardinal(8-i)+aszin);
+   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$1F000000*cardinal(8-i)+aszin);
  end;
  end
  else
@@ -7161,11 +7242,11 @@ begin
   for i:=0 to 23 do
  begin
   if (multisc.chats[i].glyph<>0) then begin
-   menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.02,$FF);
-   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$FF000000+aszin);
+   menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.022,$FF);
+   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$FF000000+aszin);
      end
   else
-   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.02,0.4,0.2+(i)*0.02,$FF000000+aszin);
+   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$FF000000+aszin);
  end;
  end;
 
@@ -7309,7 +7390,7 @@ begin
 
 
    kisTAB:=0;
-   menuszor:=0.02;
+   menuszor:=0.022;
 
   if (tabgorg>techsz-33) and (tabgorg>gunsz-33) then tabgorg:=tabgorg-1;
   tabsort:=tabgorg;
@@ -7566,6 +7647,8 @@ var
 i,j:integer;
 sautok,antigravok:array of Tauto;
 begin
+
+    laststate:='RenderAutok';
       if cpy^>150 then exit;
      g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
      g_pd3dDevice.SetTransform(D3DTS_WORLD, tegla.matrixfromaxes);
@@ -8068,6 +8151,9 @@ begin
     
     renderautok(true);
 
+
+    laststate:='Rendering terrain';
+
     setupidentmatr;
     // Render the vertex buffer contents
     g_pd3dDevice.SetStreamSource(0, g_pVB, 0, SizeOf(TCustomVertex));
@@ -8150,7 +8236,7 @@ begin
 
     g_pd3ddevice.SetTransform(D3DTS_TEXTURE1,identmatr);
     g_pd3ddevice.SetTransform(D3DTS_TEXTURE0,identmatr);
-    ojjektumrenderer.Draw(frust,nil,matview,matproj,fogstart,fogend,true);
+    ojjektumrenderer.Draw(frust,nil,matview,matproj,fogstart,fogend,false);
     g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,   D3DTOP_DISABLE);
 
     g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
@@ -9151,10 +9237,13 @@ begin
   menufi[MI_CONNECT].clicked:=false;
 
   menu.lap:=-1;
-  if portalevent=nil then   begin
+  if not portalstarted then   begin
   portalevent:=TPortalEvent.Create(g_pd3ddevice,true,'data\event\');
   portalevent.phstim:=3351;
   portalevent.phs:=3;
+
+  if portalevent.error > 0 then
+      portalevent := nil;
   end;
   
   menufi[MI_GAZMSG].visible:=false;
@@ -9339,7 +9428,13 @@ begin
    ASPECT_RATIO:=4/3;
   exit;
  end;
-
+ {
+ if menufi[MI_IMPOSTER].clicked then
+ begin
+  menufi[MI_IMPOSTER].clicked:=false;
+  opt_imposters:=not opt_imposters;
+ end;
+ }
  if menufi[MI_SCREENSHOT].clicked then
  begin
   menufi[MI_SCREENSHOT].clicked:=false;
@@ -9443,6 +9538,11 @@ begin
  else
   menufi[MI_WIDESCREEN].valueS:='[ ]';
 
+ {if opt_imposters then
+  menufi[MI_IMPOSTER].valueS:='[X]'
+ else
+  menufi[MI_IMPOSTER].valueS:='[ ]';
+  }
  if png_screenshot then
   menufi[MI_SCREENSHOT].valueS:='PNG'
  else
@@ -9561,7 +9661,7 @@ begin
 end;
 
 
-procedure findPlayerForChat;
+procedure findPlayerForChat(start:integer;command:string);
 var
 i,n,j,k:integer;
 key:string;
@@ -9570,11 +9670,11 @@ db:string;
 begin
  n:=high(ppl);
 
- key:=Copy(chatmost,5,Length(chatmost)-5);
+ key:=Copy(chatmost,start,Length(chatmost)-start+1);
 
  for i:=0 to n do
   begin
-   if (Copy(ppl[i].pls.nev,1,Length(key))=key) then
+   if (Copy(LowerCase(ppl[i].pls.nev),1,Length(key))=LowerCase(key)) then
      begin
      inc(j);
      k:=i;
@@ -9582,9 +9682,10 @@ begin
      end;
   end;
 
-  if j=1 then chatmost:=' /w ' + ppl[k].pls.nev + ' ';
-  if j=1 then debugstr:='kinek:('+inttostr(k)+') '+ppl[k].pls.nev
-  else   debugstr:='key:' + key + ' - ' + Copy('Valaki',1,Length(key));
+  if k>0 then chatmost:=command + ppl[k].pls.nev + ' ';
+  //if j=1 then debugstr:='kinek:('+inttostr(k)+') '+ppl[k].pls.nev
+  //else
+  debugstr:='key:' + key + ' -> ' + ppl[k].pls.nev;
 
 
 end;
@@ -9601,13 +9702,16 @@ begin
   if (chr(mit)='t') or (chr(mit)='T') or (mit=VK_RETURN) then
   begin
    chatmost:=' ';
-   multip2p.ToggleChat(true);
+   mstat:=MSTAT_FUT;
   end;
 
 
 
   if (chr(mit)='r') or (chr(mit)='R') then chatmost:=' /r ';
   if (chr(mit)='c') or (chr(mit)='C') then chatmost:=' /c ';
+  {$IFDEF repkedomod}
+  if (chr(mit)='p') or (chr(mit)='P') then repules := not repules;
+  {$ENDIF}
   if (chr(mit)='/') then chatmost:=' /';
   if mit=VK_ESCAPE then gobacktomenu:=true;
 
@@ -9621,7 +9725,7 @@ begin
  if mit=VK_BACK then begin
 
   setlength(chatmost,length(chatmost)-1);
-  if chatmost=' ' then multip2p.ToggleChat(false);
+  if chatmost=' ' then mstat:=MSTAT_ALL;
   exit;
 
    end;
@@ -9629,7 +9733,7 @@ begin
  // if length(chatmost)=0 then gobacktomenu:=true
  // else chatmost:='';
  // end;
-  if mit=VK_ESCAPE then begin chatmost:='';  multip2p.ToggleChat(false); Exit; end;
+  if mit=VK_ESCAPE then begin chatmost:='';  mstat:=MSTAT_ALL; Exit; end;
  if mit=VK_RETURN then
  begin
    handleparancsok(chatmost);
@@ -9650,7 +9754,7 @@ begin
      setupmymuksmatr;
      addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^),d3dxvector3(sin(szogx)*0.3,0.1,cos(szogx)*0.3),myfegyv,10,0,-1);
      Multisc.Chat(chatmost);
-     multip2p.ToggleChat(false);
+     mstat:=MSTAT_ALL;
 
     end
   else
@@ -9660,13 +9764,13 @@ begin
      setupmymuksmatr;
      addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^),d3dxvector3(sin(szogx)*0.3,0.1,cos(szogx)*0.3),myfegyv,10,0,-1);
      Multisc.Chat(chatmost);
-     multip2p.ToggleChat(false);
+     mstat:=MSTAT_ALL;
 
     end
     else
     begin
      Multisc.Chat(chatmost);
-     multip2p.ToggleChat(false);
+     mstat:=MSTAT_ALL;
 
 
     end;
@@ -9674,12 +9778,13 @@ begin
   exit;
  end;
 
-
+ if mit<>VK_TAB then
  chatmost:=chatmost+chr(mit);
- if (mit=VK_TAB) and (Copy(chatmost,1,4)=' /w ') then findPlayerForChat;
- if (mit=VK_TAB) and (Copy(chatmost,1,4)=' /kick ') then findPlayerForChat;
- if (mit=VK_TAB) and (Copy(chatmost,1,4)=' /1v1 ') then findPlayerForChat;
- if (mit=VK_TAB) and (Copy(chatmost,1,4)=' /ban ') then findPlayerForChat;
+
+ if (mit=VK_TAB) and (Length(chatmost)>4) and (Copy(chatmost,1,4)=' /w ') then findPlayerForChat(5,' /w ');
+ if (mit=VK_TAB) and (Length(chatmost)>7) and (Copy(chatmost,1,7)=' /kick ') then findPlayerForChat(8,' /kick ');
+ if (mit=VK_TAB) and (Length(chatmost)>6) and (Copy(chatmost,1,6)=' /1v1 ') then findPlayerForChat(7,' /1v1 ');
+ if (mit=VK_TAB) and (Length(chatmost)>6) and (Copy(chatmost,1,6)=' /ban ') then findPlayerForChat(7,' /ban ');
 end;
 
 
@@ -9784,9 +9889,11 @@ begin
  menu.AddText(0.70 ,0.520,0.80,0.560,0.5,4,lang[35],false);
  menu.AddText(0.80 ,0.520,0.88,0.560,1,4,'[X]',true); menufi[MI_WIDESCREEN]:=menu.items[4,10];
  
- menu.AddText(0.51 ,0.580,0.69,0.650,0.5,4,lang[74],false);
- menu.AddText(0.69 ,0.580,0.77,0.650,0.5,4,'[X]',true); menufi[MI_SCREENSHOT]:=menu.items[4,12];
+ menu.AddText(0.51 ,0.580,0.69,0.640,0.5,4,lang[74],false);
+ menu.AddText(0.69 ,0.580,0.77,0.640,0.5,4,'[X]',true); menufi[MI_SCREENSHOT]:=menu.items[4,12];
 
+ //menu.AddText(0.51 ,0.64,0.69,0.68,0.5,4,lang[75],false);
+ //menu.AddText(0.69 ,0.64,0.77,0.68,0.5,4,'[X]',true); menufi[MI_IMPOSTER]:=menu.items[4,14];
 
  //Menü lap 5 --- Options-Sound
  menu.Addteg(0.5,0.3,0.9,0.8,5);
@@ -9935,7 +10042,10 @@ begin
   myfejcucc:=random(stuffjson.GetNum(['hats']));
  end;
 
- 
+  //TODO remove
+
+ //opt_imposters := false;
+
  if g_pEffect=nil then
  begin
   opt_detail:=0;
@@ -10404,12 +10514,12 @@ try
   end
   else
   begin
-   messagebox(0,'InitGeometry error.',Pchar(lang[30]),MB_SETFOREGROUND);
+   messagebox(0,PAnsiChar('InitGeometry error. '+laststate),Pchar(lang[30]),MB_SETFOREGROUND  or MB_ICONERROR);
    goto vege;
   end;
   end
   else
-   messagebox(0,'Unknown D3D error.',Pchar(lang[30]),MB_SETFOREGROUND);
+   messagebox(0,PAnsiChar('Unknown D3D error. '+laststate),Pchar(lang[30]),MB_SETFOREGROUND  or MB_ICONERROR);
   vege:
   zenecleanup;
   laststate:='Vege';
@@ -10419,7 +10529,7 @@ try
    WSACleanup;
    closewindow(hwindow);
    UnregisterClass('CLS12345', wc.hInstance);
-   if not iswindowed and lostdevice then messagebox(0,Pchar(lang[31]),Pchar(lang[30]),MB_SETFOREGROUND);
+   if not iswindowed and lostdevice then messagebox(0,Pchar(lang[31]),Pchar(lang[30]),MB_SETFOREGROUND or MB_ICONWARNING);
    writeln(logfile,'Game ended at:',formatdatetime('yyyy.mm.dd/hh:nn:ss',date+time));
   closefile(logfile);
 except
@@ -10430,7 +10540,7 @@ except
    closeSound;
    closewindow(hwindow);
    UnregisterClass('CLS12345', wc.hInstance);
-  messagebox(0,PChar(lang[28]+'('+E.Message+')'+lang[29]),Pchar(lang[30]),MB_SETFOREGROUND);
+  messagebox(0,PChar(lang[28]+AnsiString(#13#10)+E.Message+AnsiString(#13#10)+'Aktuális esemény:'+laststate+AnsiString(#13#10)+lang[29]),Pchar(lang[30]),MB_SETFOREGROUND or MB_ICONERROR);
   writeln(logfile,'Unhandled error @'+inttohex(Integer(ExceptAddr),8)+':'+E.Message);
   writeln(logfile,'Last state: ',laststate);
   writeln(logfile,'Last sound action: ',lastsoundaction);
@@ -10447,6 +10557,7 @@ end;
 
  exitprocess(0);
 end.
+
 
 
 

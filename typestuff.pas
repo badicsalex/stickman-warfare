@@ -419,8 +419,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20503;
-  datachecksum=$7F9282B9;
+  PROG_VER=20506;
+  datachecksum=$FF6F1748;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -453,6 +453,7 @@ const
   MSTAT_JOBBRA=3;
   MSTAT_BALRA=4;
   MSTAT_FUT=5;
+  MSTAT_CHAT=6; // egyelõre nincs animáció de akár lehetne is
   MSTAT_GUGGOL=16; //flag
   MSTAT_CSIPO=32; //ez is flag
 
