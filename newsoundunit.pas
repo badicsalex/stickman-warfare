@@ -12,7 +12,6 @@ uses
   DirectSound,
   direct3d9,
   d3dx9,
-  speex,
   typestuff,
   MADXDllinterface,
   DXErr9,
@@ -75,33 +74,8 @@ type
   procedure stop;
  end;
 
- TSpeexEncoder = class(Tobject)
- protected
-  framesize:integer;
-  encbits: TSpeexBits;
-  encstate,prepstate: Pointer;
-  
- public
-  innerbuf:Tsmallintdynarr;
-  datasize:integer;
-  constructor Create;
-  destructor destroy;override;
-  procedure encode(const mit:Tsmallintdynarr);
-  procedure getdata(var hova:Tbytearr);
- end;
 
- TSpeexDecoder = class(Tobject)
- protected
-  framesize:integer;
-  decbits: TSpeexBits;
-  decstate: Pointer;
- public
-  lastused:cardinal;
-  constructor Create;
-  destructor destroy;override;
-  procedure Decode(const mit:Tbytearr;var decoded:Tsmallintdynarr);
-  procedure NeedData(var decoded:Tsmallintdynarr);
- end;
+
 
  //-----------------------------------------------------------------------------
   // Name: class CWaveFile
@@ -164,7 +138,7 @@ procedure SetMainVolume(vol:single);
 procedure CommitDeferredSoundStuff;
 procedure CloseSound;
 procedure zeneinit;
-function zenefresh(volp:Pointer):integer;
+procedure zenefresh(volp:single);
 procedure zenecleanup;
 
 
@@ -418,18 +392,18 @@ end;
 var
  zenethdid:cardinal;
 
-function zenefresh(volp:Pointer):integer;
+procedure zenefresh(volp:single);
 var
 mire:single;
 vol:single;
 begin
- result:=0;
+
 
  if DS=nil then exit;
 
  if not zenethdvege then exit;
 
- vol:=Psingle(volp)^;
+ vol:=Math.Power(volp, 0.5);
  if vol<=0 then mire:=0 else
   mire:=(vol-1)*5000;
 
@@ -448,7 +422,6 @@ begin
   beginthread(nil,0,zenefreshthd,nil,0,zenethdid);
  end;
 
- result:=0;
 end;
 
 
@@ -1434,151 +1407,6 @@ end;
 
 
 
-
-constructor TSpeexEncoder.Create;
-var
-a:integer;
-b:single;
-begin
- inherited;
-
- speex_bits_init(@encbits);
- encstate := speex_encoder_init(speex_lib_get_mode(SPEEX_MODEID_WB));
-
- speex_encoder_ctl(encstate,SPEEX_SET_SAMPLING_RATE,@vdefsmpRt);
- a:=0;
- speex_encoder_ctl(encstate,SPEEX_SET_VBR,@a);
- a:=1;
- speex_encoder_ctl(encstate,SPEEX_SET_VAD,@a);
- speex_encoder_ctl(encstate,SPEEX_SET_DTX,@a);
- a:=10;
- speex_encoder_ctl(encstate,SPEEX_SET_QUALITY,@a);
-
- b:=2;
- speex_encoder_ctl(encstate,SPEEX_SET_VBR_QUALITY,@b);
-
- speex_encoder_ctl(encstate,SPEEX_GET_FRAME_SIZE,@framesize);
-
- setlength(innerbuf,0);
- speex_bits_reset(@encbits);
-
-
- prepstate:=speex_preprocess_state_init(framesize,defsmprt);
-
- a:=1;
- speex_preprocess_ctl(prepstate,SPEEX_PREPROCESS_SET_AGC,@a);
- speex_preprocess_ctl(prepstate,SPEEX_PREPROCESS_SET_DENOISE,@a);
-
- b:=32768*0.9;
- speex_preprocess_ctl(prepstate,SPEEX_PREPROCESS_SET_AGC_LEVEL,@b);
-
-end;
-
-destructor TSpeexEncoder.destroy;
-begin
- speex_bits_destroy(@encbits);
- speex_encoder_destroy(encstate);
- speex_preprocess_state_destroy(prepstate);
- inherited;
-end;
-
-procedure TSpeexEncoder.encode(const mit:Tsmallintdynarr);
-var
-hol:integer;
-lngtvolt:integer;
-//ossz:longint;
-begin
- hol:=0;
- while length(innerbuf)+length(mit)-hol>=framesize do
- begin
-  lngtvolt:=length(innerbuf);
-  setlength(innerbuf,framesize);
-
- { for i:=lngtvolt to framesize-1 do
-   innerbuf[i]:=mit[hol+i-lngtvolt]; }
-  copymemory(@innerbuf[lngtvolt],@mit[hol],(framesize-lngtvolt)*2);
-
-  inc(hol,framesize-lngtvolt);
-
-  speex_preprocess(prepstate,@innerbuf[0],nil);
-
-  {ossz:=0;
-  for i:=0 to framesize-1 do
-   ossz:=ossz+innerbuf[i];
-  if ossz<framesize*300 then zeromemory(@innerbuf[0],length(innerbuf)*2);   //}
-
-  speex_encode_int(encstate,@innerbuf[0], @encbits);
-  setlength(innerbuf,0);
- end;
-
- lngtvolt:=length(innerbuf);
- setlength(innerbuf,length(innerbuf)+length(mit)-hol);
- {for i:=lngtvolt to high(innerbuf) do
-   innerbuf[i]:=mit[hol+i-lngtvolt]; }
- copymemory(@innerbuf[lngtvolt],@mit[hol],(length(innerbuf)-lngtvolt)*2);
- datasize:=speex_bits_nbytes(@encbits);
-
-end;
-
-procedure TSpeexEncoder.getdata(var hova:Tbytearr);
-var
-sz:integer;
-begin
- sz:=speex_bits_nbytes(@encbits);
- if sz=0 then exit;
- setlength(hova,sz);
- speex_bits_write(@encbits,pointer(@hova[0]),sz);
- speex_bits_reset(@encbits);
- datasize:=0;
-end;
-
-
-
-constructor TSpeexDecoder.Create;
-var
-a:integer;
-begin
- inherited;
- speex_bits_init(@decbits);
- decstate := speex_decoder_init(speex_lib_get_mode(SPEEX_MODEID_WB));
-
- speex_decoder_ctl(decstate,SPEEX_GET_FRAME_SIZE,@framesize);
- a:=1;
- speex_decoder_ctl(decstate,SPEEX_SET_ENH,@a);
-
-end;
-
-destructor TSpeexDecoder.destroy;
-begin
- speex_bits_destroy(@decbits);
- speex_decoder_destroy(decstate);
- inherited;
-end;
-
-procedure TSpeexDecoder.Decode(const mit:Tbytearr;var decoded:Tsmallintdynarr);
-var
-i:integer;
-begin
- speex_bits_reset(@decbits);
- speex_bits_read_from(@decbits,pointer(@mit[0]),length(mit));
- setlength(decoded,framesize);
- while speex_decode_int(decstate,@decbits,@decoded[length(decoded)-framesize])=0 do
-  setlength(decoded, length(decoded)+framesize);
- setlength(decoded,length(decoded)-framesize);
- for i:=0 to high(decoded) do
-  decoded[i]:=decoded[i];
- lastused:=gettickcount;
-end;
-
-procedure TSpeexDecoder.NeedData(var decoded:Tsmallintdynarr);
-begin
- setlength(decoded,framesize*3);
- speex_decode_int(decstate,nil,@decoded[0]);
- speex_decode_int(decstate,nil,@decoded[framesize]);
- speex_decode_int(decstate,nil,@decoded[framesize*2]);
-end;
-
-
 { CWaveFile }
 
 //-----------------------------------------------------------------------------
@@ -2245,5 +2073,5 @@ end;
 
 
 initialization
-Speex_Load_DLL;
+
 end.

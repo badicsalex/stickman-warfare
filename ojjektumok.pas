@@ -546,7 +546,7 @@ begin
  else  }
 
  NeedKD;
- 
+
   traverseKDTreelin(v1,v2,miket,KDData,KDTree,triangles,collision);
 
  az:=v2;

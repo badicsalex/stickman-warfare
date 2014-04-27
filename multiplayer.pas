@@ -1,5 +1,8 @@
 unit multiplayer;
 
+{.$DEFINE fakenetchecksum}
+
+
 interface
 
 uses sysutils, socketstuff, typestuff, D3DX9, Direct3D9, windows, sha1, winsock2;
@@ -81,6 +84,7 @@ type
   procedure Medal(c1,c2:char);
  end;
 
+
  //megjegyzés: 20 bájtba kell beleférni egy ATM packethez, 68-ba kettõhöz
  TUDPFrame = class (TSocketFrame)
  public
@@ -144,6 +148,8 @@ type
 
  end;
 
+function decodeSharedKey(raw:SmallInt):byte;
+
 var
  servername:string = 'stickman.hu';
  ppl:array of Tplayer;
@@ -153,8 +159,8 @@ var
 implementation
 
 const
- shared_key:array [0..19] of byte=($00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00);
-
+ shared_key:array [0..19] of SmallInt=(24, 24, 534, 24, 24, 585, 24, 24, 636, 24, 24, 687, 24, 24, 738, 24, 24, 789, 24, 24);
+// hex>int>+8>*3 shared_key:array [0..19] of byte=($00, $00, $AA, $00, $00, $BB, $00, $00, $CC, $00, $00, $DD, $00, $00, $EE, $00, $00, $FF, $00, $00);
 
  CLIENT_VERSION=PROG_VER;
 
@@ -266,6 +272,15 @@ const
 
  STATUS_CHATOFF = 2; // már nem használt
 
+function decodeSharedKey(raw:SmallInt):byte;
+var
+ decoded:integer;
+begin
+ decoded:= (raw div 3)-8;
+ Result:= decoded;
+end;
+
+
 procedure TMMOServerClient.SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
 var          
  frame:TSocketFrame;
@@ -326,12 +341,13 @@ i:integer;
  ujcrypto:TSHA1Digest;
 begin
  for i:=0 to 19 do
-  crypto[i]:=crypto[i] xor shared_key[i];
+  crypto[i]:=crypto[i] xor decodeSharedKey(shared_key[i]);
  ujcrypto:=SHA1Hash(@crypto[0],20);
  for i:=0 to 19 do
   crypto[i]:=ujcrypto[i];
 
 end;
+
 
 
 procedure TMMOServerClient.SendKill(UID:integer);
@@ -595,8 +611,12 @@ begin
    szerveraddr.sin_addr:=gethostbynamewrap(servername);
    szerveraddr.sin_port := htons(25252);
    sock:=TBufferedSocket.Create(CreateClientSocket(szerveraddr));
-   //SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
+   
+   {$IFDEF fakenetchecksum}
+   SendLogin(nev,jelszo,fegyver,fejcucc,myport,datachecksum);
+   {$ELSE}
    SendLogin(nev,jelszo,fegyver,fejcucc,myport,checksum);
+   {$ENDIF}
   end;
   exit;
  end;

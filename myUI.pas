@@ -65,8 +65,8 @@ type
   T3DMenu = class(Tobject)
   private
    g_pd3ddevice:IDirect3DDevice9;
-   g_pfont,g_pfontmini,g_pfontchat:ID3DXFont;
   public
+   g_pfont,g_pfontmini,g_pfontchat:ID3DXFont;
    fckep:IDirect3DTexture9;
    chatbubble:IDirect3DTexture9;
    glyphs,cglyphs:IDirect3DTexture9;
@@ -113,6 +113,7 @@ type
    procedure DrawChatsInGame(texts:array of string;pos:array of TD3DXVector3; alpha:array of single);
    procedure DrawChatGlyph(hash:cardinal;posx,posy:single;alpha:byte);
    procedure DrawText(mit:string;posx,posy,posx2,posy2:single;meret:byte;color:cardinal);
+   procedure DrawMulilineText(mit:string;posx,posy,posx2,posy2:single;meret:byte;color:cardinal);
    procedure DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal;shadow:bool=false);
    procedure DrawRect(ax1,ay1,ax2,ay2:single;color:cardinal);
    destructor Destroy;reintroduce;
@@ -407,13 +408,13 @@ begin
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/4919.png',256,128,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo2)) then
    Exit;
 
- if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/cursor.bmp',64,64,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,cursor)) then
+ if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/cursor.png',64,64,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,cursor)) then
    Exit;
- if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/beiro.jpg',250,25,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,boxtex)) then
+ if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/beiro.png',250,25,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,boxtex)) then
    Exit;
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/csuszka.png',16,128,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusztex)) then
    Exit;
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/cssin.jpg',256,32,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusz2tex)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/cssin.png',256,32,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusz2tex)) then
    Exit;
 
  splash:=nil;
@@ -875,6 +876,33 @@ begin
   end;
  end;
 end;
+
+procedure T3DMenu.DrawMulilineText(mit:string;posx,posy,posx2,posy2:single;meret:byte;color:cardinal);
+var
+ rect:TRect;
+begin
+ if mit='' then exit;
+ rect.Top:=round(posy*SCheight); rect.Bottom:=round(posy2*SCheight);
+ rect.Left:=round(posx*SCwidth); rect.Right:=round(posx2*SCwidth);
+ case meret of
+  0:g_pfontchat.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,color);
+  1:
+  begin
+
+   g_pfontmini.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,color);
+  end;
+  2:
+  begin
+   g_pfont.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,$A0000000);
+   rect.Left:=Rect.Left-2;
+   rect.Top:=Rect.Top-2;
+   rect.Right:=Rect.Right-2;
+   rect.Bottom:=Rect.Bottom-2;
+   g_pfont.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,color);
+  end;
+ end;
+end;
+
 
 procedure T3DMenu.DrawSzinesChat(mit:string;posx,posy,posx2,posy2:single;color:cardinal;shadow:bool=false);
 var
