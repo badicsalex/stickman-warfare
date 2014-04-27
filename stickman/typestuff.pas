@@ -257,6 +257,12 @@ type
    tip:integer;
   end;
 
+  TLabel = record
+    pos:TD3DXVector3;
+    rad:single;
+    text:string;
+  end;
+
   TParticleSys = record
     from,spd:TD3DXVector3;
     tipus:integer;
@@ -265,6 +271,10 @@ type
     amount,period,lifetime,rndlt:integer;
     ssize,esize,vis:single;
     texture:integer;
+  end;
+
+  TWeaponType = record
+   col:array of integer;
   end;
 
   Pbinmsg = ^Tbinmsg;
@@ -419,8 +429,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20506;
-  datachecksum=$FF6F1748;
+  PROG_VER=20507;
+  datachecksum=$FA353460;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -465,19 +475,19 @@ const
   D3DFVF_PosNormUV = (D3DFVF_XYZ or D3DFVF_NORMAL or D3DFVF_TEX1 );
   D3DFVF_COLOREDVERTEX = (D3DFVF_XYZ or D3DFVF_DIFFUSE);
 
-  DIKChar:array [$01..$39] OF CHAR
+{  DIKChar:array [$01..$39] OF CHAR
                            =(' ','1','2','3','4','5','6','7','8','9','0','-','=','Û',' ',
                          'Q','W','E','R','T','Y','U','I','O','P','[',']',' ',' ','A','S',
                          'D','F','G','H','J','K','L',';',' ',' ',' ','\','Z','X','C','V',
-                         'B','N','M',',','.','/',' ','*',' ',' ');
+                         'B','N','M',',','.','/',' ','*',' ',' ');}
   identmatr:TD3DMatrix=(_11:1;_12:0;_13:0;_14:0;
                         _21:0;_22:1;_23:0;_24:0;
                         _31:0;_32:0;_33:1;_34:0;
                         _41:0;_42:0;_43:0;_44:1);
-  felematr:TD3DMatrix=(_11:0.5;_12:0;_13:0;_14:0;
+{  felematr:TD3DMatrix=(_11:0.5;_12:0;_13:0;_14:0;
                         _21:0;_22:0.5;_23:0;_24:0;
                         _31:0;_32:0;_33:0.5;_34:0;
-                        _41:0;_42:0;_43:0;_44:1);
+                        _41:0;_42:0;_43:0;_44:1); }
   sqrt2=1.414213;
 function CustomVertex(x,y,z,nx,ny,nz:single;acolor:longword;au,av,au2,av2:single):TCustomVertex;overload;
 function CustomVertex(pos:TD3DXVector3;nx,ny,nz:single;acolor:longword;au,av,au2,av2:single):TCustomVertex;overload;

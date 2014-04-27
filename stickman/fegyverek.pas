@@ -1,7 +1,7 @@
 unit fegyverek;
 
 interface
-uses sysutils,windows,typestuff,math,Direct3d9,d3dx9;
+uses sysutils,windows,typestuff,math,Direct3d9,d3dx9,ParticleSystem;
 const
 
 M4_Golyoido=0.3;
@@ -13,10 +13,12 @@ type
 
  Tprojectilearray=array of Tprojectile;
 
+
  TF_M4A1 = class (Tobject)
  private
    g_pMesh:ID3DXMesh;
    g_pD3Ddevice:IDirect3ddevice9;
+   g_pEffect:ID3DXEffect;
    m4tex:IDirect3DTexture9;
    muzz:array [0..17] of TCustomVertex;
    procedure makemuzzle;
@@ -25,7 +27,7 @@ type
   betoltve:boolean;
   fc:single;
   muzzez:array of TCustomvertex;
-  constructor Create(a_D3Ddevice:IDirect3ddevice9;fnev:string);
+  constructor Create(a_D3Ddevice:IDirect3ddevice9;a_pEffect:ID3DXEffect;fnev:string);
   procedure draw;
   procedure pluszmuzzmatr(siz:single);
   procedure drawmuzzle(siz:single);
@@ -105,6 +107,7 @@ type
  private
    g_pMesh:ID3DXMesh;
    g_pD3Ddevice:IDirect3ddevice9;
+
    mpgtex:IDirect3DTexture9;
    mpgemap:IDirect3DTexture9;
    muzz:array [0..5] of TCustomVertex;
@@ -219,7 +222,7 @@ implementation
 //            M4A1
 ///////////////////////////////
 
-constructor TF_M4A1.Create(a_D3Ddevice:IDirect3ddevice9;fnev:string);
+constructor TF_M4A1.Create(a_D3Ddevice:IDirect3ddevice9;a_pEffect:ID3DXEffect;fnev:string);
 var
  tempmesh:ID3DXMesh;
  pVert:PCustomvertexarray;
@@ -231,6 +234,7 @@ begin
  inherited Create;
  betoltve:=false;
  g_pD3Ddevice:=a_D3Ddevice;
+ g_pEffect:=a_pEffect;
  addfiletochecksum(fnev+'.x');
 
  if not LTFF(g_pd3dDevice, fnev+'.jpg',m4tex) then
@@ -292,7 +296,11 @@ makemuzzlequad(12,CustomVertex(   0,   0,   0,0,0,0,ARGB(255,255,255,255),0,0,0,
 end;
 
 procedure TF_M4A1.draw;
+var
+
 begin
+ g_peffect.SetTechnique('phong');
+
  g_pd3dDevice.Settexture(0,m4tex);
  g_pMesh.DrawSubset(0);
 end;
@@ -807,16 +815,17 @@ end;
 
 procedure TF_MPG.makemuzzle(alpha:byte);
 begin
- muzz[0]:=CustomVertex(-0.5,-0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,0,0,0,0);//$000032FA
- muzz[1]:=CustomVertex( 0.5,-0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,1,0,0,0);
- muzz[2]:=CustomVertex(-0.5, 0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,0,1,0,0);
- muzz[3]:=CustomVertex( 0.5, 0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,1,1,0,0);
- muzz[4]:=CustomVertex( 0.5,-0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,1,0,0,0);
- muzz[5]:=CustomVertex(-0.5, 0.5,   0,0,0,0,alpha*256*256*256 + $000032FA,0,1,0,0);
+ muzz[0]:=CustomVertex(-0.5,-0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[1].col[4],0,0,0,0);
+ muzz[1]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[1].col[4],1,0,0,0);
+ muzz[2]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[1].col[4],0,1,0,0);
+ muzz[3]:=CustomVertex( 0.5, 0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[1].col[4],1,1,0,0);
+ muzz[4]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[1].col[4],1,0,0,0);
+ muzz[5]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[1].col[4],0,1,0,0);
 end;
 
 procedure TF_MPG.draw;
 begin
+
   g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_CURRENT);
  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_ADD);
@@ -928,12 +937,12 @@ end;
 
 procedure TF_quadgun.makemuzzle(alpha:byte);
 begin
- muzz[0]:=CustomVertex(-0.5,-0.5,   0,0,0,0,ARGB(alpha,0,255,0),0,0,0,0);
- muzz[1]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,255,0),1,0,0,0);
- muzz[2]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,255,0),0,1,0,0);
- muzz[3]:=CustomVertex( 0.5, 0.5,   0,0,0,0,ARGB(alpha,0,255,0),1,1,0,0);
- muzz[4]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,255,0),1,0,0,0);
- muzz[5]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,255,0),0,1,0,0);
+ muzz[0]:=CustomVertex(-0.5,-0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[2].col[7],0,0,0,0);
+ muzz[1]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[2].col[7],1,0,0,0);
+ muzz[2]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[2].col[7],0,1,0,0);
+ muzz[3]:=CustomVertex( 0.5, 0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[2].col[7],1,1,0,0);
+ muzz[4]:=CustomVertex( 0.5,-0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[2].col[7],1,0,0,0);
+ muzz[5]:=CustomVertex(-0.5, 0.5,   0,0,0,0,ARGB(alpha,0,0,0)+weapons[2].col[7],0,1,0,0);
 end;
 
 procedure TF_quadgun.draw;
@@ -1158,18 +1167,18 @@ end;
 
 procedure TF_x72.makemuzzle;
 begin
- makemuzzlequad(0,CustomVertex(-0.5,-0.5,   0,0,0,0,$FFFFFFFF,0,0,0,0),
-                  CustomVertex( 0.5,-0.5,   0,0,0,0,$FFFFFFFF,0,2,0,0),
-                  CustomVertex(-0.5, 0.5,   0,0,0,0,$FFFFFFFF,1,0,0,0),
-                  CustomVertex( 0.5, 0.5,   0,0,0,0,$FFFFFFFF,1,2,0,0));
- makemuzzlequad(6,CustomVertex(   0, 0.5,   0,0,0,0,$FFFFFFFF,0,1,0,0),
-                  CustomVertex(   0,-0.5,   0,0,0,0,$FFFFFFFF,1,1,0,0),
-                  CustomVertex(   0, 0.5,  -1,0,0,0,$FFFFFFFF,0,0,0,0),
-                  CustomVertex(   0,-0.5,  -1,0,0,0,$FFFFFFFF,1,0,0,0));
-makemuzzlequad(12,CustomVertex( 0.5,   0,   0,0,0,0,$FFFFFFFF,0,1,0,0),
-                  CustomVertex(-0.5,   0,   0,0,0,0,$FFFFFFFF,1,1,0,0),
-                  CustomVertex( 0.5,   0,  -1,0,0,0,$FFFFFFFF,0,0,0,0),
-                  CustomVertex(-0.5,   0,  -1,0,0,0,$FFFFFFFF,1,0,0,0));
+ makemuzzlequad(0,CustomVertex(-0.5,-0.5,   0,0,0,0,weapons[4].col[8],0,0,0,0),
+                  CustomVertex( 0.5,-0.5,   0,0,0,0,weapons[4].col[8],0,2,0,0),
+                  CustomVertex(-0.5, 0.5,   0,0,0,0,weapons[4].col[8],1,0,0,0),
+                  CustomVertex( 0.5, 0.5,   0,0,0,0,weapons[4].col[8],1,2,0,0));
+ makemuzzlequad(6,CustomVertex(   0, 0.5,   0,0,0,0,weapons[4].col[8],0,1,0,0),
+                  CustomVertex(   0,-0.5,   0,0,0,0,weapons[4].col[8],1,1,0,0),
+                  CustomVertex(   0, 0.5,  -1,0,0,0,weapons[4].col[8],0,0,0,0),
+                  CustomVertex(   0,-0.5,  -1,0,0,0,weapons[4].col[8],1,0,0,0));
+makemuzzlequad(12,CustomVertex( 0.5,   0,   0,0,0,0,weapons[4].col[8],0,1,0,0),
+                  CustomVertex(-0.5,   0,   0,0,0,0,weapons[4].col[8],1,1,0,0),
+                  CustomVertex( 0.5,   0,  -1,0,0,0,weapons[4].col[8],0,0,0,0),
+                  CustomVertex(-0.5,   0,  -1,0,0,0,weapons[4].col[8],1,0,0,0));
 end;
 
 procedure TF_x72.draw;

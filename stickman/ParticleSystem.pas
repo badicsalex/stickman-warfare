@@ -70,6 +70,7 @@ function fenykorcreate (pos,seb,szel,hossz:TD3DXVector3;szor1,szor2,vstszor:sing
 function fenylightcreate(pos,vec:TD3DXVector3;startsiz,endsiz:single;startcolor,endcolor:cardinal;lifetime:word;texture:integer=TX_HOMALY):Tparticle;
 var
 particles,rparticles,tparticles:array of Tparticle;
+weapons:array of TWeaponType;
  particlehgh:integer=-1;
 implementation
 var
@@ -341,28 +342,29 @@ begin
   begin
    tmpe:=tmp;
    sebe:=seb;
+
    d3dxvec3lerp(tmp,honnan,hova,honhov);
    honhov:=honhov+invhossz*tavpointpointkock(campos,tmp)*0.3;
    seb:=randomvec(seed+i*1000+honhov*hossz*0.2,0.01);
-   Particlesystem_add(Fenycsikubercreate(tmpe,tmp,sebe,seb,0.005,0.01,$0040A0FF,0,50));
+   Particlesystem_add(Fenycsikubercreate(tmpe,tmp,sebe,seb,0.005,0.01,weapons[1].col[1],0,50));
   end;
-  Particlesystem_add(Fenycsikubercreate(tmp,hova,seb,d3dxvector3zero,0.005,0.01,$0040A0FF,0,50));
+  Particlesystem_add(Fenycsikubercreate(tmp,hova,seb,d3dxvector3zero,0.005,0.01,weapons[1].col[1],0,50));
 
  end;
 
- Particlesystem_add(Fenycsikcreate(honnan,hova,0.1,$A040A0F0,40));
- Particlesystem_add(Fenycsikcreate(honnan,hova,0.02,$FFFFFFFF,60));
+ Particlesystem_add(Fenycsikcreate(honnan,hova,0.1,weapons[1].col[2],40));
+ Particlesystem_add(Fenycsikcreate(honnan,hova,0.02,weapons[1].col[3],60));
  //Particlesystem_add(MPGcreate(aloves.pos,aloves.v2,0.255*1.5,$FFA000));
 
 end;
 
 procedure particle_special_quad(honnan,hova:TD3DXVector3);
 begin
- ParticleSystem_add(simpleparticlecreate(honnan,d3dxvector3zero,0.2,0,0,$30406040,20));
- ParticleSystem_add(simpleparticlecreate(honnan,d3dxvector3zero,0,0.05,$6080B080,0,20));
- ParticleSystem_add(bulletcreate(honnan,hova,4,8,0.2,$00FF00,0,false));
- ParticleSystem_add(bulletcreate(honnan,hova,4,6,0.1,$A0FFA0,0,false));
- ParticleSystem_add(bulletcreate(honnan,hova,4,4,0.05,$FFFFFFFF,0,false));
+ ParticleSystem_add(simpleparticlecreate(honnan,d3dxvector3zero,0.2,0,0,weapons[2].col[1],20));
+ ParticleSystem_add(simpleparticlecreate(honnan,d3dxvector3zero,0,0.05,weapons[2].col[2],0,20));
+ ParticleSystem_add(bulletcreate(honnan,hova,4,8,0.2,weapons[2].col[3],0,false));
+ ParticleSystem_add(bulletcreate(honnan,hova,4,6,0.1,weapons[2].col[4],0,false));
+ ParticleSystem_add(bulletcreate(honnan,hova,4,4,0.05,weapons[2].col[5],0,false));
  //Particlesystem_add(QUADcreate(aloves.pos,aloves.v2,4,8,$0000FF00));
 end;
 
