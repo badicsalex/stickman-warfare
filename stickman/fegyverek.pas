@@ -27,7 +27,7 @@ type
   betoltve:boolean;
   fc:single;
   muzzez:array of TCustomvertex;
-  constructor Create(a_D3Ddevice:IDirect3ddevice9;a_pEffect:ID3DXEffect;fnev:string);
+  constructor Create(a_D3Ddevice:IDirect3ddevice9;fnev:string);
   procedure draw;
   procedure pluszmuzzmatr(siz:single);
   procedure drawmuzzle(siz:single);
@@ -222,7 +222,7 @@ implementation
 //            M4A1
 ///////////////////////////////
 
-constructor TF_M4A1.Create(a_D3Ddevice:IDirect3ddevice9;a_pEffect:ID3DXEffect;fnev:string);
+constructor TF_M4A1.Create(a_D3Ddevice:IDirect3ddevice9;fnev:string);
 var
  tempmesh:ID3DXMesh;
  pVert:PCustomvertexarray;
@@ -234,7 +234,6 @@ begin
  inherited Create;
  betoltve:=false;
  g_pD3Ddevice:=a_D3Ddevice;
- g_pEffect:=a_pEffect;
  addfiletochecksum(fnev+'.x');
 
  if not LTFF(g_pd3dDevice, fnev+'.jpg',m4tex) then
@@ -296,11 +295,7 @@ makemuzzlequad(12,CustomVertex(   0,   0,   0,0,0,0,ARGB(255,255,255,255),0,0,0,
 end;
 
 procedure TF_M4A1.draw;
-var
-
 begin
- g_peffect.SetTechnique('phong');
-
  g_pd3dDevice.Settexture(0,m4tex);
  g_pMesh.DrawSubset(0);
 end;

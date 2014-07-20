@@ -301,6 +301,10 @@ const
  COLLISION_SOLID     =$01;
  COLLISION_BULLET    =$02;
  COLLISION_SHADOW    =$04;
+
+ MAT_DEFAULT  = 0;
+ MAT_METAL    = 1;
+ MAT_WOOD     = 2;
 type
   Tacctri = record
    v0,v1,v2:TD3DXVector3;
@@ -309,7 +313,22 @@ type
    invD:single;
    vmin,vmax:TD3DXVector3;
    collision:cardinal;
+   material:byte;
    //plane:TD3DXplane;
+  end;
+
+  TOjjektumTexture = record
+   tex:IDirect3DTexture9;
+   heightmap:IDirect3DTexture9;
+   name:string;
+   alphatest:boolean;
+   decal:boolean;
+   emitting:boolean;
+   collisionflags:cardinal;
+   material:byte;
+   specHardness:single;
+   specIntensity:single;
+   normalmap:boolean;
   end;
 
   Tacctriarr=array of Tacctri;
@@ -429,8 +448,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=20507;
-  datachecksum=$FA353460;
+  PROG_VER=206000;
+  datachecksum=$06E3AC40;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -551,7 +570,7 @@ function tritegben(a:Tminmaxtri;b:TAABB):boolean;overload;
 procedure packrect(rect:array of Tsinglerect;var wantrect:array of Tsinglerect;var maxx,maxy:single);
 
 function intlinetriAcc(tri:Tacctri;p0,p1:TD3DXVector3):boolean;
-function makeacc(av0,av1,av2:TD3DXVector3;acollision:cardinal):Tacctri;
+function makeacc(av0,av1,av2:TD3DXVector3;amaterial:TOjjektumTexture):Tacctri;
 
 function noNaNINF(var mi:single):boolean; overload;
 function noNaNINF(var mi:TD3DVector):boolean; overload;
@@ -1067,7 +1086,7 @@ begin
     result:=true;                      // I is in T
 end;
 
-function makeacc(av0,av1,av2:TD3DXVector3;acollision:cardinal):Tacctri;
+function makeacc(av0,av1,av2:TD3DXVector3;amaterial:TOjjektumTexture):Tacctri;
 begin
 with result do begin
  v0:=av0;
@@ -1096,7 +1115,8 @@ with result do begin
  d3dxvec3minimize(vmin,vmin,av2);
  d3dxvec3maximize(vmax,av0,av1);
  d3dxvec3maximize(vmax,vmax,av2);
- collision:=acollision;
+ collision:=amaterial.collisionflags;
+ material:=amaterial.material;
 end;
 end;
 
