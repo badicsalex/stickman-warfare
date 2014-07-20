@@ -12,7 +12,7 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{.$DEFINE undebug}
+{$DEFINE undebug}
 {.$DEFINE panthihogomb}
 {.$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
@@ -35,7 +35,7 @@ uses
   fegyverek,
   filectrl,
   fizika,
-  foliage,
+  foliage ,
   Math,
   Messages,
   MMSystem,
@@ -82,8 +82,7 @@ POSTPROC_DISTORTION=1;
 POSTPROC_GREYSCALE=2;
 POSTPROC_MOTIONBLUR=3;
 POSTPROC_GLOW=4;
-POSTPROC_BLOOM=5;
-POSTPROC_MAX=5;
+POSTPROC_MAX=4;
 
 PSYS_SIMPLE=1;
 PSYS_GRAVITY=2;
@@ -113,6 +112,7 @@ var
   g_pIBlvl2:IDirect3DIndexBuffer9 = nil;
   homtex:IDirect3DTexture9 = nil;
   hoszin:cardinal;
+  nhszin:cardinal;
   vizszin:cardinal;
   ambientszin:cardinal;
   futex:IDirect3DTexture9 = nil;
@@ -206,6 +206,8 @@ var
   ahovaajopointermutat:DWORD;
   anticheat1,anticheat2:integer;
   guardpage:pointer;
+
+  walkmaterial:byte;
 
   tabgorg:integer=0;
 
@@ -360,7 +362,7 @@ begin
  if (av1.color=fuszin) or (av2.color=fuszin) then
   color:=fuszin
  else
- if (av1.color=hoszin) or (av2.color=hoszin) then
+ if (av1.color=hoszin) or (av2.color=hoszin) or (av2.color=nhszin) or (av1.color=nhszin) then
   color:=hoszin
  else
   color:=collerp(av1.color,av2.color);
@@ -680,9 +682,11 @@ begin
  if (norm.y)<0.83 then szin:=koszin;
  if yy<15 then szin:=hoszin+$FF000000;
 
+ if yy<10.5 then szin:=nhszin+$FF000000;
+
 
  //if yy<0 then yy:=0;
- if yy<10 then szin:=colorlerp(vizszin,hoszin,abs(yy)/15)+$FF000000;
+ if yy<10 then szin:=colorlerp(vizszin,nhszin,abs(yy)/15)+$FF000000;
  if yy<0 then szin:=vizszin+$FF000000;
 
 
@@ -1354,7 +1358,7 @@ cmap1:array [0..255,0..255] of array4ofbyte;
 xx,yy,zz:single;
 tmp:single;
 n:TD3DXVector3;
-fucol,hocol,wacol,kocol:TD3DXColor;
+fucol,hocol,nhcol,wacol,kocol:TD3DXColor;
 col,lght1,lght2,ossz,veg:TD3DXColor;
 l1,l2:TD3DXVector3;
 fil:file of array4ofbyte;
@@ -1373,6 +1377,8 @@ begin
  kocol.a:=1;
  hocol:=D3DXColorFromDWord(stuffjson.GetInt(['color_sand']));
  hocol.a:=0;
+ nhcol:=D3DXColorFromDWord(stuffjson.GetInt(['color_wet_sand']));
+ nhcol.a:=0;
  wacol:=D3DXColorFromDWord(stuffjson.GetInt(['color_water']));
  wacol.a:=0;
 
@@ -1397,6 +1403,10 @@ begin
  end
  else
  begin
+
+  laststate:= 'Generating minimaps ';
+   menu.DrawLoadScreen(75);
+
  l1:= D3DXVector3(-1,1.0,0);
  D3DXVec3Normalize(l1, l1);
  l2:=l1; l2.x:=-l2.x;
@@ -1420,7 +1430,7 @@ begin
    if yy<0 then yy:=0;
    if yy<15 then col:=hocol;
    if (n.y)<0.83 then col:=kocol;
-   if yy<10 then D3DXColorLerp(col,wacol,hocol,yy/15);
+   if yy<10 then D3DXColorLerp(col,wacol,nhcol,yy/15);
    tmp:=D3DXVec3dot(n,l1);
    if tmp<0 then tmp:=0;
    D3DXColorscale(lght1,l1c,tmp);
@@ -1470,6 +1480,9 @@ begin
  end
  else
  begin
+
+    menu.DrawLoadScreen(78);
+
  for i:=0 to 255 do
   for j:=0 to 255 do
   begin
@@ -1602,7 +1615,8 @@ begin
   LoadSound('largeser',true,true,true,2);
   LoadSound('knock',true,true,true,20);        //35
   LoadSound('openedportal',true,true,true,10);
-
+  LoadSound('walkmetal',true,true,true,1);
+  LoadSound('walkwood',true,true,true,1);
 
 
   menu.DrawLoadScreen(87);
@@ -1749,6 +1763,7 @@ begin
   laststate:='Initializing';
 
   hoszin:=stuffjson.GetInt(['color_sand']) and $FFFFFF;
+  nhszin:=stuffjson.GetInt(['color_wet_sand']) and $FFFFFF;
   vizszin:=stuffjson.GetInt(['color_water']) and $FFFFFF;
   ambientszin:=cardinal(stuffjson.GetInt(['light','color_ambient']));
   gunautoeffekt:=stuffjson.GetBool(['vehicle','gun','effect']);
@@ -2063,8 +2078,8 @@ begin
   writeln(logfile,'Initialized buffers');flush(logfile);
   addfiletochecksum('data/bush256.png');
   bokrok:=TFoliage.create(G_pd3ddevice,'bush256.png',1,1.2,-0.1);
-  fuvek:=TFoliage.create(G_pd3ddevice,'mg3.png',0.2,-0.3,0.25);
- // fuvek2:=TFoliage.create( G_pd3ddevice,'mg3.png',0.1,-0.2,0.18);
+  fuvek:=TFoliage.create(G_pd3ddevice,'mg3.png',0.34,-0.32,0.34);
+  //fuvek2:=TFoliage.create( G_pd3ddevice,'mg3.png',0.1,-0.2,0.18);
   if not bokrok.betoltve then exit;
   if not fuvek.betoltve then exit;
   //if not fuvek2.betoltve then exit;
@@ -3006,17 +3021,6 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
   if  dine.keyd(DIK_F) and (not autoban) and (tavpointpointsq(tegla.pos,d3dxvector3(cpx^,cpy^,cpz^))<5*5) and (halal=0) then
   autoban:=true;
 
-  if (dine.keyd(DIK_F)) and labelvolt then
-  begin
-   labelactive:=true;
-   latszonaKL := 0;
-
-  end;
-  
-
-
-
-
 
   while cpz^>((cmz+1)*pow2[lvlmin]) do
    stepf;
@@ -3548,14 +3552,15 @@ begin
   
    if opt_detail=DETAIL_MAX then
   if dirt then
+   begin
+    col := $FF884400;
+    if lawproj[mi].v3.y<15 then col := $FFFFF6B5;
    for i:=0 to 100 do
     begin
     t:=randomvec(animstat*2+i*3,0.42);
-    col := $FF884400;
-    if lawproj[mi].v3.y<15 then col := $FFFFF6B5;
-    Particlesystem_add(GravityparticleCreate(lawproj[mi].v3,t,random(10)/90+0.1,0.1,0.163,col,$00000000,random(100)+130));
+    Particlesystem_add(Coolingparticlecreate(lawproj[mi].v3,t,random(10)/90+0.1,0.1,0.163,col,$00000000,random(100)+330));
 
-
+    end;
     end;
 
  handlerobbanas(lawproj[mi].v3,lawproj[mi].kilotte,FEGYV_LAW,0);
@@ -3710,7 +3715,7 @@ begin
  for j:=0 to high(ojjektumnevek) do
  for i:=0 to ojjektumarr[j].hvszam-1 do
  begin
-  adst:=ojjektumarr[j].tavtest(cp,0.4,ap,i,true,COLLISION_SOLID);
+  adst:=ojjektumarr[j].tavtestmat(cp,0.4,ap,i,true,COLLISION_SOLID,walkmaterial);
   if adst>sqr(0.4) then continue;
   if (((ojjektumflags[j] and OF_VEHICLEGUN) >0) and (myfegyv< 128) or
      ((ojjektumflags[j] and OF_VEHICLETECH)>0) and (myfegyv>=128) ) and
@@ -4220,7 +4225,7 @@ begin
  vecx:=ojjektumarr[portalepulet].holvannak[0];
  if (cpx^>vecx.x-13) and (cpx^<vecx.x+9) and
     (cpz^>vecx.z-9) and (cpz^<vecx.z+8) and
-    (cpy^>vecx.y) and (cpy^<vecx.y+4) then  nemlohet:=true;
+    (cpy^>vecx.y-1) and (cpy^<vecx.y+4) then  nemlohet:=true;
 
   if disablekill then  nemlohet:=true;
 
@@ -4683,11 +4688,13 @@ korlat:integer;
 rbid:integer;
 h1,h2,h3:integer;
 bol:boolean;
+eses,nagyeses:boolean;
 rnd:integer;
 cnt:integer;
 mxh:integer;
 mx,tmp2:single;
-v1,v2,v3,vecx:TD3DXVector3;
+col:cardinal;
+v1,v2,v3,vecx,ppos:TD3DXVector3;
 
 gtc:cardinal;
 aauto:Tauto;
@@ -4786,9 +4793,12 @@ begin
     tmps.x:=    tmps.x +(aauto.pos.x-aauto.vpos.x)*0.8;
     tmps.y:=abs(tmps.y)+(aauto.pos.y-aauto.vpos.y)*0.8;
     tmps.z:=    tmps.z +(aauto.pos.z-aauto.vpos.z)*0.8;
-    if (tmp.y>10) and gunautoeffekt then
+    if (tmp.y>9) and gunautoeffekt then
      if tmp.y<15 then
-      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,sand_dust,$0,100))
+      if tmp.y<11 then
+        Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.2),0.5,2,$FFEEEEFF,$0,100))
+      else
+        Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,sand_dust,$0,100))
      else
      {$IFDEF panthihogomb}
      if tavpointpointsq(DNSVec,tmp)<DNSrad*DNSRad then
@@ -4839,6 +4849,8 @@ begin
   except
   amag:=0;
   end;
+  eses:= cpy^-0.07>amag;
+  nagyeses:= cpy^-0.2>amag;
   yandnorm(cpx^,amag,cpz^,norm,1);
   {$IFDEF repkedomod}
   if repules then  cpy^:=cpy^*2-cpoy^
@@ -4859,6 +4871,24 @@ begin
     begin
      cpy^:=amag;
      oy:=amag;
+
+     walkmaterial := MAT_DEFAULT;
+
+     if nagyeses then rezg := 3;
+     if eses and (opt_detail=DETAIL_MAX) then
+      begin
+        ppos :=  D3DXVector3(cpx^,cpy^,cpz^);
+        col := $FF88AB66;
+        if ppos.y<15 then col := $FFFFF6B5;
+        for i:=0 to 50 do
+          begin
+            tmp:=randomvec(animstat*2+i*3,0.12);
+            Particlesystem_add(GravityparticleCreate(ppos,tmp,random(10)/60+0.03,0.1,0.123,col,$00000000,random(100)+170));
+
+        end;
+      end;
+
+
     end;
    {$IFNDEF repkedomod}
    if norm.y<0.83 then
@@ -5937,6 +5967,7 @@ end;
 procedure handleSounds;
 var
 i,j,k:integer;
+sndnum:integer;
 id:cardinal;
 abuft:byte;
 hol,tmp:TD3DXVector3;
@@ -5951,15 +5982,25 @@ begin
 
  if ((mstat and  MSTAT_MASK)>0) and (halal=0) then
  begin
-  playsound(1,false,25,true,D3DXvector3(cpx^,cpy^,cpz^)) ;
-  if (mstat and MSTAT_MASK)=(MSTAT_FUT) then setSoundProperties(1,25,0,1.81,true,D3DXVector3Zero)//beta
+
+  sndnum := 1;
+  if walkmaterial = MAT_METAL then sndnum := 37;
+  if walkmaterial = MAT_WOOD then sndnum := 38;
+
+  playsound(sndnum,false,25,true,D3DXvector3(cpx^,cpy^,cpz^)) ;
+
+  if (mstat and MSTAT_MASK)=(MSTAT_FUT) then setSoundProperties(sndnum,25,0,1.81,true,D3DXVector3Zero)//beta
   else
-  if (mstat and MSTAT_GUGGOL)>0 then SetSoundProperties(1,25,-2000,0.73,true,D3DXVector3Zero)
+  if (mstat and MSTAT_GUGGOL)>0 then SetSoundProperties(sndnum,25,-2000,0.73,true,D3DXVector3Zero)
   else
-  SetSoundProperties(1,25,-1000,1,true,D3DXVector3Zero)
+  SetSoundProperties(sndnum,25,-1000,1,true,D3DXVector3Zero)
  end
  else
+ begin
  stopsound(1,25);
+ stopsound(37,25);
+ stopsound(38,25);
+ end;
 
  if myfegyv=FEGYV_NOOB then
   if lovok>0 then
@@ -7532,7 +7573,7 @@ begin
     if (tabsort<=0) and (techsz<33) then
       begin
       szcol:= $FF00A0FF;
-      if (ppl[rendezve[i]].pls.nev = multisc.nev) then  szcol:= $FFFFFFFF;
+      if (ppl[rendezve[i]].net.UID=0) then  szcol:= $FFFFFFFF;
       if (ppl[rendezve[i]].pls.nev = multisc.kihivas) then  szcol:= $FFFF0000;
       menu.DrawText(ppl[rendezve[i]].pls.clan ,0.5,menuplus+techsz*menuszor,0.85,menuplus+0.1+techsz*menuszor,kisTAB,$FF00FF00);
       menu.DrawText(ppl[rendezve[i]].pls.nev ,0.6,menuplus+techsz*menuszor,0.85,menuplus+0.1+techsz*menuszor,kisTAB,szcol);
@@ -7551,7 +7592,7 @@ begin
     if (tabsorg<=0) and (gunsz<33) then
       begin
       szcol:= $FFFF6000;
-      if (ppl[rendezve[i]].pls.nev = multisc.nev) then  szcol:= $FFFFFFFF;
+      if (ppl[rendezve[i]].net.UID=0) then  szcol:= $FFFFFFFF;
       if (ppl[rendezve[i]].pls.nev = multisc.kihivas) then  szcol:= $FFFF0000;
       menu.DrawText(ppl[rendezve[i]].pls.clan ,0.11,menuplus+gunsz*menuszor,0.5,menuplus+0.1+gunsz*menuszor,kisTAB,$FF00FF00);
       menu.DrawText(ppl[rendezve[i]].pls.nev ,0.21,menuplus+gunsz*menuszor,0.85,menuplus+0.1+gunsz*menuszor,kisTAB,szcol);
@@ -7579,8 +7620,6 @@ begin
  end
  else
  if labelactive then drawLabel;
-
-
  except
   exit;
  end;
@@ -8984,30 +9023,6 @@ begin
       g_peffect._end;
      end;
 
-    if (G_peffect<>nil) and (opt_postproc=POSTPROC_BLOOM) then
-    if halal=0 then
-     begin
-
-      g_peffect.SetTechnique('FullScreenBloom');
-
-      g_pEffect.SetTexture('g_MeshTexture', effecttexture);
-
-      g_peffect._Begin(@tmplw,0);
-      g_peffect.BeginPass(0);
-      g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,ifalse);
-      g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iTrue);
-      g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
-      g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_ONE);
-      //g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_SRCALPHA );
-     //g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_INVSRCALPHA );
-      g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
-      g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,ifalse);
-      g_pd3ddevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE);
-      g_pd3ddevice.SetRenderState(D3DRS_ZENABLE,ifalse);
-      DrawFullscreenrect;
-      g_peffect.Endpass;
-      g_peffect._end;
-     end;
 
      if (menu.lap=-1) then //MENÜBÕL nem kéne...
     if (G_peffect<>nil) and (opt_postproc>=POSTPROC_MOTIONBLUR) then
@@ -9854,6 +9869,14 @@ begin
   if (chr(mit)='/') then chatmost:=' /';
   if (mit=VK_ESCAPE) and (not labelactive) then gobacktomenu:=true;
   if (mit=VK_ESCAPE) and labelactive then labelactive:=false;
+  if ((chr(mit)='f') or (chr(mit)='F')) and not labelactive and labelvolt then
+  begin
+   labelactive:=true;
+   latszonaKL := 0;
+   exit;
+  end;
+  if ((chr(mit)='f') or (chr(mit)='F')) and labelactive then labelactive:=false;
+
 
    exit;
  end;
@@ -9889,7 +9912,7 @@ begin
      addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^),d3dxvector3(sin(szogx)*0.3,0.1,cos(szogx)*0.3),myfegyv,10,0,-1);
     end
   else
-    if (' /realm '=Copy(chatmost,1,7)) and (halal=0) then
+    if (' /realm'=Copy(chatmost,1,7)) and (halal=0) then
     begin
      halal:=1;
      setupmymuksmatr;

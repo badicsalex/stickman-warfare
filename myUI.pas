@@ -886,11 +886,7 @@ begin
  rect.Left:=round(posx*SCwidth); rect.Right:=round(posx2*SCwidth);
  case meret of
   0:g_pfontchat.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,color);
-  1:
-  begin
-
-   g_pfontmini.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,color);
-  end;
+  1:g_pfontmini.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,color);
   2:
   begin
    g_pfont.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER or DT_VCENTER or DT_WORDBREAK,$A0000000);

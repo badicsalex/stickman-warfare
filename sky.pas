@@ -176,8 +176,8 @@ begin
   for j:=0 to skyfelbontas-1 do
   with pVertices[i*skyfelbontas+j] do
   begin
-   pos:=D3DXVector3((i-skyfelbontas/2)*2400/skyfelbontas,0,(j-skyfelbontas/2)*2400/skyfelbontas);
-   pos.y:=(1-sqr(pos.x/800)-sqr(pos.z/800))*120-20;
+   pos:=D3DXVector3((i-skyfelbontas/2)*4800/skyfelbontas,0,(j-skyfelbontas/2)*4800/skyfelbontas);
+   pos.y:=(1-sqr(pos.x/800)-sqr(pos.z/800))*60-20;
    u1:=i/(skyfelbontas-1);
    v1:=j/(skyfelbontas-1);
    u2:=i/(skyfelbontas-1);

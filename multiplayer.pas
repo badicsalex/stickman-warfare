@@ -159,8 +159,8 @@ var
 implementation
 
 const
- shared_key:array [0..19] of SmallInt=(24, 24, 534, 24, 24, 585, 24, 24, 636, 24, 24, 687, 24, 24, 738, 24, 24, 789, 24, 24);
-// hex>int>+8>*3 shared_key:array [0..19] of byte=($00, $00, $AA, $00, $00, $BB, $00, $00, $CC, $00, $00, $DD, $00, $00, $EE, $00, $00, $FF, $00, $00);
+ shared_key:array [0..19] of SmallInt=(00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00);
+
 
  CLIENT_VERSION=PROG_VER;
 
@@ -276,7 +276,7 @@ function decodeSharedKey(raw:SmallInt):byte;
 var
  decoded:integer;
 begin
- decoded:= (raw div 3)-8;
+ decoded:= (raw div 6)-3;
  Result:= decoded;
 end;
 

@@ -46,6 +46,7 @@ type
   function raytestbol(v1,v2:TD3DXVector3;melyik:integer;collision:cardinal):boolean;
   function raytestbolfromcurrent(v1,v2:TD3DXVector3;melyik:integer):boolean;
   function tavtest(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean;collision:cardinal):single;overload;
+  function tavtestmat(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean;collision:cardinal;var material: byte):single;overload;
 //  function tavtest(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean;miket:TKDData):single;overload;
   function tavtestfromcurrent(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer):single;overload;
 
@@ -113,16 +114,6 @@ type
   gomb:ID3DXMesh;
  end;
 
- TOjjektumTexture = record
-  tex:IDirect3DTexture9;
-  heightmap:IDirect3DTexture9;
-  name:string;
-  alphatest:boolean;
-  decal:boolean;
-  emitting:boolean;
-  collisionflags:cardinal;
- end;
-
 procedure initojjektumok(g_pd3ddevice:IDirect3DDevice9;hdrtop:cardinal);
 procedure uninitojjektumok(g_pd3ddevice:IDirect3DDevice9);
 
@@ -181,7 +172,8 @@ var
 function LoadOjjektumTexture(a_d3ddevice:IDirect3DDevice9;nev,dir:string):integer;
 var
  i,j:integer;
- hmnev:string;
+ hmnev,normalnev:string;
+ mattype:string;
  special:string;
 begin
   result:=-1;
@@ -226,6 +218,18 @@ begin
     emitting:=true;
   end;
 
+  //MATERIAL TYPE
+  material := MAT_DEFAULT;
+  mattype:=stuffjson.GetString(['materials',nev,'type']);
+  if mattype='metal' then material := MAT_METAL;
+  if mattype='wood' then material := MAT_WOOD;
+
+  //SPECULARITY
+  specHardness:=10;
+  specHardness:=stuffjson.GetFloat(['materials',nev,'specHardness']);
+  specIntensity := 0.5;
+  specIntensity:=stuffjson.GetFloat(['materials',nev,'specIntensity']);
+
   name:=nev;
   tex:=nil;
   if not LTFF(a_d3dDevice,dir+'/'+nev,tex) then
@@ -236,6 +240,15 @@ begin
   if (hmnev<>'') then
    if LTFF(a_d3dDevice,dir+'/'+hmnev,heightmap) then
     addfiletochecksum(dir+'/'+hmnev);
+
+  normalnev:=stuffjson.GetString(['materials',nev,'normalmap']);
+  if (normalnev<>'') then
+   if LTFF(a_d3dDevice,dir+'/'+normalnev,heightmap) then
+   begin
+    addfiletochecksum(dir+'/'+hmnev);
+    normalmap := true;
+   end;
+
  end;
  result:=otnszam;
 end;
@@ -383,13 +396,13 @@ begin
    if j>high(triangles) then
     raise ERangeError.Create('Alex error: wtf @ '+fnev);
 
-   triangles[j]:=makeacc(vertices[indices[i*3+0]].position,vertices[indices[i*3+1]].position,vertices[indices[i*3+2]].position,ojjektumtextures[tritex].collisionflags);
+   triangles[j]:=makeacc(vertices[indices[i*3+0]].position,vertices[indices[i*3+1]].position,vertices[indices[i*3+2]].position,ojjektumtextures[tritex]);
    if triangles[j].n.y>1.5 then continue;
    tv0:=vertices[indices[i*3+0]].position; tv0.y:=tv0.y*0.5;
    tv1:=vertices[indices[i*3+1]].position; tv1.y:=tv1.y*0.5;
    tv2:=vertices[indices[i*3+2]].position; tv2.y:=tv2.y*0.5;
 
-   felestri[j]:=makeacc(tv0,tv1,tv2,ojjektumtextures[tritex].collisionflags);
+   felestri[j]:=makeacc(tv0,tv1,tv2,ojjektumtextures[tritex]);
    indexes[j]:=j;
 
    j:=j+1;
@@ -857,7 +870,82 @@ begin
  result:=al;
 end;
 
+function T3dojjektum.tavtestmat(poi:TD3DXVector3;gmbnagy:single;out pi:TD3DXVector3;melyik:integer;feles:boolean;collision:cardinal;var material: byte):single;
+var
+az,bz,hv:TD3DXVector3;
+al,bl:single;
+i:integer;
+miket:TKDData;
+gmbAABB:TAABB;
+begin
+ if feles then tmptri:=felestri else tmptri:=triangles;
 
+ gmbnagy:=gmbnagy;
+ //az:=poi;
+ //az.x:=az.x+gmbnagy;
+ if melyik=-1 then
+  hv:=D3DXVector3Zero
+ else
+ hv:=holvannak[melyik];
+ if feles then hv.y:=hv.y*0.5;
+
+ d3dxvec3subtract(poi,poi,hv);
+
+
+ az:=vce;
+ //if feles then  az.y:=az.y*0.5;
+ if tavpointpointsq(az,poi)>sqr(rad+gmbnagy+3) then begin result:=tavpointpointsq(az,poi); exit; end;
+
+
+ az:=poi;
+ al:=sqr(rad+gmbnagy+1);
+
+ if feles then
+ begin
+  d3dxvec3subtract(gmbAABB.min,poi,D3DXVector3(gmbnagy,gmbnagy,gmbnagy));
+  d3dxvec3add     (gmbAABB.max,poi,D3DXVector3(gmbnagy,gmbnagy,gmbnagy));
+  gmbAABB.min.y:= gmbAABB.min.y*2;
+  gmbAABB.max.y:= gmbAABB.max.y*2;
+ end
+ else
+ begin
+  d3dxvec3subtract(gmbAABB.min,poi,D3DXVector3(gmbnagy,gmbnagy,gmbnagy));
+  d3dxvec3add     (gmbAABB.max,poi,D3DXVector3(gmbnagy,gmbnagy,gmbnagy));
+ end;
+
+// traverseKDTree(gmbAABB,miket,KDDatafeles,KDTreefeles) else
+
+ NeedKD;
+
+  traverseKDTree(gmbAABB,miket,KDData,KDTree,collision);
+
+ setlength(teszttris,length(miket));
+ for i:=0 to high(miket) do
+ begin
+ //{
+  d3dxvec3add(teszttris[i,0],triangles[miket[i]].v0,holvannak[melyik]);
+  d3dxvec3add(teszttris[i,1],triangles[miket[i]].v1,holvannak[melyik]);
+  d3dxvec3add(teszttris[i,2],triangles[miket[i]].v2,holvannak[melyik]);
+ // }
+  if (poi.x-gmbnagy>tmptri[miket[i]].vmax.x) or (poi.x+gmbnagy<tmptri[miket[i]].vmin.x) or
+     (poi.z-gmbnagy>tmptri[miket[i]].vmax.z) or (poi.z+gmbnagy<tmptri[miket[i]].vmin.z) or
+     (poi.y-gmbnagy>tmptri[miket[i]].vmax.y) or (poi.y+gmbnagy<tmptri[miket[i]].vmin.y) then continue;//}
+
+  if (tmptri[miket[i]].collision and collision)=0 then
+   continue;
+
+   bl:=tavPointTrisq(tmptri[miket[i]],poi,bz);
+   if al>bl then
+   begin
+    al:=bl;
+    az:=bz;
+    material :=  tmptri[miket[i]].material;
+   end;
+ end;
+ setlength(miket,0);
+ d3dxvec3add(pi,az,hv);
+ result:=al;
+end;
 
 procedure initojjektumok(g_pd3ddevice:IDirect3DDevice9;hdrtop:cardinal);
 begin
@@ -982,7 +1070,7 @@ type
  PD3DXAttributerangearr = ^TD3DXAttributerangearr;
 
 const
- CSICSA_LOCK_FLAG=0; //D3DLOCK_DISCARD
+ CSICSA_LOCK_FLAG=0; //D3DLOCK_DISCARD      lool dxes input layout
  declarr:array [0..6] of D3DVERTEXELEMENT9 =
    ((Stream:0  ; Offset:0   ; _Type:D3DDECLTYPE_FLOAT3; Method:D3DDECLMETHOD_DEFAULT; Usage:D3DDECLUSAGE_POSITION; UsageIndex:0),
     (Stream:0  ; Offset:3*4 ; _Type:D3DDECLTYPE_FLOAT2; Method:D3DDECLMETHOD_DEFAULT; Usage:D3DDECLUSAGE_TEXCOORD; UsageIndex:0),
@@ -1010,7 +1098,7 @@ tmp3:integer;
 lmaps:array of TBitmap;
 lmapsorrend:array of integer;
 lmapx:array of array [0..2] of integer; //X,Y,size
-lmapcells:array [0..15,0..15] of integer;
+lmapcells:array [0..31,0..31] of integer;
 lmapsize:integer; //cellákban (64x64)
 cursize:integer;
 tryx,tryy:integer;
@@ -1049,7 +1137,7 @@ begin
 
   write(logfile,'lightmaps...');flush(logfile);
 
- lmapsize:=32;
+ lmapsize:=32 ;
  for i:=0 to high(ojjektumnevek) do
  begin
   retry:
@@ -1080,7 +1168,7 @@ begin
    inc(j,cursize)
   end;
   write(logfile,'out of lightmaps :''(\n');flush(logfile);
-  exit;
+  //exit;
   breakall:
  end;
  Xbitmap:=TBitmap.Create;
@@ -1678,7 +1766,7 @@ begin
 
   //g_pd3ddevice.SetTexture(0,imposters);
    // g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
-  if (g_peffect<>nil) and (ojjektumtextures[k].heightmap<>nil) then
+  if (g_peffect<>nil) and (ojjektumtextures[k].heightmap<>nil) and not (ojjektumtextures[k].normalmap) then
   begin
    if FAILED(g_peffect.SetTechnique('ParallaxOcclusion')) then
     g_peffect:=nil
@@ -1692,6 +1780,30 @@ begin
     g_pEffect.SetTexture('g_MeshHeightmap', ojjektumtextures[k].heightmap);
     g_pEffect.SetTexture('g_MeshLightmap',lightmap);
     g_pEffect.SetFloat ('HDRszorzo',HDRszorzo);
+    g_peffect.SetVector('g_CameraPosition',D3DXVector4(campos.x,campos.y,campos.z,0));
+    g_pd3ddevice.SetVertexdeclaration(vertdecl);
+    g_peffect._Begin(@tmplw,0);
+    g_peffect.BeginPass(0);
+   end;                                          
+  end
+  else if (g_peffect<>nil) and (ojjektumTextures[k].emitting = false) then
+  begin
+   if FAILED(g_peffect.SetTechnique('Shine')) then
+    g_peffect:=nil
+   else
+   begin
+    d3dxmatrixmultiply(matViewproj,matView,matProj);
+    g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
+    g_peffect.SetFloat ('FogStart',fogstart);
+    g_peffect.SetFloat ('FogEnd',fogend);
+    g_pEffect.SetTexture('g_MeshTexture', ojjektumtextures[k].tex);
+    if ojjektumtextures[k].normalmap then
+      g_pEffect.SetTexture('g_MeshHeightmap', ojjektumtextures[k].heightmap);
+    g_pEffect.SetBool('vanNormal',ojjektumtextures[k].normalmap);
+    g_pEffect.SetTexture('g_MeshLightmap',lightmap);
+    g_pEffect.SetFloat ('HDRszorzo',HDRszorzo);
+    g_pEffect.SetFloat ('specHardness',ojjektumtextures[k].specHardness);
+    g_pEffect.SetFloat ('specIntensity',ojjektumtextures[k].specIntensity);
     g_peffect.SetVector('g_CameraPosition',D3DXVector4(campos.x,campos.y,campos.z,0));
     g_pd3ddevice.SetVertexdeclaration(vertdecl);
     g_peffect._Begin(@tmplw,0);
@@ -1713,7 +1825,7 @@ begin
          g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,vertstart,0,vertcount,facestart,facecount);
   end;
 
-  if (g_peffect<>nil) and (ojjektumtextures[k].heightmap<>nil) then
+  if (g_peffect<>nil)  then
   begin
    g_peffect.Endpass;
    g_peffect._end;
