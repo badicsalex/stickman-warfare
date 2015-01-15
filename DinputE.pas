@@ -24,6 +24,7 @@ type
     constructor Create(hwnd:THandle);
     destructor Destroy;reintroduce;
     procedure Update(cpos:Tpoint);
+    procedure Reset;
    end;
 
 implementation
@@ -105,6 +106,17 @@ end;
 function TDinputEasy.keyd2(mit:byte):boolean;
 begin
  result:=((vkeys[mit] and $80)=$00) and ((keys[mit] and $80)=$80);
+end;
+
+procedure TDinputEasy.Reset;
+begin
+ zeromemory(pointer(@keys),sizeof(keys));
+ zeromemory(pointer(@mouss),sizeof(mouss));
+ vkeys:=keys;
+ vmouss:=mouss;
+ mousmovx:=0;
+ mousmovy:=0;
+ mousmovscrl:=0;
 end;
 
 end.

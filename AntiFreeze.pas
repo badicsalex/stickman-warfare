@@ -1,7 +1,7 @@
 unit AntiFreeze;
 
 interface
-uses sysutils,windows,messages,typestuff;
+uses sysutils,windows,typestuff;
 
 procedure AFstart;
 procedure AFquit;

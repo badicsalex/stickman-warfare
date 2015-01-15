@@ -2,11 +2,11 @@ unit multiplayer;
 
 
 {.$DEFINE fakenetchecksum}
-{.DEFINE fakepos}
+{.$DEFINE fakepos}
 
 interface
 
-uses sysutils, socketstuff, typestuff, D3DX9, Direct3D9, windows, sha1, winsock2;
+uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1, winsock2;
 const
  TOKEN_RATE=10; //ezredmásodpercenkénti tokenek száma
  TOKEN_LIMIT=2000; //bucket max mérete
@@ -38,7 +38,6 @@ type
   procedure NewCrypto;
   procedure SendKill(UID:integer);
   procedure SendMedal(medal:word);
-
 
   procedure ReceiveLoginok(frame:TSocketFrame);
   procedure ReceivePlayerlist(frame:TSocketFrame);
@@ -88,7 +87,7 @@ type
 
   constructor Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
   destructor Destroy;override;
-  procedure Update(posx,posy:integer);
+  procedure Update;
   procedure Chat(mit:string);
   procedure Killed(kimiatt:integer); //ez nem UID, hanem ppl index
   procedure Medal(c1,c2:char);
@@ -490,13 +489,20 @@ procedure TMMOServerClient.ReceiveChat(frame:TSocketFrame);
 var
 i:integer;
 t:byte;
-uzi:string;
+uzi,name:string;
+glyph:integer;
 begin
 t := frame.ReadChar;
 
 if t=0 then
 begin
 uzi := frame.ReadString;
+glyph:=frame.ReadInt;
+name:=LowerCase(frame.ReadString);
+
+for i:=low(muted) to high(muted) do
+  if muted[i]=name then exit;
+
 if opt_nochat then begin
   for i:=0 to length(uzi)-1 do
   if uzi[i]=#3 then exit;
@@ -505,7 +511,7 @@ if opt_nochat then begin
  for i:=high(chats) downto 1 do
   chats[i]:=chats[i-1];
  chats[0].uzenet:=uzi;
- chats[0].glyph:=frame.ReadInt;
+ chats[0].glyph:=glyph;
  end
 else
  begin
@@ -592,6 +598,7 @@ var
   i:integer;
   FS:TFormatSettings;
 begin
+  fakedeath:=6;
   //koordináta?
   b:= frame.ReadChar;
   isCoord:=nthBit(b,0);
@@ -675,7 +682,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TMMOServerClient.Update(posx,posy:integer);
+procedure TMMOServerClient.Update;
 var
 frame:TSocketFrame;
 i:integer;
@@ -922,10 +929,14 @@ begin
  gtc:=gettickcount;
  with ppl[kitol] do
  begin
-   pos.vpos:=pos.megjpos;
+//   pos.vpos:=pos.megjpos;
+   D3DXVec3lerp(pos.vpos,pos.megjpos,pos.pos,0.3);
+//   pos.vpos:=pos.pos;
    pos.vseb:=pos.seb;
    pos.pos:=frame.ReadPackedPos();
    pos.seb:=frame.ReadPackedVector(1);
+   if (pos.seb.y>-0.012) and (pos.seb.y<-0.009) then //kocsonya fizika bug fix
+   pos.seb.y:=0;
 
    pos.irany:= unpackfloatheavy(frame.ReadChar,D3DX_PI);
    //pos.irany2:=unpackfloatheavy(frame.ReadChar,D3DX_PI);

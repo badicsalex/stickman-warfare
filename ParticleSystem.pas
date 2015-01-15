@@ -1,6 +1,6 @@
 unit ParticleSystem;
 interface
- uses sysutils,windows,math,direct3D9,D3DX9,typestuff;
+ uses windows,math,direct3D9,D3DX9,typestuff;
 
 
  const
@@ -361,8 +361,8 @@ end;
 
 procedure particle_special_quad(honnan,hova:TD3DXVector3);
 begin
- ParticleSystem_add(simpleparticlecreate(honnan,d3dxvector3zero,0.2,0,0,weapons[2].col[1],20));
- ParticleSystem_add(simpleparticlecreate(honnan,d3dxvector3zero,0,0.05,weapons[2].col[2],0,20));
+ ParticleSystem_add(simpleparticlecreate(honnan,d3dxvector3zero,0.2,0,0,weapons[2].col[1] div 4,20));
+ ParticleSystem_add(simpleparticlecreate(honnan,d3dxvector3zero,0,0.05,weapons[2].col[2] div 4,0,20));
  ParticleSystem_add(bulletcreate(honnan,hova,4,8,0.2,weapons[2].col[3],0,false));
  ParticleSystem_add(bulletcreate(honnan,hova,4,6,0.1,weapons[2].col[4],0,false));
  ParticleSystem_add(bulletcreate(honnan,hova,4,4,0.05,weapons[2].col[5],0,false));

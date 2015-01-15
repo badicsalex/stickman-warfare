@@ -136,8 +136,10 @@ begin
   if FAILED(D3DXLoadMeshFromX(PChar(dir+'portal.x'),0,g_pd3ddevice,nil,nil,nil,nil,framemesh)) then Exit;
 
 
-
-  eventpos:=ojjektumarr[ATportalhely].holvannak[0];
+  if ATportalhely<>-1 then
+    eventpos:=ojjektumarr[ATportalhely].holvannak[0]
+  else
+    eventpos:=d3dxvector3(0,-100,0);
   eventpos.z:=eventpos.z+7.5;
   eventpos.y:=eventpos.y+18.5;
   eventpos.x:=eventpos.x-9.7;
@@ -174,7 +176,7 @@ if (phs=1) then phstim:=0;
 if phs=1 then
 begin
  speed:=0.0018;
- vec1 := ojjektumarr[panthepulet].holvannak[0];
+ vec1 := pantheonPos;
  playsound(40,false,phstim,false,vec1);
 end;
 
@@ -457,8 +459,7 @@ begin
 
   betoltve:=true;
 
-
-  beaconpos:=ojjektumarr[panthepulet].holvannak[0];
+  beaconpos:=pantheonPos;
   beaconpos.x:=beaconpos.x-300;
   beaconpos.y:=beaconpos.y+30;
   vegpos:=DNSVec;
@@ -840,7 +841,7 @@ begin
      agvpos:=agpos;
      for i:=0 to high(agpos) do
      begin
-      vec1:=ojjektumarr[panthepulet].holvannak[0];
+      vec1:=pantheonPos;
       vec1.y:=vec1.y-i*5+phstim*3;
       vec2:=randomvec(phstim*0.01+i*200,1);
       fastvec3normalize(vec2);                        

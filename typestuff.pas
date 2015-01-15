@@ -365,7 +365,7 @@ type
   T7pboxbol= array [0..7] of boolean;
 
   TnamedProjectile = record
-    v1,v2,v3,cel:TD3DXVector3;
+    kezdoseb,v1,v2,v3,cel:TD3DXVector3;
     name:Dword; //ez egy hash
     colltim:byte;
     eletkor:integer;
@@ -467,8 +467,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=208050;
-  datachecksum=$75053BEC;
+  PROG_VER=209000;
+  datachecksum=$71AFE258;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -486,7 +486,7 @@ var
   hudInfoFade:word;
   hudInfoColor:longword;
 
-  isHalloween:boolean=false;
+  isHalloween:boolean=true;
   unfocused:boolean;
   multisampling:integer=0;
   SCwidth:integer=800;
@@ -494,6 +494,7 @@ var
   ASPECT_RATIO:double=4/3;
   pixelX,pixelY,vertScale:single;
   texture_res:byte; // 0 low, 1 med, 2 hi
+  fakedeath:single;
 
   frust:TFrustum;
   g_pEffect:ID3DXEffect;
@@ -507,8 +508,9 @@ var
   goodchars:shortstring='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; //62
 
   opt_detail:integer;
-  atlantiscoords:array of TD3DXVector3;
   betuszin,color_menu_normal,color_menu_select,color_menu_info:longword;
+
+  pantheonPos:TD3DXVector3;
 const
   perlinlvl=6;
 
@@ -739,12 +741,17 @@ function holindul(fegyv:byte):single;
 
 function nthBit(b:byte;o:byte):boolean;
 
+procedure mute(name:string);
+procedure unmute(name:string);
+
 
 var
   perlin:Tperlinnoise;
   stuffjson:TQJSON;
   animstat: single;
   logfile:Textfile;  //ez fontos
+  mutefile:Textfile;  //ez fontos
+  muted:array of string;
   laststate: string;
   lflngt,lflngt2:integer;
   campos,upvec,lvec:TD3DXVector3;
@@ -760,6 +767,28 @@ var
   Infinity:single= (1.00/0);
   InfinityMask:cardinal absolute infinity;
 
+procedure mute(name:string);
+var
+i:integer;
+begin
+  for i:=low(muted) to high(muted) do
+  begin
+    if name=muted[i] then exit;
+  end;
+
+  setlength(muted, length(muted)+1);
+  muted[high(muted)]:=name;
+end;
+
+procedure unmute(name:string);
+var
+i:integer;
+begin
+  for i:=low(muted) to high(muted) do
+  begin
+    if name=muted[i] then muted[i]:=''; //mentéskor szûrni kell
+  end;
+end;
 
 function holindul(fegyv:byte):single;
 begin
@@ -1547,7 +1576,10 @@ begin
   width:=info.Width  
   else if info.Width > 64 then
   width:=info.Width div round(power(2,2-texture_res));
-  
+
+//  if not AnsiContainsStr(nev,'lm') then
+//  width:=1;   //strutils ki
+
 //  writeln(logfile,width);
 
 // result:=false;

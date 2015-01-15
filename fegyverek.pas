@@ -1,7 +1,7 @@
 unit fegyverek;
 
 interface
-uses sysutils,windows,typestuff,math,Direct3d9,d3dx9,ParticleSystem;
+uses windows,typestuff,math,Direct3d9,d3dx9;
 const
 
 M4_Golyoido=0.3;
@@ -1264,9 +1264,11 @@ begin
  addfiletochecksum(fnev+'.x');
 
  if not LTFF(g_pd3dDevice,fnev+'.jpg',tex) then
+// if not LTFF(g_pd3dDevice,'../textures/snow.jpg',tex) then
    Exit;
 
  // makemuzzle(255);
+
 
   if FAILED(D3DXLoadMeshFromX(PChar(fnev+'.x'),0,g_pd3ddevice,nil,nil,nil,nil,tempmesh)) then exit;
   if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_CUSTOMVERTEX,g_pd3ddevice,g_pMesh)) then exit;
@@ -1274,20 +1276,18 @@ begin
   g_pMesh.LockVertexBuffer(0,pointer(pvert));
   D3DXComputeboundingbox(pointer(pvert),g_pMesh.GetNumVertices,g_pMesh.GetNumBytesPerVertex,vmi,vma);
   scl:=max(vma.x-vmi.x,max(vma.y-vmi.y,vma.z-vmi.z));
-  scl:=scl/0.4;
-  fc:=(vma.z-vmi.z)*0.5/scl;
+  scl:=scl/0.7;
+  fc:=(vma.z-vmi.z)*0.5;
   for i:=0 to g_pMesh.GetNumVertices-1 do
   begin
-   tmp.x:=(pvert[i].position.z+vmi.z)*1/scl+0.065;
-   tmp.y:=-(pvert[i].position.y-vma.y)/scl-0.03;
-   tmp.z:=(pvert[i].position.x-vma.x)/scl+fc-0.3;
+   tmp.z:=-(pvert[i].position.x-vmi.x)*1.5/scl+0.2;
+   tmp.y:=(pvert[i].position.y-vma.y)/scl+0.03;
+   tmp.x:=(pvert[i].position.z-vma.z+fc)/scl-0.084;
+ //  if abs(tmp.x)<0.005 then tmp.x:=0;
    pvert[i].color:=RGB(200,200,200);
    pvert[i].position:=tmp;
-   pvert[i].u2:=pvert[i].u;
-   pvert[i].v2:=pvert[i].v;
   end;
   g_pMesh.UnlockVertexBuffer;
-
   getmem(adj,g_pmesh.getnumfaces*12);
   g_pMesh.generateadjacency(0.001,adj);
   D3DXComputenormals(g_pMesh,adj);
@@ -1361,7 +1361,7 @@ begin
  x72:=TF_x72.create(a_D3Ddevice,'data\models\x72');
  if not x72.betoltve then exit;
  addfiletochecksum('data\models\wand.x');
- H31:=TF_H31.create(a_D3Ddevice,'data\models\wand');
+ H31:=TF_H31.create(a_D3Ddevice,'data\models\snowlauncher');
  if not H31.betoltve then exit;
 
  if not LTFF (g_pd3dDevice,'data\models\m4a1muzz.jpg',gunmuztex) then
@@ -1414,8 +1414,8 @@ begin
   FEGYV_NOOB:result:=D3DXVector3(-0.05,1.17,-0.35);
   FEGYV_LAW:result:=D3DXVector3(-0.1,1.37,-0.45);
   FEGYV_MP5A3:result:=D3DXVector3(-0.05,1.41,-0.45);
-  FEGYV_H31_T:result:=D3DXVector3(0,1.3 ,-0.1);
-  FEGYV_H31_G:result:=D3DXVector3(0,1.3 ,-0.1);
+  FEGYV_H31_T:result:=D3DXVector3(-0.1,1.37,-0.45);
+  FEGYV_H31_G:result:=D3DXVector3(-0.1,1.37,-0.45);
   else result:=D3DXVector3(-0.05,1.37,-0.45);
  end
  else
@@ -1425,8 +1425,8 @@ begin
   FEGYV_MP5A3:result:=D3DXVector3(-0.05,1.10,-0.45);
   FEGYV_QUAD:result:=D3DXVector3(-0.00,1.01 ,-0.28);
   FEGYV_X72:result:=D3DXVector3(0.01,1,-0.37);
-  FEGYV_H31_T:result:=D3DXVector3(0,1.0 ,-0.1);
-  FEGYV_H31_G:result:=D3DXVector3(0,1.0 ,-0.1);
+  FEGYV_H31_T:result:=D3DXVector3(-0.05,1.07,-0.27);
+  FEGYV_H31_G:result:=D3DXVector3(-0.05,1.07,-0.27);
   else result:=D3DXVector3(-0.05,1.05,-0.45);
  end;
 
@@ -1452,8 +1452,8 @@ begin
   FEGYV_X72:result:=D3DXVector3(-0.05,1.27,-0.15);
   FEGYV_NOOB:result:=D3DXVector3(-0.05,1.15,-0.10);
   FEGYV_LAW:result:=D3DXVector3(-0.1,1.35,-0.27);
-  FEGYV_H31_T:result:=D3DXVector3(-0.05,1.48 ,-0.30);
-  FEGYV_H31_G:result:=D3DXVector3(-0.05,1.48 ,-0.30);
+  FEGYV_H31_T:result:=D3DXVector3(-0.1,1.35,-0.27);
+  FEGYV_H31_G:result:=D3DXVector3(-0.1,1.35,-0.27);
   else result:=D3DXVector3(-0.05,1.35,-0.27);
  end
  else
@@ -1462,8 +1462,8 @@ begin
   FEGYV_LAW:result:=D3DXVector3(-0.15,1.1,-0.45);
   FEGYV_QUAD:result:=D3DXVector3(-0.05,1.00 ,-0.07);
   FEGYV_X72:result:=D3DXVector3(-0.07,0.95,-0.15);
-  FEGYV_H31_T:result:=D3DXVector3(-0.05,1.18 ,-0.30);
-  FEGYV_H31_G:result:=D3DXVector3(-0.05,1.18 ,-0.30);
+  FEGYV_H31_T:result:=D3DXVector3(-0.15,1.1,-0.45);
+  FEGYV_H31_G:result:=D3DXVector3(-0.15,1.1,-0.45);
   else result:=D3DXVector3(-0.05,1.05,-0.27);
  end;
 

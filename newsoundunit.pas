@@ -10,7 +10,6 @@ uses
   sysutils,
   //DSUtil,
   DirectSound,
-  direct3d9,
   d3dx9,
   typestuff,
   MADXDllinterface,
@@ -170,7 +169,7 @@ var
  mp3pos:integer;
  lastsoundaction:string;
  bufPlaying:array of TCombinedSoundBuffer;
- bufplayingcount,playsoundcount,stopsoundcount,specialcreatecount:integer;
+// bufplayingcount,playsoundcount,stopsoundcount,specialcreatecount:integer;
  streams:array of T3DSoundStream;
  zenebuffer:Tsmallintdynarr;
 
@@ -503,9 +502,10 @@ var
 flags:cardinal;
 begin
  if DS=nil then exit;
+ laststate:='Loading sound ' + fnev;
  //effects:=false;
  setlength(bufLoaded,length(bufLoaded)+1);
- zeromemory(@bufloaded[high(bufLoaded)],sizeof(TMemorybuffer));
+// zeromemory(@bufloaded[high(bufLoaded)],sizeof(TMemorybuffer));
  flags:=0;
  if haromd  then flags:=flags or DSBCAPS_CTRL3D or DSBCAPS_MUTE3DATMAXDISTANCE;
  if freq    then flags:=flags or DSBCAPS_CTRLFREQUENCY;
@@ -518,8 +518,9 @@ end;
 procedure LoadStrm(fnev:string);
 begin
   if DS=nil then exit;
+ laststate:='Loading stream ' + fnev;
  setlength(strmLoaded,length(strmLoaded)+1);
- zeromemory(@strmLoaded[high(strmLoaded)],sizeof(TMemorybuffer));
+// zeromemory(@strmLoaded[high(strmLoaded)],sizeof(TMemorybuffer));
  loadbuf(strmLoaded[high(strmLoaded)],DSBCAPS_CTRLVOLUME,'data\snd\rad\'+fnev+'.wav');
 end;
 
@@ -724,7 +725,7 @@ begin
  mire:=nil;
  if mirol.data=nil then exit;
 
- inc(specialcreatecount);
+// inc(specialcreatecount);
  caps:=mirol.caps;
  format:=mirol.format;
                                  
@@ -1184,7 +1185,7 @@ playpos:cardinal;
 begin
  if DS=nil then exit;
  gtc:=gettickcount;
- bufplayingcount:=0;
+// bufplayingcount:=0;
  for i:=0 to high(bufPlaying) do
  begin
   if BufPlaying[i].DSbuf=nil then continue;
@@ -1197,7 +1198,7 @@ begin
       BufPlaying[i].DSbuf.SetCurrentPosition(0);
      end;
      addeffects(high(bufPlaying));
-    inc(playsoundcount);
+//    inc(playsoundcount);
     if (BufPlaying[i].state=BUFFERSTATUS_QFORPLAYLOOPED) then
      BufPlaying[i].DSbuf.Play(0,0,DSBPLAY_LOOPING)
     else
@@ -1214,7 +1215,7 @@ begin
 
   if (BufPlaying[i].state=BUFFERSTATUS_QFORSTOP) then
   begin
-    inc(stopsoundcount);
+//    inc(stopsoundcount);
    BufPlaying[i].DSbuf.Stop;
  //  BufPlaying[i].DSbuf.SetCurrentPosition(0);
    if BufPlaying[i].effbuf<> nil then
@@ -1234,7 +1235,7 @@ begin
 
   if (BufPlaying[i].state and (DSBSTATUS_PLAYING or DSBSTATUS_LOOPING))>0 then
   begin
-   inc(bufplayingcount);
+//   inc(bufplayingcount);
    BufPlaying[i].played:=gtc;
    BufPlaying[i].tav:=tavpointpointsq(BufPlaying[i].pos,listenerpos)*BufPlaying[i].hangero;
   end;
