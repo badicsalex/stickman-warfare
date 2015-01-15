@@ -59,8 +59,6 @@ object Form1: TForm1
     Top = 104
     Width = 457
     Height = 41
-    Min = 0
-    Max = 100
     TabOrder = 0
   end
   object Timer1: TTimer

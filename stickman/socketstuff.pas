@@ -16,9 +16,8 @@ type
 
 	  procedure Reset;
 	  function ReadChar:byte;
-	  function ReadInt:integer;
+	  function ReadInt:LongInt;
 	  function ReadString:string;
-
 	  procedure WriteChar(mit:byte);
 	  procedure WriteInt(mit:integer);
 	  procedure WriteString(const mit:string);
@@ -111,7 +110,7 @@ begin
   result:=0;
 end;
 
-function TSocketFrame.ReadInt:integer;
+function TSocketFrame.ReadInt:LongInt;
 begin
  cursor:=cursor+4;
  if cursor<=length(data) then

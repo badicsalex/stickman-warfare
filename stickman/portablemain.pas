@@ -242,7 +242,6 @@ end;
 
 procedure TForm1.Timer1Timer(Sender: TObject);
 var
-wnd:boolean;
 tmp:Pchar;
 tmpdir:string;
 begin
@@ -254,11 +253,6 @@ begin
  tmpdir:=string(tmp);
  freemem(tmp);
 
- wnd:=Application.MessageBox(
-        'Start in windowed mode?',
-
-        'SMWF Portable',
-        MB_YESNO + MB_DEFBUTTON2 + MB_ICONQUESTION) = IDYES;
  repaint;
  adir:=extractfilepath(Application.exename)+'\Stickman';
  if not DirectoryExists(tmpdir+'Stickman') then
@@ -278,16 +272,13 @@ begin
   adir:=tmpdir+'Stickman';
 
  adir:=adir+'\';
- if fileexists(adir+'stickman.exe') then
+ if fileexists(adir+'Setup.exe') then
    deltree(adir+'data\');
 
 
  olvasfajl(application.exename,adir,356864);
 
- if wnd then
-  startprocwithid(adir+'Stickman.exe','windowed')
- else
-   startprocwithid(adir+'Stickman.exe','');
+ startprocwithid(adir+'Setup.exe','');
  Timer1.enabled:=true;
 end;
 
