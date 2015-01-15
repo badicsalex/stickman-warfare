@@ -118,38 +118,29 @@ begin
  begin
   inc(i);
   inc(start);
+  result:='';
   while true do
   begin
-   while (str[i]<>'"') and (str[i]<>'\') and (length(str)>=i) do
+//   while (str[i]<>'"') and (str[i]<>'\') and (length(str)>=i) do
+   while (str[i]<>'"') and (length(str)>=i) do
     inc(i);
 
    if length(str)<i then
     raise EJSONParserError.Create(str,i,'unterminated string');
-   if (length(str)<i+1) and (str[i]='\') then
-    raise EJSONParserError.Create(str,i,'unterminated backslash');
+//   if (length(str)<i+1) and (str[i]='\') then
+//    raise EJSONParserError.Create(str,i,'unterminated backslash');
 
-   result:=copy(str,start,i-start);
+     result:=copy(str,start,i-start);
 
    if str[i]='"' then
    begin
     inc(i);
+    result := StringReplace(result, '\b', char(8), [rfReplaceAll]);
+    result := StringReplace(result, '\t', char(9), [rfReplaceAll]);
+    result := StringReplace(result, '\n', char(10), [rfReplaceAll]);
+    result := StringReplace(result, '\f', char(12), [rfReplaceAll]);
+    result := StringReplace(result, '\r', char(13), [rfReplaceAll]);
     break;
-   end;
-
-   if str[i]='\' then
-   begin
-    inc(i);
-    case str[i] of
-     'b':result:=result+#8;
-     't':result:=result+#9;
-     'n':result:=result+#10;
-     'f':result:=result+#12;
-     'r':result:=result+#13;
-     'u':EJSONParserError.Create(str,i,'\uXXXX is unsupported');
-    else
-     result:=result+str[i];
-    end;
-    inc(i);
    end;
   end;
  end

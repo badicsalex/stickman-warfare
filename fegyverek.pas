@@ -35,9 +35,6 @@ type
  end;
 
 
-
-
-
  TF_M82A1 = class (Tobject)
  private
    g_pMesh:ID3DXMesh;
@@ -184,6 +181,21 @@ type
   destructor Destroy;reintroduce;
  end;
 
+ TF_H31 = class (Tobject)
+ private
+   g_pMesh:ID3DXMesh;
+   g_pD3Ddevice:IDirect3ddevice9;
+   tex:IDirect3DTexture9;
+ public
+  betoltve:boolean;
+  fc:single;
+  muzzez:array of TCustomvertex;
+  constructor Create(a_D3Ddevice:IDirect3ddevice9;fnev:string);
+  procedure draw;
+  procedure pluszmuzzmatr(siz:single);
+  destructor Destroy;reintroduce;
+ end;
+
 
  TFegyv = class (TObject)
  private
@@ -197,6 +209,7 @@ type
    quadgun:TF_quadgun;
    mp5a3:TF_mp5a3;
    x72:TF_X72;
+   H31:TF_H31;
    gunmuztex,mpgmuztex,x72muztex:IDirect3DTexture9;
    g_pVB:IDirect3DVertexBuffer9;
  public
@@ -305,7 +318,7 @@ var
   matWorld,matWorld2: TD3DMatrix;
 begin
 
-   D3DXMatrixTranslation(matWorld,-0.00,-0.06,-0.7);
+   D3DXMatrixTranslation(matWorld,-0.00,-0.06,-0.72);
    D3DXMatrixScaling(matWorld2,siz/2,siz/2,siz);
    D3DXmatrixMultiply(matWorld,matWorld2,MatWorld);
    g_pd3dDevice.MultiplyTransform(D3DTS_WORLD, matWorld);
@@ -1231,6 +1244,88 @@ begin
 end;
 
 
+/////////////////////////////////////
+//               H31
+////////////////////////////////////
+
+
+constructor TF_H31.Create(a_D3Ddevice:IDirect3ddevice9;fnev:string);
+var
+ tempmesh:ID3DXMesh;
+ pVert:PCustomvertexarray;
+ vmi,vma,tmp:TD3DVector;
+ scl:single;
+ i:integer;
+ adj:Pdword;
+begin
+ inherited Create;
+ betoltve:=false;
+ g_pD3Ddevice:=a_D3Ddevice;
+ addfiletochecksum(fnev+'.x');
+
+ if not LTFF(g_pd3dDevice,fnev+'.jpg',tex) then
+   Exit;
+
+ // makemuzzle(255);
+
+  if FAILED(D3DXLoadMeshFromX(PChar(fnev+'.x'),0,g_pd3ddevice,nil,nil,nil,nil,tempmesh)) then exit;
+  if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_CUSTOMVERTEX,g_pd3ddevice,g_pMesh)) then exit;
+  if tempmesh<>nil then tempmesh:=nil;
+  g_pMesh.LockVertexBuffer(0,pointer(pvert));
+  D3DXComputeboundingbox(pointer(pvert),g_pMesh.GetNumVertices,g_pMesh.GetNumBytesPerVertex,vmi,vma);
+  scl:=max(vma.x-vmi.x,max(vma.y-vmi.y,vma.z-vmi.z));
+  scl:=scl/0.4;
+  fc:=(vma.z-vmi.z)*0.5/scl;
+  for i:=0 to g_pMesh.GetNumVertices-1 do
+  begin
+   tmp.x:=(pvert[i].position.z+vmi.z)*1/scl+0.065;
+   tmp.y:=-(pvert[i].position.y-vma.y)/scl-0.03;
+   tmp.z:=(pvert[i].position.x-vma.x)/scl+fc-0.3;
+   pvert[i].color:=RGB(200,200,200);
+   pvert[i].position:=tmp;
+   pvert[i].u2:=pvert[i].u;
+   pvert[i].v2:=pvert[i].v;
+  end;
+  g_pMesh.UnlockVertexBuffer;
+
+  getmem(adj,g_pmesh.getnumfaces*12);
+  g_pMesh.generateadjacency(0.001,adj);
+  D3DXComputenormals(g_pMesh,adj);
+  g_pMesh.OptimizeInplace(D3DXMESHOPT_COMPACT+D3DXMESHOPT_ATTRSORT+D3DXMESHOPT_VERTEXCACHE,adj,nil,nil,nil);
+  freemem(adj);
+  betoltve:=true;
+end;
+
+procedure TF_H31.draw;
+begin
+ g_pd3dDevice.Settexture(0,tex);
+ g_pMesh.DrawSubset(0);
+end;
+
+procedure TF_H31.pluszmuzzmatr(siz:single);
+var
+  matWorld,matWorld2: TD3DMatrix;
+begin
+
+   D3DXMatrixTranslation(matWorld,-0.00,-0.08,-0.7);
+   D3DXMatrixScaling(matWorld2,siz,siz,siz);
+   D3DXmatrixMultiply(matWorld,matWorld2,MatWorld);
+   g_pd3dDevice.MultiplyTransform(D3DTS_WORLD, matWorld);
+
+end;
+
+
+destructor TF_H31.Destroy;
+begin
+ if tex<>nil then
+ tex:=nil;
+ if g_pmesh<>nil then
+ g_pmesh:=nil;
+ if g_pd3ddevice<>nil then
+ g_pd3ddevice:=nil;
+end;
+
+
 //***************************************
 //***************************************
 //*******TOVÁBBI FEGYVEREK HELYE!!!******
@@ -1265,6 +1360,9 @@ begin
  addfiletochecksum('data\models\x72.x');
  x72:=TF_x72.create(a_D3Ddevice,'data\models\x72');
  if not x72.betoltve then exit;
+ addfiletochecksum('data\models\wand.x');
+ H31:=TF_H31.create(a_D3Ddevice,'data\models\wand');
+ if not H31.betoltve then exit;
 
  if not LTFF (g_pd3dDevice,'data\models\m4a1muzz.jpg',gunmuztex) then
    Exit;
@@ -1294,6 +1392,8 @@ begin
   FEGYV_NOOB:noobcannon.draw;
   FEGYV_MP5A3:mp5a3.draw;
   FEGYV_X72:x72.draw;
+  FEGYV_H31_G:H31.draw;
+  FEGYV_H31_T:H31.draw;
  end;
 end;
 
@@ -1309,11 +1409,13 @@ begin
  if bol then
  case afegyv of
   FEGYV_M82A1:result:=D3DXVector3(-0.05,1.4 ,-0.6);
-  FEGYV_QUAD:result:=D3DXVector3(-0,1.25 ,-0.48);
+  FEGYV_QUAD:result:=D3DXVector3(0,1.25 ,-0.48);
   FEGYV_X72:result:=D3DXVector3(-0.05,1.27 ,-0.45);
   FEGYV_NOOB:result:=D3DXVector3(-0.05,1.17,-0.35);
   FEGYV_LAW:result:=D3DXVector3(-0.1,1.37,-0.45);
   FEGYV_MP5A3:result:=D3DXVector3(-0.05,1.41,-0.45);
+  FEGYV_H31_T:result:=D3DXVector3(0,1.3 ,-0.1);
+  FEGYV_H31_G:result:=D3DXVector3(0,1.3 ,-0.1);
   else result:=D3DXVector3(-0.05,1.37,-0.45);
  end
  else
@@ -1323,6 +1425,8 @@ begin
   FEGYV_MP5A3:result:=D3DXVector3(-0.05,1.10,-0.45);
   FEGYV_QUAD:result:=D3DXVector3(-0.00,1.01 ,-0.28);
   FEGYV_X72:result:=D3DXVector3(0.01,1,-0.37);
+  FEGYV_H31_T:result:=D3DXVector3(0,1.0 ,-0.1);
+  FEGYV_H31_G:result:=D3DXVector3(0,1.0 ,-0.1);
   else result:=D3DXVector3(-0.05,1.05,-0.45);
  end;
 
@@ -1344,10 +1448,12 @@ begin
  if bol then
  case afegyv of
   FEGYV_M82A1:result:=D3DXVector3(-0.05,1.4,-0.35);
-  FEGYV_QUAD:result:=D3DXVector3(-0,1.28 ,-0.13);
+  FEGYV_QUAD:result:=D3DXVector3(0,1.28 ,-0.13);
   FEGYV_X72:result:=D3DXVector3(-0.05,1.27,-0.15);
   FEGYV_NOOB:result:=D3DXVector3(-0.05,1.15,-0.10);
   FEGYV_LAW:result:=D3DXVector3(-0.1,1.35,-0.27);
+  FEGYV_H31_T:result:=D3DXVector3(-0.05,1.48 ,-0.30);
+  FEGYV_H31_G:result:=D3DXVector3(-0.05,1.48 ,-0.30);
   else result:=D3DXVector3(-0.05,1.35,-0.27);
  end
  else
@@ -1356,6 +1462,8 @@ begin
   FEGYV_LAW:result:=D3DXVector3(-0.15,1.1,-0.45);
   FEGYV_QUAD:result:=D3DXVector3(-0.05,1.00 ,-0.07);
   FEGYV_X72:result:=D3DXVector3(-0.07,0.95,-0.15);
+  FEGYV_H31_T:result:=D3DXVector3(-0.05,1.18 ,-0.30);
+  FEGYV_H31_G:result:=D3DXVector3(-0.05,1.18 ,-0.30);
   else result:=D3DXVector3(-0.05,1.05,-0.27);
  end;
 

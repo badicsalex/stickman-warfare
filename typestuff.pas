@@ -5,6 +5,7 @@ uses
   Sysutils,
   D3DX9,
   windows,
+  Classes,
   Direct3D9,
   perlinnoise,
   math,
@@ -14,6 +15,15 @@ uses
   qjson;
 type
 
+  THUDmessage = class(TObject)
+  public
+    value:string;
+    fade:word;
+    color:longword;
+    constructor create(input:string;col:longword);
+  end;
+
+  TStringArray = array of string;
 
   Tnev=array [1..32] of char;
   Tjelszo=array [1..32] of char;
@@ -457,21 +467,33 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=208010;
+  PROG_VER=208050;
   datachecksum=$75053BEC;
 var
   checksum:Dword=0;
   nyelv:integer;
 const
   GRAVITACIO=0.003;
-  fav3DPOOL=D3DPOOL_DEFAULT;
 var
+  cpx:Psingle;  ///FRÖCCCS
+  cpy:Psingle; ///FRÖCCCS
+  cpz:Psingle;  ///FRÖCCCS
+
+  hudMessages:array [0..4] of THUDmessage; //állítható mindkét vége, az alacsony a friss
+  hudMessagePosY:single=0.2;
+  hudMessageOffsetY:single=0.05;
+  hudInfo:string;
+  hudInfoFade:word;
+  hudInfoColor:longword;
+
+  isHalloween:boolean=false;
+  unfocused:boolean;
   multisampling:integer=0;
   SCwidth:integer=800;
   SCheight:integer=(800*3) div 4;
   ASPECT_RATIO:double=4/3;
   pixelX,pixelY,vertScale:single;
-  texture_res:byte;
+  texture_res:byte; // 0 low, 1 med, 2 hi
 
   frust:TFrustum;
   g_pEffect:ID3DXEffect;
@@ -485,19 +507,22 @@ var
   goodchars:shortstring='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; //62
 
   opt_detail:integer;
+  atlantiscoords:array of TD3DXVector3;
+  betuszin,color_menu_normal,color_menu_select,color_menu_info:longword;
 const
   perlinlvl=6;
-  betuszin=$0000B0;
 
   FEGYV_M4A1=0;
   FEGYV_M82A1=1;
   FEGYV_LAW=2;
   FEGYV_MP5A3=3;
+  FEGYV_H31_G=100; //a szerveren a 4 a kibaszott quad
 
   FEGYV_MPG=128;
   FEGYV_QUAD=129;
   FEGYV_NOOB=130;
   FEGYV_X72=131;
+  FEGYV_H31_T=200;
 
   MSTAT_MASK=15;
   MSTAT_ALL=0;
@@ -532,6 +557,7 @@ const
                         _31:0;_32:0;_33:0.5;_34:0;
                         _41:0;_42:0;_43:0;_44:1); }
   sqrt2=1.414213;
+
 function CustomVertex(x,y,z,nx,ny,nz:single;acolor:longword;au,av,au2,av2:single):TCustomVertex;overload;
 function CustomVertex(pos:TD3DXVector3;nx,ny,nz:single;acolor:longword;au,av,au2,av2:single):TCustomVertex;overload;
 //function CustomVertex(pos:TD3DXVector3;n:TD3DXVector3;acolor:longword;au,av:single):TCustomVertex;overload;
@@ -547,6 +573,7 @@ function SingletoDword(mit:single):Dword;
 function tavLineLine(p1,p2,p3,p4:TD3DXVector3;out pa,pb:TD3DXVector3;out Distance:single):boolean;
 function tavLineLinesq(p1,p2,p3,p4:TD3DXVector3;out pa,pb:TD3DXVector3;out Distance:single):boolean;
 
+function tavPointLinesq0(point,linestart,lineend:TD3DXVector3; out Distance:single ):boolean;
 function tavPointLine(point,linestart,lineend:TD3DXVector3;out Intersection:TD3DXVector3; out Distance:single ):boolean;
 function tavPointLinesq(point,linestart,lineend:TD3DXVector3;out Intersection:TD3DXVector3; out Distance:single ):boolean;
 function tavPointLinesq2d(point,linestart,lineend:TD3DXVector3;out Intersection:TD3DXVector3; out Distance:single ):boolean;
@@ -703,6 +730,15 @@ function unloop(c:char):byte;
 function encodehash(hash:string):string;
 function decodehash(crypt:string):string;
 
+procedure split(delimiter: char; str: string; strinList: TStringList);
+function splitstring(s:string;c:char):TStringArray;
+
+procedure teleport_to_coords(coords:TD3DVector);
+
+function holindul(fegyv:byte):single;
+
+function nthBit(b:byte;o:byte):boolean;
+
 
 var
   perlin:Tperlinnoise;
@@ -723,6 +759,67 @@ var
 //infcheckstuff
   Infinity:single= (1.00/0);
   InfinityMask:cardinal absolute infinity;
+
+
+function holindul(fegyv:byte):single;
+begin
+ case fegyv of
+  FEGYV_M4A1:result:=0.5;
+  FEGYV_M82A1:result:=1;
+  FEGYV_MPG:result:=0;
+  FEGYV_QUAD:result:=1;
+  FEGYV_MP5A3:result:=0.5;
+  FEGYV_X72:result:=0;
+  else result:=0; //ezeknél úgysincs muzz
+ end;
+end;
+
+constructor THUDmessage.create(input:string;col:longword);
+begin
+inherited create;
+value:=input;
+fade:=500;
+color:=col;
+end;
+
+function nthBit(b:byte;o:byte):boolean;
+begin
+  b:=b shl o;
+  b:=b shr 7;
+  if b=0 then result:=false
+  else result:=true;
+end;
+
+procedure split(delimiter: char; str: string; strinList: TStringList);
+begin
+   strinList.Clear;
+   strinList.Delimiter     := delimiter;
+   strinList.DelimitedText := str;
+end;
+
+function splitstring(s:string;c:char):TStringArray;
+var
+list:TStringList;
+arr:TStringArray;
+i:integer;
+begin
+list:=TStringList.Create;
+split(c, s, list);
+setlength(arr,list.Count);
+for i:=0 to list.Count-1 do
+begin
+  arr[i]:=list[i];
+end;
+result:=arr;
+end;
+
+
+procedure teleport_to_coords(coords:TD3DVector);
+begin
+cpx^:=coords.x;
+cpy^:=coords.y;
+cpz^:=coords.z;
+end;
 
 function looptobyte(i:integer):byte;
 begin
@@ -930,6 +1027,36 @@ begin
   Vec.Z := Point2.Z - Point1.Z;
 
   result:= Vec.X * Vec.X + Vec.Y * Vec.Y + Vec.Z * Vec.Z ;
+end;
+
+function tavPointLinesq0(point,linestart,lineend:TD3DXVector3; out Distance:single ):boolean;
+var
+  LineMag,U:single;
+  Intersection:TD3DXVector3;
+begin
+  LineMag := tavPointPointsq( LineEnd, LineStart );
+  if linemag<0.000001 then
+  begin
+    result:=false;
+    exit;
+  end;
+  U := ( ( ( Point.X - LineStart.X ) * ( LineEnd.X - LineStart.X ) ) +
+    ( ( Point.Y - LineStart.Y ) * ( LineEnd.Y - LineStart.Y ) ) +
+    ( ( Point.Z - LineStart.Z ) * ( LineEnd.Z - LineStart.Z ) ) ) /
+    ( LineMag);
+
+  if( (U < 0.0) or (U > 1.0) ) then
+  begin
+    result:=false;   // closest point does not fall within the line segment
+    exit;
+  end;
+  Intersection.X := LineStart.X + U * ( LineEnd.X - LineStart.X );
+  Intersection.Y := LineStart.Y + U * ( LineEnd.Y - LineStart.Y );
+  Intersection.Z := LineStart.Z + U * ( LineEnd.Z - LineStart.Z );
+
+  Distance := tavPointPointsq( Point, Intersection );
+
+  result:=true;
 end;
 
 function tavPointLine(point,linestart,lineend:TD3DXVector3;out Intersection:TD3DXVector3; out Distance:single ):boolean;
@@ -1429,7 +1556,7 @@ begin
     gotolni:=false;
   try
     eredm:=D3DXCreateTextureFromFileEx(aDevice,PChar(nev),width ,width,0 ,0,D3DFMT_A8R8G8B8,
-      fav3DPOOL,D3DX_DEFAULT,D3DX_DEFAULT ,0,nil,nil, tex);
+      D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT ,0,nil,nil, tex);
     if FAILED(eredm) then
     begin
       if eredm=D3DERR_OUTOFVIDEOMEMORY then
@@ -4027,5 +4154,4 @@ begin
 
   closefile(fil);
 end;
-
 end.

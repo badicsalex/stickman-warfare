@@ -49,7 +49,7 @@ type
    colormap:array [0..255,0..255,0..3] of byte;
    coverage:single;
    procedure makenew;
-   constructor Create(A_D3DDevice:IDirect3DDevice9;sky_ambi:integer;cloud_spd:single;color:TD3DXColor);
+   constructor Create(A_D3DDevice:IDirect3DDevice9;sky_ambi:integer;cloud_spd:single;color:longword);
    procedure Render(alulis:boolean);
    procedure Update;
    procedure villamolj;
@@ -123,7 +123,7 @@ begin
  villam1:=true;
 end;
 
-constructor TFelho.Create(A_D3DDevice:IDirect3DDevice9;sky_ambi:integer;cloud_spd:single;color:TD3DXColor);
+constructor TFelho.Create(A_D3DDevice:IDirect3DDevice9;sky_ambi:integer;cloud_spd:single;color:longword);
 var
 i,j,k:integer;
 pindices:PWORDArray;
@@ -142,7 +142,7 @@ begin
  pluszind:=0;
  swaptim:=0;
  coverage:=13;
- col:= color;
+ col:= D3DXColorFromDWord(color);
 
  zeromemory(@at, sizeof(at));
  zeromemory(@a1, sizeof(a1));

@@ -64,6 +64,7 @@ function fenycsikcreate (av1,av2:TD3DXVector3;vst:single; acol:cardinal; lifetim
 function fenycsik2create (av1,av2:TD3DXVector3;vst:single;acol,acol2:cardinal; lifetime:word):Tparticle;
 function fenycsik3create (av1,av2:TD3DXVector3;vst:single;acol:cardinal; lifetime,megjtime:word):Tparticle;
 function fenycsikubercreate (av1,av2,seb1,seb2:TD3DXVector3;vst,vst2:single;acol,acol2:cardinal; lifetime:word):Tparticle;
+function fenycsiknoobcreate (av1,av2,seb1,seb2:TD3DXVector3;vst,vst2:single;acol,acol2:cardinal; lifetime:word):Tparticle;
 
 function fenykorcreate (pos,seb,szel,hossz:TD3DXVector3;szor1,szor2,vstszor:single;acol,acol2:cardinal;lifetime:word):Tparticle;
 
@@ -88,7 +89,7 @@ var
 procedure ParticleSystem_Init(a_pd3ddevice:IDirect3DDevice9);
 begin
  g_pd3ddevice:=a_pd3ddevice;
- if FAILED(g_pd3dDevice.CreateVertexBuffer( 20000*SizeOf(Tparticlevertex),
+ if FAILED(g_pd3dDevice.CreateVertexBuffer(20000*SizeOf(Tparticlevertex),
                                             D3DUSAGE_WRITEONLY and D3DUSAGE_DYNAMIC, D3DFVF_PARTICLEVERTEX,
                                             D3DPOOL_DEFAULT, ps_VB, nil))
   then Exit;
@@ -143,7 +144,7 @@ var
   plan:TD3DXPlane;
 begin
   d3dxmatrixidentity(mat);
-   g_pd3dDevice.SetTransform(D3DTS_WORLD, mat);
+  g_pd3dDevice.SetTransform(D3DTS_WORLD, mat);
   g_pd3dDevice.SetTransform(D3DTS_TEXTURE0, mat);
   g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
   g_pd3dDevice.SetRenderState(D3DRS_ZWRITEENABLE, ifalse);
@@ -1345,6 +1346,93 @@ end;
  end;
  end;
 
+
+ procedure fenycsiknoobrender(mit:integer);
+ var
+  v1t,v2t,va,vb,vp,tmp,kul:TD3DXVector3;
+  ind,ind2:integer;
+  tmp3:single;
+  vec:Tparticlevertex;
+ begin
+ with particles[mit] do
+ begin
+  d3dxvec3subtract(kul,v2,v1);
+  d3dxvec3subtract(tmp,campos,v1);
+  d3dxvec3cross(vp,tmp,kul);
+  tmp3:=d3dxvec3lengthsq(vp);
+  if tmp3>0.0001 then
+   d3dxvec3scale(vp,vp,bszor*fastinvsqrt(tmp3));
+
+  ind:=vertszam;
+  vertszam:=vertszam+8;
+
+  D3DXVec3Lerp(va,v1,v2,min(0.25,0.05/d3dxvec3length(kul)));
+  D3DXVec3Lerp(vb,v2,v1,min(0.25,0.05/d3dxvec3length(kul)));
+
+  D3DXVec3Normalize(kul,kul);
+  d3dxvec3scale(kul,kul,0.05);
+  d3dxvec3subtract(v1t,v1,kul);
+  d3dxvec3add(v2t,v2,kul);
+
+  vec.color:=colorlerp(batch,col,k);
+  vec.u:=0;
+
+  vec.v:=0;
+  d3dxvec3add(vec.pos,v1t,vp);
+  ps_vert[ind+0]:=vec;
+
+  vec.v:=1;
+  d3dxvec3add(vec.pos,v2t,vp);
+  ps_vert[ind+1]:=vec;
+
+  vec.v:=0.5;
+  d3dxvec3add(vec.pos,va,vp);
+  ps_vert[ind+2]:=vec;
+
+  d3dxvec3add(vec.pos,vb,vp);
+  ps_vert[ind+3]:=vec;
+
+  vec.u:=1;
+
+  d3dxvec3subtract(vec.pos,va,vp);
+  ps_vert[ind+4]:=vec;
+
+  d3dxvec3subtract(vec.pos,vb,vp);
+  ps_vert[ind+5]:=vec;
+
+  vec.v:=0;
+  d3dxvec3subtract(vec.pos,v1t,vp);
+  ps_vert[ind+6]:=vec;
+
+  vec.v:=1;
+  d3dxvec3subtract(vec.pos,v2t,vp);
+  ps_vert[ind+7]:=vec;
+
+  ind2:=indszam;
+  indszam:=indszam+18;
+  ps_ind[ind2+0]:=ind+0;
+  ps_ind[ind2+1]:=ind+2;
+  ps_ind[ind2+2]:=ind+6;
+  ps_ind[ind2+3]:=ind+4;
+  ps_ind[ind2+4]:=ind+2;
+  ps_ind[ind2+5]:=ind+6;
+
+  ps_ind[ind2+6]:=ind+2;
+  ps_ind[ind2+7]:=ind+3;
+  ps_ind[ind2+8]:=ind+4;
+  ps_ind[ind2+9]:=ind+5;
+  ps_ind[ind2+10]:=ind+3;
+  ps_ind[ind2+11]:=ind+4;
+
+  ps_ind[ind2+12]:=ind+3;
+  ps_ind[ind2+13]:=ind+1;
+  ps_ind[ind2+14]:=ind+5;
+  ps_ind[ind2+15]:=ind+7;
+  ps_ind[ind2+16]:=ind+1;
+  ps_ind[ind2+17]:=ind+5;
+ end;
+ end;
+
 function fenycsikubercreate (av1,av2,seb1,seb2:TD3DXVector3;vst,vst2:single;acol,acol2:cardinal; lifetime:word):Tparticle;
 
 begin
@@ -1368,6 +1456,33 @@ begin
 
  update:=fenycsikuberupdate;
  render:=fenycsikuberrender;
+
+ end;
+end;
+
+function fenycsiknoobcreate (av1,av2,seb1,seb2:TD3DXVector3;vst,vst2:single;acol,acol2:cardinal; lifetime:word):Tparticle;
+
+begin
+ with result do
+ begin
+ //if tavpointpointsq(av2,campos)>sqr(25) then szikra:=0;
+ if lifetime<=0 then lifetime:=1;
+ ido:=lifetime;
+ v1:=av1;
+ v2:=av2;
+ vispls:=seb1;
+ vispls2:=seb2;
+ k:=1;
+ kp:=k/ido;
+ bszor:=vst;
+ bszor2:=(vst2-vst)*kp;
+ col:=acol;
+ batch:=acol2;
+ //OMFGWTF
+ tex:=TX_HOMALY;
+
+ update:=fenycsikuberupdate;
+ render:=fenycsiknoobrender;
 
  end;
 end;

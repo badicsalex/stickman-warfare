@@ -2,6 +2,7 @@ unit multiplayer;
 
 
 {.$DEFINE fakenetchecksum}
+{.DEFINE fakepos}
 
 interface
 
@@ -27,7 +28,6 @@ type
   host,jelszo:string;
   fegyver,fejcucc:integer;
   reconnect:cardinal;
-  sock:TBufferedSocket;
   crypto:array [0..19] of byte; //kill csodacryptocucc
   sentmedals:array of word;
   laststatus:cardinal; //idõ amikor utoljára lett státuszüzenet küldve
@@ -49,7 +49,9 @@ type
   procedure ReceiveSendUDP(frame:TSocketFrame);
   procedure ReceiveEvent(frame:TSocketFrame);
   procedure ReceiveMedal(frame:TSocketFrame);
+  procedure ReceiveWarEvent(frame:TSocketFrame);
  public
+  sock:TBufferedSocket;
   nev:string;
   myport:integer; //általam kijelölt port
   myUID:integer;
@@ -69,6 +71,14 @@ type
   opt_nochat:boolean;
   state1v1,atrak:boolean;
 
+  warevent,warevent_dm:boolean;
+  warevent_name:string;
+  warevent_spawns:array of TD3dxvector3;
+  warevent_gunspawns:array of TD3dxvector3;
+  warevent_techspawns:array of TD3dxvector3;
+  warevent_respawn:byte;
+  warevent_invul:byte;
+
   medallist:array [0..2] of string;
   
   limit:integer;
@@ -80,7 +90,7 @@ type
   destructor Destroy;override;
   procedure Update(posx,posy:integer);
   procedure Chat(mit:string);
-  procedure Killed(kimiatt:integer;died:bool); //ez nem UID, hanem ppl index
+  procedure Killed(kimiatt:integer); //ez nem UID, hanem ppl index
   procedure Medal(c1,c2:char);
  end;
 
@@ -250,11 +260,23 @@ const
   int limit
  }
  SERVERMSG_MEDAL=9;
- 
+
+ SERVERMSG_WAREVENT=10;
+ {
+  char > 0.b koordináta vagy sem, 1.b aktív, 2.b dm
+  string név
+  byte respawn
+  byte invul
+vagy
+  char > 0.b koordináta vagy sem
+  byte gun koordinátaszám
+  byte tech koordinátaszám
+  single-k hármasával, koordináták
+ }
 
  P2PMSG_HANDSHAKE=1;
  {
-	byte latlak
+  byte latlak 
   int uid
  }
 
@@ -563,6 +585,62 @@ begin
    //remélem senki sem fog egyszerre 4 medált szerezni.
 end;
 
+procedure TMMOServerClient.ReceiveWarEvent(frame:TSocketFrame);
+var
+  isCoord:boolean;
+  b,c:byte;
+  i:integer;
+  FS:TFormatSettings;
+begin
+  //koordináta?
+  b:= frame.ReadChar;
+  isCoord:=nthBit(b,0);
+  //ha igen akkor hozzárakjuk a meglévokhöz
+  if isCoord then
+  begin
+    if warevent_dm then
+    begin
+      b:= frame.ReadChar; //új koordináták száma
+      frame.ReadChar; //üres
+      setlength(warevent_spawns, length(warevent_spawns)+b);
+      for i:=high(warevent_spawns)-b+1 to high(warevent_spawns) do
+      begin
+        warevent_spawns[i]:=D3dxvector3(frame.ReadInt/1000,frame.ReadInt/1000,frame.ReadInt/1000);
+      end;
+
+    end
+    else
+    begin
+      b:= frame.ReadChar; //új gun koordináták száma
+      c:= frame.ReadChar; //új tech koordináták száma
+
+      setlength(warevent_gunspawns, length(warevent_gunspawns)+b);
+      for i:=high(warevent_gunspawns)-b+1 to high(warevent_gunspawns) do
+      begin
+        warevent_gunspawns[i]:=D3dxvector3(frame.ReadInt/1000,frame.ReadInt/1000,frame.ReadInt/1000);
+      end;
+
+      setlength(warevent_techspawns, length(warevent_techspawns)+c);
+      for i:=high(warevent_techspawns)-c+1 to high(warevent_techspawns) do
+      begin
+        warevent_techspawns[i]:=D3dxvector3(frame.ReadInt/1000,frame.ReadInt/1000,frame.ReadInt/1000);
+      end;
+    end;
+  end
+  else
+  begin
+    //ha nem akkor minden más
+    warevent:=nthBit(b,1);
+    warevent_dm:=nthBit(b,2);
+    warevent_name:=frame.ReadString;
+    warevent_respawn:=frame.ReadChar;
+    warevent_invul:=frame.ReadChar;
+    setlength(warevent_spawns, 0);//ha váltás van, akkor reset
+    setlength(warevent_gunspawns, 0);
+    setlength(warevent_techspawns, 0);
+  end;
+end;
+
 constructor TMMOServerClient.Create(ahost:string;aport:integer;anev,ajelszo:string;afegyver,afejcucc:integer);
 begin
  inherited Create;
@@ -610,7 +688,6 @@ begin
    szerveraddr.sin_addr:=gethostbynamewrap(servername);
    szerveraddr.sin_port := htons(25252);
    sock:=TBufferedSocket.Create(CreateClientSocket(szerveraddr));
-   
    {$IFDEF fakenetchecksum}
    SendLogin(nev,jelszo,fegyver,fejcucc,myport,datachecksum);
    {$ELSE}
@@ -648,6 +725,7 @@ begin
    SERVERMSG_EVENT: ReceiveEvent(frame);
    SERVERMSG_1V1: Receive1v1(frame);
    SERVERMSG_MEDAL: ReceiveMedal(frame);
+   SERVERMSG_WAREVENT: ReceiveWarEvent(frame);
   end;
  end;
  frame.Free;
@@ -664,7 +742,7 @@ begin
  SendChat(copy(mit,2,256));
 end;
 
-procedure TMMOServerClient.Killed(kimiatt:integer;died:bool); //ez nem UID, hanem ppl index
+procedure TMMOServerClient.Killed(kimiatt:integer); //ez nem UID, hanem ppl index
 begin
  if kimiatt>-1 then
   SendKill(ppl[kimiatt].net.UID);
@@ -767,6 +845,23 @@ begin
  end;
 end;
 
+procedure TUDPFrame.WritePackedPos(mit:TD3DXVector3); //HA TROLLED
+begin
+ WriteFloat(mit.x);
+ WriteFloat(mit.y);
+ WriteFloat(mit.z);
+end;
+
+function TUDPFrame.ReadPackedPos:TD3DXVector3;
+begin
+ with result do
+ begin
+  x:=ReadFloat;
+  y:=ReadFloat;
+  z:=ReadFloat;
+ end;
+end;
+    {
 procedure TUDPFrame.WritePackedPos(mit:TD3DXVector3);
 begin
  WritePackedFloat(mit.x,2500);
@@ -782,7 +877,7 @@ begin
   y:=ReadPackedFloat(400);
   z:=ReadPackedFloat(2500);
  end;
-end;
+end;   {}
 
 procedure TMMOPeerToPeer.ReceiveHandshake(port:word;frame:TUDPFrame);
 var
@@ -833,7 +928,7 @@ begin
    pos.seb:=frame.ReadPackedVector(1);
 
    pos.irany:= unpackfloatheavy(frame.ReadChar,D3DX_PI);
-   pos.irany2:=unpackfloatheavy(frame.ReadChar,D3DX_PI);
+   //pos.irany2:=unpackfloatheavy(frame.ReadChar,D3DX_PI);
    pos.state:=frame.ReadChar;
    net.kapottprior:=frame.ReadPackedFloat(1);
 
@@ -856,6 +951,7 @@ begin
 
    for i:=0 to ((lovesbyte shr 3) and 15)-1 do
    begin
+    pls.lo:=holindul(pls.fegyv);
     d3dxvec3add(lovesek[volthgh+i].pos,pos.megjpos,
                 D3DXVector3(0.7*sin(pos.irany),1.5,0.7*cos(pos.irany)));
     if 0<(pos.state and MSTAT_CSIPO) then
@@ -1043,6 +1139,16 @@ lovesbyte:byte;
 autobyte:byte;
 gtc:integer;
 begin
+
+ {$IFDEF fakepos}
+  posx:=0;
+  posy:=0;
+  posz:=0;
+  oposx:=0;
+  oposy:=0;
+  oposz:=0;
+ {$ENDIF}
+
  while sock.Recv(arr,ip,port) do
  begin
   frame:=TUDPFrame.CreateFromData(arr);
@@ -1122,7 +1228,7 @@ begin
    frame.WritePackedVector(D3DXVector3(posx-oposx,posy-oposy,posz-oposz),1);
 
    frame.WriteChar(packfloatheavy(iranyx,D3DX_PI));
-   frame.WriteChar(packfloatheavy(iranyy,D3DX_PI));
+   //frame.WriteChar(packfloatheavy(iranyy,D3DX_PI)); most még nem
    frame.WriteChar(state);
    frame.WritePackedFloat(ppl[i].net.nekemprior,1);
 
@@ -1265,7 +1371,7 @@ begin
  if ppl[i].net.connected then
  begin
   if (TavPointLine2(ppl[i].pos.megjpos,v1,v2)<0) or
-     (myfegyv=FEGYV_LAW) or (myfegyv=FEGYV_NOOB) or (myfegyv=FEGYV_X72) then
+     (myfegyv=FEGYV_LAW) or (myfegyv=FEGYV_NOOB) or (myfegyv=FEGYV_X72) or (myfegyv=FEGYV_H31_T) or (myfegyv=FEGYV_H31_G) then
   begin
    if ppl[i].net.ploveseksz<7 then
    begin

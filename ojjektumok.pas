@@ -5,7 +5,7 @@ unit ojjektumok;
 {.$DEFINE reKD}
 {.$DEFINE tereprendezes}
 interface
-uses sysutils,windows,typestuff,math,Direct3d9,d3dx9,graphics;
+uses sky,sysutils,windows,typestuff,math,Direct3d9,d3dx9,graphics;
 type
 
  PminmaxTriarr=^Tminmaxtriarr;
@@ -96,7 +96,7 @@ type
   drawtable:array of T3DOR_DrawData;
 
   constructor Create(ad3ddevice:IDirect3DDevice9);
-  procedure Draw(detail:integer;g_pEffect:ID3DXEffect;renderimposters:boolean);
+  procedure Draw(detail:integer;g_pEffect:ID3DXEffect;renderimposters:boolean; var felho:TFelho);
   procedure DrawOne(ind1,ind2:integer);
   procedure RefreshImposters(mhk:TD3DXVector3);
   Destructor Destroy; reintroduce;
@@ -1670,7 +1670,7 @@ begin
 
 end;
 
-procedure T3DORenderer.Draw(detail:integer;g_pEffect:ID3DXEffect;renderimposters:boolean);
+procedure T3DORenderer.Draw(detail:integer;g_pEffect:ID3DXEffect;renderimposters:boolean; var felho:TFelho);
 var
 i,j,jj,k:integer;
 aabb:TAABB;
@@ -1681,9 +1681,8 @@ hdrszorzo:single;
 vec:TD3DXVector3;
 emit:boolean;
 begin
+ renderimposters:=false;
 
-
-        
  g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iFalse);
  g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
  g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $A0);
@@ -1808,7 +1807,10 @@ begin
     g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
     g_peffect.SetFloat ('FogStart',fogstart);
     g_peffect.SetFloat ('FogEnd',fogend);
-    g_peffect.SetFloat ('Fogc',fogc);
+    if felho.coverage > 5 then
+    g_peffect.SetFloat ('Fogc',fogc)
+    else
+    g_peffect.SetFloat ('Fogc',0.5);
     g_peffect.SetBool ('vanNormal',ojjektumtextures[k].normalmap);
     g_pEffect.SetTexture('g_MeshTexture', ojjektumtextures[k].tex);
     if ojjektumtextures[k].normalmap then
@@ -1816,8 +1818,15 @@ begin
     g_pEffect.SetBool('vanNormal',ojjektumtextures[k].normalmap);
     g_pEffect.SetTexture('g_MeshLightmap',lightmap);
     g_pEffect.SetFloat ('HDRszorzo',HDRszorzo);
+    if felho.coverage > 5 then begin //napos
     g_pEffect.SetFloat ('specHardness',ojjektumtextures[k].specHardness);
     g_pEffect.SetFloat ('specIntensity',ojjektumtextures[k].specIntensity);
+    end
+    else
+    begin //esõs
+    g_pEffect.SetFloat ('specHardness',ojjektumtextures[k].specHardness * 2);
+    g_pEffect.SetFloat ('specIntensity',ojjektumtextures[k].specIntensity * 2);
+    end;
 
 
     if myfegyv=FEGYV_MPG then g_pEffect.setVector('lightColor',Vec4fromCardinal(weapons[1].col[1]))
@@ -1827,6 +1836,8 @@ begin
     if myfegyv=FEGYV_NOOB then g_pEffect.setVector('lightColor',Vec4fromCardinal(weapons[3].col[1]))
     else
     if myfegyv=FEGYV_x72 then g_pEffect.setVector('lightColor',Vec4fromCardinal(weapons[4].col[1]))
+    else
+    if (myfegyv=FEGYV_H31_T) or (myfegyv=FEGYV_H31_G) then g_pEffect.setVector('lightColor',Vec4fromCardinal($1A572A))
     else
     g_pEffect.setVector('lightColor',D3DXVector4(1,0.97,0.6,1));
 
