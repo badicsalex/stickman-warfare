@@ -467,8 +467,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=209000;
-  datachecksum=$71AFE258;
+  PROG_VER=209010;
+  datachecksum=$83DC3EF0;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -486,7 +486,7 @@ var
   hudInfoFade:word;
   hudInfoColor:longword;
 
-  isHalloween:boolean=true;
+  isEventWeapon:boolean=false;
   unfocused:boolean;
   multisampling:integer=0;
   SCwidth:integer=800;

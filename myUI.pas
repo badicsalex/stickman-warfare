@@ -80,7 +80,8 @@ type
    lowermenutext:String;
    sens:single;
    splashinfo:TD3DXImageInfo;
-   splashsize:integer;
+   splashwidth,splashheight:integer;
+   splashratio:single;
 
    medal:string;
    medaltex:IDirect3DTexture9;
@@ -407,9 +408,12 @@ begin
 
  splashnev:=stuffjson.GetString(['splashes',random(stuffjson.GetNum(['splashes']))]);
  D3DXGetImageInfoFromFile(PChar('data/gui/' + splashnev),splashinfo); //feltételezzük, hogy egyformák a splashek
- splashsize:=splashinfo.Width div round(power(2,2-texture_res));
- if safemode then splashsize:=256;
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,Pchar('data/gui/' + splashnev),splashsize,splashsize,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil,splash)) then
+
+ splashratio:=splashinfo.Width/splashinfo.Height;
+ splashwidth:=round(SCheight*splashratio);
+ splashheight:=SCheight;
+
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,Pchar('data/gui/' + splashnev),splashwidth,splashheight,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil,splash)) then
  begin
    writeln(logfile,'Could not load data/gui/' + splashnev);flush(logfile);
    Exit;
@@ -992,6 +996,7 @@ var
 mat:TD3DMatrix;
 apos:TD3DXVector3;
 fullrect:Trect;
+shift,ratio:single;
 begin
    if szazalek<=100 then
    g_pd3dDevice.Clear(0, nil, D3DCLEAR_TARGET or D3DCLEAR_ZBUFFER,
@@ -999,33 +1004,33 @@ begin
   // Begin the scene
   if SUCCEEDED(g_pd3dDevice.BeginScene) then
   begin
-//   if not safemode then
-   d3dxmatrixscaling(mat,SCWidth/splashsize,SCHeight/splashsize,1);
-//   else
-//   d3dxmatrixscaling(mat,SCWidth/512,SCHeight/512,1);
+   D3DXMatrixIdentity(mat);
    g_pSprite._Begin(D3DXSPRITE_ALPHABLEND);
    if szazalek<=100 then
    begin
    g_psprite.SetTransform(mat);
-   apos:=D3DXVector3(0,0,0);
+   apos:=D3DXVector3((SCwidth-splashwidth)/2,0,0);
    fullrect.Left:=0;
    fullrect.Top:=0;
    fullrect.Right:=800;
    fullrect.Bottom:=600;
    g_pSprite.Draw(splash,nil,nil,@apos,$FFFFFFFF);
 
+   ratio := SCheight*4/3/SCwidth;
+   shift := (1-ratio)/2;
+
    end;
    d3dxmatrixtranslation(mat,-20,-15,0);
    g_pSprite.SetTransform(mat);
    if szazalek<=100 then
    begin
-   Drawtext(lang[32]+' '+inttostr(szazalek)+'%   '+laststate,0.17+pixelX,0.97+pixelY,0.6,1,0,$88000000);
-   Drawtext(lang[32]+' '+inttostr(szazalek)+'%   '+laststate,0.17,0.97,0.6,1,0,color_menu_normal);
+   Drawtext(lang[32]+' '+inttostr(szazalek)+'%   '+laststate,shift+0.17+pixelX,0.97+pixelY,shift+0.6,1,0,$88000000);
+   Drawtext(lang[32]+' '+inttostr(szazalek)+'%   '+laststate,shift+0.17,0.97,shift+0.6,1,0,color_menu_normal);
    //if szazalek<=100 then
    //Drawtext(txt,0.2,0.6,0.8,0.7,0,color_menu_normal);
-   DrawRect(0.11,0.932,0.11+0.3*100*0.015,0.936,color_menu_normal);
-   DrawRect(0.11,0.928,0.11+0.3*szazalek*0.015,0.94,color_menu_normal);
-   DrawRect(0.11+pixelX,0.928+pixelY,0.11+0.3*szazalek*0.015-pixelX,0.94-pixelY,$FFF89030); //todo
+   DrawRect(shift+ratio*0.11,0.932,shift+ratio*(0.11+0.3*100*0.015),0.936,color_menu_normal);
+   DrawRect(shift+ratio*0.11,0.928,shift+ratio*(0.11+0.3*szazalek*0.015),0.94,color_menu_normal);
+   DrawRect(shift+ratio*0.11+pixelX,0.928+pixelY,shift+ratio*(0.11+0.3*szazalek*0.015)-pixelX,0.94-pixelY,$FFF89030); //todo
 
   end;
 

@@ -13,11 +13,11 @@
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
 {.$DEFINE undebug}
-{$DEFINE panthihogomb}
+{.$DEFINE panthihogomb}
 {.$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
 {.$DEFINE repkedomod}
-{$DEFINE winter}
+{.$DEFINE winter}
 {.$DEFINE godmode}
 {.$DEFINE admingun}
 {.$DEFINE palyszerk}
@@ -6874,6 +6874,7 @@ begin
   if multisc.doevent='portal' then
   portalevent.phs:=1;
 
+
   if multisc.doevent='disablekill' then
   disablekill := true;
 
@@ -8537,7 +8538,7 @@ begin
  //   menu.drawtext('TRUE',0.9,0.8,1,2,2,$80FFFFFF)
  // else  menu.drawtext('FALSE',0.9,0.8,1,2,2,$80FFFFFF);
  // if multip2p.voltfalse then menu.drawtext('VOLT!',0.6,0.8,1,2,2,$80FFFFFF);
- //if (currevent <> nil) then menu.drawtext(inttostr(currevent.phs),0.7,0.9,1,1,2,$70000000+betuszin);
+ if (currevent <> nil) then menu.drawtext(inttostr(currevent.phs)+currevent.ClassName,0.7,0.9,1,1,2,$70000000+betuszin);
   //menu.drawtext( floattostr(kiszall_cooldown),0.2,0.9,0.8,1,2,$70000000+betuszin);
   //menu.drawtext(inttostr(length(particles))+'/'+inttostr(particlehgh),0.2,0.9,0.8,1,false,$70000000+betuszin);
   //if not nofegyv then menu.drawtext('nofegyv',0.2,0.9,0.8,1,2,$70000000+betuszin);
@@ -10642,7 +10643,7 @@ begin
     menufi[MI_FEGYV].valueS:='MP5A3';
    end;
   FEGYV_MP5A3:
-  if isHalloween then
+  if isEventWeapon then
    begin
     myfegyv:=FEGYV_H31_G;
     menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_H31_G);
@@ -10668,7 +10669,7 @@ begin
     menufi[MI_FEGYV].valueS:='X72';
    end;
   FEGYV_X72:
-  if isHalloween then
+  if isEventWeapon then
    begin
     myfegyv:=FEGYV_H31_T;
     menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_H31_T);
@@ -11225,9 +11226,9 @@ begin
   {$IFDEF repkedomod}
   if (chr(mit)='p') or (chr(mit)='P') then repules := not repules;
 //  if (chr(mit)='n') then addHudMessage('asd',$FF0000);;
-//  if (chr(mit)='x') then multisc.weather:=multisc.weather+1;
-//  if (chr(mit)='v') then multisc.weather:=0;
-  if (chr(mit)='r') then multisc.doevent:='spaceship';
+  if (chr(mit)='x') then multisc.weather:=multisc.weather+1;
+  if (chr(mit)='v') then multisc.weather:=0;
+  //if (chr(mit)='r') then multisc.doevent:='spaceship';
 
   {$ENDIF}
   {$IFDEF matieditor}
