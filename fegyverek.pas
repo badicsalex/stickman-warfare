@@ -363,7 +363,7 @@ begin
 
  if not LTFF(g_pd3dDevice, fnev+'.jpg',m4tex) then
    Exit;
-  if not LTFF(g_pd3dDevice, 'data\scale.png',scaltex) then
+  if not LTFF(g_pd3dDevice, 'data/gui/scale.png',scaltex) then
    Exit;
 
 
@@ -522,10 +522,10 @@ begin
  betoltve:=false;
  g_pD3Ddevice:=a_D3Ddevice;
  addfiletochecksum(fnev+'.x');
- if not LTFF(g_pd3dDevice, 'data\m4a1muzz.jpg',m4tex) then
+ if not LTFF(g_pd3dDevice, 'data/models/m4a1muzz.jpg',m4tex) then
    Exit;
 
- if not LTFF(g_pd3dDevice, fnev+'.jpg',m4tex) then
+ if not LTFF(g_pd3dDevice,fnev+'.jpg',m4tex) then
    Exit;
 
   makemuzzle;
@@ -649,7 +649,7 @@ begin
  g_pD3Ddevice:=a_D3Ddevice;
  addfiletochecksum(fnev+'.x');
 
- if not LTFF(g_pd3dDevice, fnev+'.jpg',m4tex) then
+ if not LTFF(g_pd3dDevice,fnev+'.jpg',m4tex) then
    Exit;
 
   makemuzzle;
@@ -1242,34 +1242,34 @@ begin
  inherited Create;
  betoltve:=false;
  g_pD3Ddevice:=a_D3Ddevice;
- addfiletochecksum('data\m4a1.x');
- M4A1:=TF_M4A1.create(a_D3Ddevice,'data\m4a1');
+ addfiletochecksum('data\models\m4a1.x');
+ M4A1:=TF_M4A1.create(a_D3Ddevice,'data\models\m4a1');
  if not M4A1.betoltve then exit;
- addfiletochecksum('data\m82.x');
- M82A1:=TF_M82A1.create(a_D3Ddevice,'data\m82');
+ addfiletochecksum('data\models\m82.x');
+ M82A1:=TF_M82A1.create(a_D3Ddevice,'data\models\m82');
  if not M82A1.betoltve then exit;
- addfiletochecksum('data\mpr.x');
- MPG:=TF_MPG.create(a_D3Ddevice,'data\mpg');
+ addfiletochecksum('data\models\mpr.x');
+ MPG:=TF_MPG.create(a_D3Ddevice,'data\models\mpg');
  if not MPG.betoltve then exit;
- addfiletochecksum('data\quad.x');
- quadgun:=TF_quadgun.create(a_D3Ddevice,'data\quad');
+ addfiletochecksum('data\models\quad.x');
+ quadgun:=TF_quadgun.create(a_D3Ddevice,'data\models\quad');
  if not quadgun.betoltve then exit;
- addfiletochecksum('data\law.x');
- law:=TF_law.create(a_D3Ddevice,'data\law');
+ addfiletochecksum('data\models\law.x');
+ law:=TF_law.create(a_D3Ddevice,'data\models\law');
  if not law.betoltve then exit;
- addfiletochecksum('data\noobcannon.x');
- noobcannon:=TF_noobcannon.create(a_D3Ddevice,'data\noobcannon');
+ addfiletochecksum('data\models\noobcannon.x');
+ noobcannon:=TF_noobcannon.create(a_D3Ddevice,'data\models\noobcannon');
  if not noobcannon.betoltve then exit;
- Mp5a3:=TF_Mp5a3.create(a_D3Ddevice,'data\Mp5');
+ Mp5a3:=TF_Mp5a3.create(a_D3Ddevice,'data\models\Mp5');
  if not Mp5a3.betoltve then exit;
- addfiletochecksum('data\x72.x');
- x72:=TF_x72.create(a_D3Ddevice,'data\x72');
+ addfiletochecksum('data\models\x72.x');
+ x72:=TF_x72.create(a_D3Ddevice,'data\models\x72');
  if not x72.betoltve then exit;
 
- if not LTFF (g_pd3dDevice,'data\m4a1muzz.jpg',gunmuztex) then
+ if not LTFF (g_pd3dDevice,'data\models\m4a1muzz.jpg',gunmuztex) then
    Exit;
 
- if not LTFF (g_pd3dDevice,'data\mpgmuzzn.jpg',mpgmuztex) then
+ if not LTFF (g_pd3dDevice,'data\models\mpgmuzzn.jpg',mpgmuztex) then
    Exit;
 
  if not LTFF (g_pd3dDevice,'data\pju.png',x72muztex) then

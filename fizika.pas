@@ -23,7 +23,7 @@ type
   gmbk,voltgmbk:Tgmbk;                                  //meglövési erõ      meglõtt gömb
   szin:cardinal;
   constructor create(mat:TD3DMatrix;Muks:TMuksoka;pos,vpos,gmbvec:TD3DXVector3;mlgmb:byte;azID,aszin:cardinal);
-  procedure step(advwove:Tadvwove;nondis:boolean;nemviz:boolean);
+  procedure step(advwove:Tadvwove;nondis:boolean;bubi:boolean);
   procedure transfertomuks(muks:Tmuksoka);
  end;
 
@@ -127,7 +127,7 @@ begin
  disabled:=false;
 end;
 
-procedure TRongybaba.step(advwove:Tadvwove;nondis:boolean;nemviz:boolean);
+procedure TRongybaba.step(advwove:Tadvwove;nondis:boolean;bubi:boolean);
 var
 i,j:integer;
 tmp,pa,pb,norm:TD3DXVector3;
@@ -149,7 +149,8 @@ begin
 
   tmp:=gmbk[i];
   //gmbk[i]:=gmbk[i]*2-voltgmbk[i];
-  if ((gmbk[i].y<10) and not nemviz) then begin
+  if ((gmbk[i].y<10) and not bubi) then begin
+  //vízben
   gmbk[i].x:=gmbk[i].x +(gmbk[i].x-voltgmbk[i].x)*0.98;
   gmbk[i].y:=gmbk[i].y +(gmbk[i].y-voltgmbk[i].y)*0.98+GRAVITACIO/30;
   gmbk[i].z:=gmbk[i].z +(gmbk[i].z-voltgmbk[i].z)*0.98;

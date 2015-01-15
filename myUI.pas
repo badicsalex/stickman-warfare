@@ -4,7 +4,7 @@ interface
 uses  Windows, SysUtils, typestuff,Direct3D9,D3DX9,directinput,sha1;
 
 type
-  Tmatteg= record
+  Tmatteg= record                                                                                                   
    mats:array [0..8] of D3DMatrix;
    //Color:cardinal;
    visible:boolean;
@@ -48,7 +48,7 @@ type
 
   T3DMIcsuszka = class (T3DMenuItem)
    hely:TD3DXVector3;
-   mmat:TD3DMatrix;
+   mmat,mmat2:TD3DMatrix;
    constructor create(aminx,aminy,amaxx,amaxy:single;value:single);
    procedure Draw(font:ID3DXFont;sprit:ID3DXSprite);override;
   end;
@@ -66,7 +66,7 @@ type
   private
    g_pd3ddevice:IDirect3DDevice9;
   public
-   g_pfont,g_pfontmini,g_pfontchat:ID3DXFont;
+   g_pfont,g_pfontmini,g_pfontingame,g_pfontchat:ID3DXFont;
    fckep:IDirect3DTexture9;
    chatbubble:IDirect3DTexture9;
    glyphs,cglyphs:IDirect3DTexture9;
@@ -102,9 +102,9 @@ type
    procedure AddText(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;fable:boolean);
    procedure AddTextBox(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;maxs:integer);
    procedure AddPasswordBox(aminx,aminy,amaxx,amaxy,scala:single;alap:integer;szoveghossz:integer;maxs:integer;amd5hex:string);
-   procedure AddCsuszka(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;valu:single);
+   procedure AddCsuszka(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;value:single);
    procedure Addteg(aminx,aminy,amaxx,amaxy:single;alap:integer);
-   procedure Draw;
+   procedure Draw(opacity:single);
    procedure DrawKerekitett(mit:Tmatteg);
    procedure DrawLoadScreen(szazalek:byte);
    procedure DrawMedal;
@@ -126,12 +126,12 @@ type
 
 MFIEnumTyp=(MI_NEV,MI_TEAM,MI_FEGYV,MI_HEAD,MI_CONNECT,MI_REGISTERED,MI_PASS_LABEL,
            MI_GRAPHICS,MI_SOUND,MI_CONTROLS,
-           MI_EFFECTS,MI_DETAIL,MI_RAIN,MI_WIDESCREEN,MI_SCREENSHOT,MI_IMPOSTER,
+           MI_DETAIL,MI_EFFECTS,MI_WATER,MI_PARTICLE,MI_MOTIONBLUR,MI_GLOW,MI_RAIN,MI_SCREENSHOT,MI_IMPOSTER,
            MI_VOL,MI_MP3_VOL,MI_TAUNTS,MI_R_ACTION,MI_R_AMBIENT,MI_R_CAR,
            MI_MOUSE_SENS,MI_MOUSE_SENS_LAB,MI_MOUSE_ACC,
            MI_GAZMSG,
            MI_HEADBAL,MI_HEADJOBB,
-           MI_INTERFACE,MI_RADAR,MI_CHAT,MI_ZONES);
+           MI_INTERFACE,MI_RADAR,MI_CHAT,MI_ZONES,MI_SAVEPW);
 var
  menufi:array [MFIEnumTyp] of T3DMenuItem;
  menufipass:T3DMIPasswordBox;
@@ -155,10 +155,10 @@ begin
  inherited create;
  scale:=scala;
  minx:=aminx;miny:=aminy;maxx:=amaxx;maxy:=amaxy;
- rect.Left:=round(aminx*1024);
- rect.Right:=round(amaxx*1024);
- rect.top:=round(aminy*1024);
- rect.bottom:=round(amaxy*1024);
+ rect.Left:=round(aminx*SCwidth);
+ rect.Right:=round(amaxx*SCwidth);
+ rect.top:=round(aminy*SCheight);
+ rect.bottom:=round(amaxy*SCheight);
  ValueS:=szoveg;
  focusable:=fable;
  handleschar:=false;
@@ -189,39 +189,38 @@ begin
  inherited create;
  scale:=scala;
  minx:=aminx;miny:=aminy;maxx:=amaxx;maxy:=amaxy;
- rect.Left:=round(aminx*1024)+10;
- rect.Right:=round(amaxx*1024);
- rect.top:=round(aminy*1024);
- rect.bottom:=round(amaxy*1024);
- hely:=D3DXVector3(aminx*1024,aminy*1024,0);
+ rect.Left:=round(aminx*SCwidth)+round(5*vertScale);
+ rect.Right:=round(amaxx*SCwidth);
+ rect.top:=round(aminy*SCheight+1);
+ rect.bottom:=round((amaxy-0.01)*SCheight);
+ hely:=D3DXVector3(aminx*SCwidth/((amaxx-aminx)*SCwidth/256),aminy*SCheight/((amaxy-aminy)*SCheight/32),0);
  Value:=maxs;
  ValueS:=szoveg;
  focusable:=true;
  handleschar:=true;
- d3dxmatrixscaling(mmat,2,(amaxy-aminy)*1024/2,0);
- mmat._42:=aminy*1024+5;
-  visible:=true;
+ d3dxmatrixscaling(mmat,(amaxx-aminx)*SCwidth/256,(amaxy-aminy)*SCheight/32,0);
+ 
+ visible:=true;
 end;
 
 procedure T3DMITextBox.Draw(font:ID3DXFont;sprit:ID3DXSprite);
 var
 rect2:Trect;
 mat2:TD3DMatrix;
+//center:TD3DXVector3;
 begin
  if not visible then exit; visible:=true;
+
+  sprit.GetTransform(mat2);
+  sprit.SetTransform(mmat);
   sprit.Draw(boxtex,nil,nil,@hely,$C0FFFFFF);
-  rect2:=rect;
-  font.DrawTextA(sprit,Pchar(ValueS),length(values),@rect,DT_VCENTER,$FFFFC070);
+  sprit.SetTransform(mat2);
+  //font.DrawTextA(sprit,Pchar(ValueS),length(values),@rect,DT_VCENTER,$FFFFC070);
   if ((gettickcount mod 700)>350) and clicked then
-  begin
-   rect2.Right:=rect2.left*+2;
-   font.DrawTextA(sprit,Pchar(ValueS),length(values),@rect2,DT_CALCRECT,$FFFFC070);
-   mmat._41:=rect2.right;
-   sprit.GetTransform(mat2);
-   d3dxmatrixmultiply(mat2,mmat,mat2);
-   sprit.SetTransform(mat2);
-   sprit.Draw(feh,nil,nil,nil,$FFFFC070);
-  end;
+  font.DrawTextA(sprit,Pchar(ValueS+'|'),length(values)+1,@rect,DT_VCENTER,$FFFFC070)
+  else
+  font.DrawTextA(sprit,Pchar(ValueS),length(values),@rect,DT_VCENTER,$FFFFC070);
+
 end;
 
 procedure T3DMITextBox.HandleChar(mit:char);
@@ -248,11 +247,15 @@ begin
  SHA1Init(sha1cnt);
  SHA1Update(sha1cnt,@sha1so[1],length(sha1so));
  sha1hex:=asha1hex;
+ if not (lasthash = '-') then
+ ValueS:='********';
 end;
 
 procedure T3DMIPasswordBox.HandleChar(mit:char);
 begin
  if mit=chr(VK_TAB) then exit;
+
+ lasthash:='-';
 
 
  if (mit=chr(VK_BACK)) or (sha1hex<>'') then
@@ -284,6 +287,7 @@ begin
    sha1hex:=SHA1GetHex(dig);
   end
   else
+//   sha1hex:='----------------------------------------';
    sha1hex:='';
   result:=sha1hex;
  end;
@@ -291,20 +295,27 @@ end;
 
 
 constructor T3DMIcsuszka.create(aminx,aminy,amaxx,amaxy:single;value:single);
+var
+tmpm:TD3DMatrix;
 begin
  inherited create;
  minx:=aminx;miny:=aminy;maxx:=amaxx;maxy:=amaxy;
- rect.Left:=round(aminx*1024);
- rect.Right:=round(amaxx*1024);
- rect.top:=round(aminy*1024);
- rect.bottom:=round(amaxy*1024);
- hely:=D3DXVector3(aminx*1024,aminy*1024,0);
+ rect.Left:=round(aminx*SCwidth);
+ rect.Right:=round(amaxx*SCwidth);
+ rect.top:=round(aminy*SCheight);
+ rect.bottom:=round(amaxy*SCheight);
  elx:=value;
  self.value:=value;
  focusable:=true;
- d3dxmatrixscaling(mmat,(amaxx-aminx)*1024/(256),(amaxy-aminy)*1024/128,1);
- mmat._42:=aminy*1024;
- mmat._41:=aminx*1024;
+ d3dxmatrixscaling(tmpm,(amaxx-aminx)*SCwidth/(256),(amaxy-aminy)*SCheight/16/4,0);
+ D3DXMatrixTranslation(mmat,aminx*SCwidth/((amaxx-aminx)*SCwidth/(256)),aminy*SCheight/((amaxy-aminy)*SCheight/16/4),0);
+ D3DXMatrixMultiply(mmat,mmat,tmpm);
+
+ d3dxmatrixscaling(tmpm,(amaxx-aminx)*SCwidth/(256),(amaxy-aminy)*SCheight/128,0);
+ D3DXMatrixTranslation(mmat2,aminx*SCwidth/((amaxx-aminx)*SCwidth/(256)),aminy*SCheight/((amaxy-aminy)*SCheight/128),0);
+ D3DXMatrixMultiply(mmat2,mmat2,tmpm);
+
+
 end;
 
 procedure T3DMIcsuszka.Draw(font:ID3DXFont;sprit:ID3DXSprite);
@@ -312,16 +323,19 @@ var
 mat2:TD3DMatrix;
 begin
   value:=elx;
-  sprit.GetTransform(mat2);
-  d3dxmatrixmultiply(mat2,mmat,mat2);
-  sprit.SetTransform(mat2);
-  hely:=D3DXVector3(0,40,0);
-  sprit.Draw(csusz2tex,nil,nil,@hely,$FFFFFFFF);
+  sprit.getTransform(mat2);
+  sprit.SetTransform(mmat);
+
+  hely:=D3DXVector3(0,-16,0);
+  sprit.Draw(csusz2tex,nil,@hely,nil,$FFFFFFFF);
+
   hely:=D3DXVector3(value*256-8,0,0);
+  sprit.SetTransform(mmat2);
   if focused then
-   sprit.Draw(csusztex,nil,nil,@hely,$FFFFC007)
+  sprit.Draw(csusztex,nil,nil,@hely,$FFFFC007)
   else
-   sprit.Draw(csusztex,nil,nil,@hely,$FFF45E1B)
+  sprit.Draw(csusztex,nil,nil,@hely,$FFF45E1B);
+     sprit.SetTransform(mat2);
 end;
 
 
@@ -339,61 +353,64 @@ begin
  zeromemory(@keyb,sizeof(keyb));
  zeromemory(@lastkeyb,sizeof(lastkeyb));
  g_pd3ddevice:=aDevice;
- write(logfile,'Loading csicsafont...');flush(logfile);
+ write(logfile,'Loading fonts...');flush(logfile);
  if (AddFontResource('data\eurostar.ttf')=0) then
   writeln(logfile,'unsuccesful...');flush(logfile);
- write(logfile,'cf1, ');flush(logfile);
- if FAILED(D3DXCreateFont(g_pD3dDevice, 32, 0, FW_NORMAL  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Eurostar Black Extended', g_pFont )) then
-   if FAILED(D3DXCreateFont(g_pD3dDevice, 40, 0, FW_BOLD  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Arial', g_pFont )) then
+ write(logfile,'font, ');flush(logfile);
+ if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(12 + 12*(SCHeight/600)), 0, FW_NORMAL  , 0, FALSE, DEFAULT_CHARSET, OUT_STRING_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Eurostar Black Extended', g_pFont )) then
+   if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(15 + 15*(SCHeight/600)), 0, FW_BOLD  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Arial', g_pFont )) then
     Exit;
- write(logfile,'cf2, ');flush(logfile);
- if FAILED(D3DXCreateFont(g_pD3dDevice, 25, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontmini )) then
+  write(logfile,'fontmini, ');flush(logfile);
+ if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(9 + 9*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontmini )) then
    Exit;
-  writeln(logfile,'cf3.');flush(logfile);
- if FAILED(D3DXCreateFont(g_pD3dDevice, 13, 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontchat )) then
+  write(logfile,'fontingame, ');flush(logfile);
+ if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(12.5 + 12.5*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontingame )) then
+   Exit;
+  writeln(logfile,'fontchat.');flush(logfile);
+ if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(6.5 + 6.5*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontchat )) then
    Exit;
   write(logfile,'Other...');flush(logfile);
  if FAILED(D3DXCreateSprite(g_pd3dDevice,g_pSprite)) then
    Exit;
   writeln(logfile,'Textures...');flush(logfile);
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/feh.bmp', 2,2,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_FILTER_NONE,D3DX_DEFAULT,0,nil,nil,feh)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/textures/feh.bmp', 2,2,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_FILTER_NONE,D3DX_DEFAULT,0,nil,nil,feh)) then
  begin
-   writeln(logfile,'Could not load data/feh.bmp');flush(logfile);
+   writeln(logfile,'Could not load data/textures/feh.bmp');flush(logfile);
    Exit;
  end;
 
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/glyphs.bmp',32,32,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,glyphs)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/glyphs.bmp',32,32,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,glyphs)) then
  begin
-   writeln(logfile,'Could not load data/flyphs.bmp');flush(logfile);
+   writeln(logfile,'Could not load data/gui/glyphs.bmp');flush(logfile);
    Exit;
  end;
 
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/cglyphs.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_FILTER_NONE,D3DX_FILTER_NONE,0,nil,nil,cglyphs)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/cglyphs.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_FILTER_NONE,D3DX_FILTER_NONE,0,nil,nil,cglyphs)) then
  begin
-   writeln(logfile,'Could not load data/cglyphs.png');flush(logfile);
+   writeln(logfile,'Could not load data/gui/cglyphs.png');flush(logfile);
    Exit;
  end;
 
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/chtalul.bmp',32,32,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,chtalultex)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/chtalul.bmp',32,32,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,chtalultex)) then
  begin
-   writeln(logfile,'Could not load data/chtalul.bmp');flush(logfile);
+   writeln(logfile,'Could not load data/gui/chtalul.bmp');flush(logfile);
    Exit;
  end;
 
  betoltokep:= Random(7)+1;
  Str(betoltokep,szam);
- szam := 'data/splash' + szam + '.jpg';
+ szam := 'data/gui/splash' + szam + '.jpg';
  size :=1024;
  if safemode then size:=512;
  if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,Addr(szam[1]),size,size,0,0,D3DFMT_X8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FF000000,nil,nil,splash)) then
  begin
-   writeln(logfile,'Could not load data/splash'+IntToStr(betoltokep)+'.jpg');flush(logfile);
+   writeln(logfile,'Could not load data/gui/splash'+IntToStr(betoltokep)+'.jpg');flush(logfile);
    Exit;
  end;
 
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/circ2.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil,sarok)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/circ2.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil,sarok)) then
  begin
-   writeln(logfile,'Could not load data/circ2.png');flush(logfile);
+   writeln(logfile,'Could not load data/gui/circ2.png');flush(logfile);
    Exit;
  end;
 
@@ -402,19 +419,19 @@ end;
 
 procedure T3DMenu.Finishcreate;
 begin
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/logo0.png',512,256,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo0)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/logo0.png',trunc(512*vertScale),trunc(256*vertScale),0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo0)) then
    Exit;
 
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/4919.png',256,128,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo2)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/4919.png',256,128,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil, logo2)) then
    Exit;
 
- if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/cursor.png',64,64,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,cursor)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/cursor.png',64,64,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,cursor)) then
    Exit;
- if FAILED(D3DXCreateTextureFromFileEx( g_pd3dDevice,'data/beiro.png',250,25,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,boxtex)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/beiro.png',250,25,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFFF,nil,nil,boxtex)) then
    Exit;
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/csuszka.png',16,128,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusztex)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/csuszka.png',16,128,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusztex)) then
    Exit;
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/cssin.png',256,32,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusz2tex)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/cssin.png',256,32,0,0,D3DFMT_UNKNOWN,D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,$FFFFFFF0,nil,nil,csusz2tex)) then
    Exit;
 
  splash:=nil;
@@ -456,8 +473,8 @@ begin
  begin
   if items[lap,i].focusable and items[lap,i].visible then
    with items[lap,i].rect do
-    if (Left<mousepos.x*1024) and (Right>mousepos.x*1024)
-     and (top<mousepos.y*1024) and (Bottom>mousepos.y*1024) then
+    if (Left<mousepos.x*SCwidth) and (Right>mousepos.x*SCwidth)
+     and (top<mousepos.y*SCheight) and (Bottom>mousepos.y*SCheight) then
      items[lap,i].focused:=true
     else
      items[lap,i].focused:=false;
@@ -472,11 +489,12 @@ begin
  begin
   if items[lap,i].focusable then
    with items[lap,i].rect do
-    if (Left<mousepos.x*1024) and (Right>mousepos.x*1024)
-     and (top<mousepos.y*1024) and (Bottom>mousepos.y*1024) then
+    if (Left<mousepos.x*SCwidth) and (Right>mousepos.x*SCwidth)
+     and (top<mousepos.y*SCheight) and (Bottom>mousepos.y*SCheight) then
      begin
-       items[lap,i].elx:=(mousepos.x*1024-left)/(right-left);
-       items[lap,i].ely:=(mousepos.y*1024-top)/(bottom-top);
+       items[lap,i].elx:=(mousepos.x*SCwidth-left)/(right-left);
+       items[lap,i].ely:=(mousepos.y*SCheight-top)/(bottom-top);
+       if (lap=4) and (i=8) then
      end;
  end;
 end;
@@ -606,13 +624,13 @@ apos:TD3DXvector3;
 begin
 
 
-   a:=SCwidth/1024;
- mat._11:=a;mat._12:=0;mat._13:=0;mat._14:=0;
- mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
- mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
- mat._41:=0;mat._42:=0;mat._43:=0;mat._44:=1;
+ //  a:=SCwidth/1024;
+ //mat._11:=a;mat._12:=0;mat._13:=0;mat._14:=0;
+ //mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
+ //mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
+ //mat._41:=0;mat._42:=0;mat._43:=0;mat._44:=1;
 
-  g_pSprite.SetTransform(mat);
+ // g_pSprite.SetTransform(mat);
   state := GetTickCount - medalanimstart;
   if state>2000 then
     medalanimstart:=0;
@@ -630,18 +648,19 @@ begin
 end;
 
 
-procedure T3DMenu.Draw;
+procedure T3DMenu.Draw(opacity:single);
 var
 a:single;
 i:integer;
 mat:TD3DMatrix;
 apos:TD3DXvector3;
+AlphaValue:DWORD;
 begin
- a:=SCwidth/1024;
- mat._11:=a;mat._12:=0;mat._13:=0;mat._14:=0;
- mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
- mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
- mat._41:=0;mat._42:=0;mat._43:=0;mat._44:=1;
+ //a:=SCwidth/1024;
+ //mat._11:=a;mat._12:=0;mat._13:=0;mat._14:=0;
+ //mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
+ //mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
+ //mat._41:=0;mat._42:=0;mat._43:=0;mat._44:=1;
  //g_pd3dDevice.Clear(0, nil, D3DCLEAR_TARGET or D3DCLEAR_ZBUFFER,
   //                    $FFFFFFFF, 1.0, 0);
   // Begin the scene
@@ -649,24 +668,25 @@ begin
   begin
    g_pSprite._Begin(D3DXSPRITE_ALPHABLEND);
    g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+   AlphaValue := D3DCOLOR_ARGB(trunc(opacity*256),255,255,255);
+
+   g_pd3dDevice.SetTextureStageState(0, D3DTSS_CONSTANT, AlphaValue);
+   g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_CONSTANT);
    
-   g_pSprite.SetTransform(mat);
-   apos:=D3DXVector3(512-256,-20,0);
+   //g_pSprite.SetTransform(mat);
+   apos:=D3DXVector3(SCwidth/2-trunc(256*vertScale),-trunc(45*vertScale),0);
    g_pSprite.Draw(logo0,nil,nil,@apos,$FFFFFFFF);
 
-   apos:=D3DXVector3(1024-256,768-100,0);
+   apos:=D3DXVector3(SCwidth-192-trunc(64*vertScale),SCheight-50-trunc(50*vertScale),0);
    g_pSprite.Draw(logo2,nil,nil,@apos,$FFFFFFFF);
 
-   mat._22:=a*3/4;
-  { g_pSprite.SetTransform(mat);
-   g_pSprite.Draw(hatter,nil,nil,nil,$FFFFFFFF);  }
    for i:=0 to high(tegs[lap]) do
    if tegs[lap,i].visible then
     drawkerekitett(tegs[lap,i]);
    
    for i:=0 to high(items[lap]) do
    begin
-    g_pSprite.SetTransform(mat);
+    //g_pSprite.SetTransform(mat);
     if items[lap,i].scale>0.7 then
      items[lap,i].Draw(g_pFont,g_pSprite)
     else
@@ -676,19 +696,19 @@ begin
    g_pSprite.SetTransform(identmatr);
 
 //   Drawtext('Music: Unreal Superhero III Symphonic version by Jaakko Takalo',0.005,0.98,1,0.9,0,$FF000000);
-   Drawtext(lowermenutext,0.005,0.98,1,0.9,0,$FF000000);
+   Drawtext(lowermenutext,0.005,0.98,1,1,0,$FF000000);
    //stuffjson.GetString(['lower_menu_text'])
 
-   Drawtext('v2.'+inttostr((PROG_VER div 100) mod 100)+'.'+inttostr(PROG_VER  mod 100)+'.',0.8,0.85,1,0.9,1,$FF000000);
+   Drawtext('v2.'+inttostr((PROG_VER div 1000) mod 100)+'.'+inttostr((PROG_VER div 10) mod 100)+'.',0.8,0.85,1,0.9,1,$FF000000);
    mat._22:=a;
-   g_pSprite.SetTransform(mat);
+   //g_pSprite.SetTransform(mat);
 
 
-   apos:=D3DXVector3(720,450,0);
+   apos:=D3DXVector3(0.5*SCwidth+0.32*SCheight-vertScale*32,SCheight*0.62-vertScale*32,0);
    if lap=1 then g_psprite.Draw(fckep,nil,nil,@apos,$FFFFFFFF);
 
 
-   apos:=D3DXVector3(-mousepos.x*1024,-mousepos.y*768,0);
+   apos:=D3DXVector3(-mousepos.x*SCwidth,-mousepos.y*SCheight,0);
 
    g_pSprite.Draw(cursor,nil,@apos,nil,$FFFFFFFF);
    g_pSprite._End;
@@ -863,7 +883,7 @@ begin
   1:
   begin
 
-   g_pfontmini.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
+   g_pfontingame.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
   end;
   2:
   begin
@@ -987,15 +1007,13 @@ begin
    g_pSprite.SetTransform(mat);
    if szazalek<=100 then
    begin
-   Drawtext(lang[32]+' '+inttostr(szazalek)+'%',0.3265,0.972,0.6,1,0,$88000000);
-   Drawtext(lang[32]+' '+inttostr(szazalek)+'%',0.325,0.97,0.6,1,0,$FFF45E1B);
-   Drawtext(laststate,0.281,0.991,0.6,1,0,$88000000);
-   Drawtext(laststate,0.28,0.99,0.6,1,0,$FFF45E1B);
+   Drawtext(lang[32]+' '+inttostr(szazalek)+'%   '+laststate,0.17+pixelX,0.97+pixelY,0.6,1,0,$88000000);
+   Drawtext(lang[32]+' '+inttostr(szazalek)+'%   '+laststate,0.17,0.97,0.6,1,0,$FFF45E1B);
    //if szazalek<=100 then
    //Drawtext(txt,0.2,0.6,0.8,0.7,0,$FFF45E1B);
-   DrawRect(0.11,0.933,0.11+0.3*100*0.015,0.935,$FFF45E1B);
-   DrawRect(0.1085,0.927,0.1115+0.3*szazalek*0.015,0.942,$FFF45E1B);
-   DrawRect(0.11,0.928,0.11+0.3*szazalek*0.015,0.94,$FFF89030);
+   DrawRect(0.11,0.932,0.11+0.3*100*0.015,0.936,$FFF45E1B);
+   DrawRect(0.11,0.928,0.11+0.3*szazalek*0.015,0.94,$FFF45E1B);
+   DrawRect(0.11+pixelX,0.928+pixelY,0.11+0.3*szazalek*0.015-pixelX,0.94-pixelY,$FFF89030);
 
   end;
 
@@ -1014,10 +1032,10 @@ matika:TD3DMatrix;
 begin
  with matika do
  begin
-  _11:=(ax2-ax1)*SCwidth/2;_12:=0;_13:=0;_14:=0;
-  _21:=0;_22:=(ay2-ay1)*SCHeight/2;_23:=0;_24:=0;
+  _11:=int((ax2-ax1)*SCwidth/2);_12:=0;_13:=0;_14:=0;
+  _21:=0;_22:=int((ay2-ay1)*SCHeight/2);_23:=0;_24:=0;
   _31:=0;_32:=0;                   _33:=0;_34:=0;
-  _41:=ax1*SCWidth;_42:=ay1*SCHeight;_43:=0;_44:=1;
+  _41:=int(ax1*SCWidth);_42:=int(ay1*SCHeight);_43:=0;_44:=1;
  end;
  g_pSprite.SetTransform(matika);
  g_psprite.draw(feh,nil,nil,nil,color);
@@ -1041,10 +1059,10 @@ begin
  items[alap,high(items[alap])]:=T3DMIPasswordbox.create(aminx,aminy,amaxx,amaxy,scala,szoveghossz,maxs,amd5hex);
 end;
 
-procedure T3DMenu.AddCsuszka(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;valu:single);
+procedure T3DMenu.AddCsuszka(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;value:single);
 begin
  setlength(items[alap],length(items[alap])+1);
- items[alap,high(items[alap])]:=T3DMICsuszka.create(aminx,aminy,amaxx,amaxy,valu);
+ items[alap,high(items[alap])]:=T3DMICsuszka.create(aminx,aminy,amaxx,amaxy,value);
 end;
 
 procedure T3DMenu.AddTeg(aminx,aminy,amaxx,amaxy:single;alap:integer);

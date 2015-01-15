@@ -853,10 +853,10 @@ begin
 
 
   // Create renders target texture
-  hib := D3DXCreateTexture(g_pd3dDevice, 64,64,0, D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT, tex);
+  hib := D3DXCreateTexture(g_pd3dDevice, round(vertScale*64),round(vertScale*64),0, D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT, tex);
   if FAILED(hib) then
   begin
-    hib := D3DXCreateTexture(g_pd3dDevice, 64,64, 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, tex);
+    hib := D3DXCreateTexture(g_pd3dDevice, round(vertScale*64),round(vertScale*64), 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, tex);
     if FAILED(hib) then Exit;
   end;
 
@@ -864,7 +864,7 @@ begin
 
   // Create a ID3DXRenderToSurface to help render to a texture on cards
   // that don't support render targets
-  D3DXCreateRenderToSurface(g_pd3dDevice, 64, 64,
+  D3DXCreateRenderToSurface(g_pd3dDevice, round(vertScale*64), round(vertScale*64),
               D3DFMT_A8R8G8B8, true, D3DFMT_D16, RenderToTex);
   writeln(logfile,'Loaded head item displayer...');
   system.flush(logfile);

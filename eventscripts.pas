@@ -131,7 +131,7 @@ iii:TD3DXVector3;
 begin
  inherited create;
  g_pD3Ddevice:=adevice;
- if not LTFF (g_pd3dDevice,'data/frame.jpg',frametex) then
+ if not LTFF (g_pd3dDevice,'data/textures/frame.jpg',frametex) then
    Exit;
   if FAILED(D3DXLoadMeshFromX(PChar(dir+'portal.x'),0,g_pd3ddevice,nil,nil,nil,nil,framemesh)) then Exit;
 

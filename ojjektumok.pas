@@ -23,7 +23,7 @@ type
  T3dojjektum = class (Tobject)
  public
   myMesh:TStickMesh;
-  textures: array [0..20] of integer;
+  textures: array of integer;
   texszam:shortint;
   triangles,felestri,tmptri:Tacctriarr;
   lightmap:IDirect3DTexture9;
@@ -96,7 +96,7 @@ type
   drawtable:array of T3DOR_DrawData;
 
   constructor Create(ad3ddevice:IDirect3DDevice9);
-  procedure Draw(frust:TFrustum;g_pEffect:ID3DXEffect;matView,matProj:TD3DMatrix;fogstart,fogend:single;renderimposters:boolean);
+  procedure Draw(detail:integer;g_pEffect:ID3DXEffect;renderimposters:boolean);
   procedure DrawOne(ind1,ind2:integer);
   procedure RefreshImposters(mhk:TD3DXVector3);
   Destructor Destroy; reintroduce;
@@ -142,16 +142,14 @@ var
  ojjektumflags:array of cardinal;
 
 
- ojjektumTextures:array [0..100] of TojjektumTexture;
+ ojjektumTextures:array of TojjektumTexture;
  oTPszam:integer=-1;
  otNszam:integer=-1;
  currenttriarr:Tacctriarr;
  posrads:array of Tposrad;
  bubbles:array of Tbubble;
  lightmapbm:array [0..2047,0..2047,0..3] of byte;
- panthepulet:integer;
- portalepulet:integer;
- ATportalhely:integer;
+ panthepulet,piramis,portalepulet,ATportalhely:integer;
  DNSvec:TD3DXVector3;
  DNSrad:single;
 
@@ -180,6 +178,8 @@ begin
   if (nev='') then
    exit;
 
+
+
   for j:=0 to otnszam do
    if ojjektumtextures[j].name=nev then
    begin
@@ -187,7 +187,9 @@ begin
     exit;
    end;
 
- inc(otnszam);
+   inc(otnszam);
+   setlength(ojjektumTextures,otnszam+1);
+
 
  with ojjektumtextures[otnszam] do
  begin
@@ -210,11 +212,11 @@ begin
    else
    if special='alphatest' then
     alphatest:=true
-      else
+   else
    if special='decal' then
     decal:=true
    else
-      if special='emitting' then
+   if special='emitting' then
     emitting:=true;
   end;
 
@@ -230,22 +232,24 @@ begin
   specIntensity := 0.5;
   specIntensity:=stuffjson.GetFloat(['materials',nev,'specIntensity']);
 
+
+
+
   name:=nev;
   tex:=nil;
-  if not LTFF(a_d3dDevice,dir+'/'+nev,tex) then
+  if not LTFF(a_d3dDevice,'data/textures/'+nev,tex) then
    exit;
-  addfiletochecksum(dir+'/'+nev);
+  addfiletochecksum('data/textures/'+nev);
 
   hmnev:=stuffjson.GetString(['materials',nev,'heightmap']);
   if (hmnev<>'') then
-   if LTFF(a_d3dDevice,dir+'/'+hmnev,heightmap) then
-    addfiletochecksum(dir+'/'+hmnev);
+   if LTFF(a_d3dDevice,'data/textures/'+hmnev,heightmap) then
+    addfiletochecksum('data/textures/'+hmnev);
 
   normalnev:=stuffjson.GetString(['materials',nev,'normalmap']);
   if (normalnev<>'') then
-   if LTFF(a_d3dDevice,dir+'/'+normalnev,heightmap) then
+   if LTFF(a_d3dDevice,'data/textures/'+normalnev,heightmap) then
    begin
-    addfiletochecksum(dir+'/'+hmnev);
     normalmap := true;
    end;
 
@@ -317,6 +321,7 @@ begin
 
   i:= 0;
   texszam:=subsetszam;
+  setlength(textures,texszam);
   {$R+}
   while (i < subsetszam) do
   begin
@@ -1023,6 +1028,9 @@ begin
   if stuffjson.GetKey(['buildings'],i)='kispiri' then
    portalepulet:=i;
 
+  if stuffjson.GetKey(['buildings'],i)='mayan' then
+   piramis:=i;
+
   if stuffjson.GetKey(['buildings'],i)='portal_inst' then
    ATportalhely:=i;
 
@@ -1422,7 +1430,8 @@ begin
  g_pd3ddevice:=nil;
  inherited;
 end;
-                                       //MiHezKépest
+
+                               //MiHezKépest
 procedure T3DORenderer.RefreshImposters(mhk:TD3DXVector3);
 const
  MIN_FRESH=25;
@@ -1453,7 +1462,7 @@ begin
    inc(lstfrsh);
    hol:=ojjektumarr[i].holvannak[j];
    ttav:=tavpointpointsq(hol,mhk);
-   if ttav>sqr(max(150,ojjektumarr[i].rad2*4)) then
+   if ttav>sqr(max(150,ojjektumarr[i].rad2*12)) then  // a 12 az imposzer bekapcs távolság
    begin
     kelluj:=not imposter;
     qz:=1/ojjektumarr[i].rad;
@@ -1658,7 +1667,7 @@ begin
 
 end;
 
-procedure T3DORenderer.Draw(frust:TFrustum;g_pEffect:ID3DXEffect;matView,matProj:TD3DMatrix;fogstart,fogend:single;renderimposters:boolean);
+procedure T3DORenderer.Draw(detail:integer;g_pEffect:ID3DXEffect;renderimposters:boolean);
 var
 i,j,jj,k:integer;
 aabb:TAABB;
@@ -1670,11 +1679,13 @@ vec:TD3DXVector3;
 emit:boolean;
 begin
 
+
+        
  g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iFalse);
  g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
  g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $A0);
  g_pd3ddevice.SetRenderState(D3DRS_ALPHAFUNC,  D3DCMP_GREATER);
-                                                             
+
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_SELECTARG1);
  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,   FAKE_HDR);
 
@@ -1744,18 +1755,14 @@ begin
  for k:=0 to OTnSzam do
  begin
 
+
+  g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
+  g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
+   
   if ojjektumtextures[k].alphatest then
-   g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue)
-  else
-  if ojjektumtextures[k].decal then begin
+   g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue);
+  if ojjektumtextures[k].decal then
    g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
-   g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse)
-   end
-  else
-  begin
-   g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
-   g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse)
-  end;
 
   g_pd3ddevice.SetTexture(0,ojjektumtextures[k].tex);
 
@@ -1778,15 +1785,17 @@ begin
     g_peffect.SetFloat ('FogEnd',fogend);
     g_pEffect.SetTexture('g_MeshTexture', ojjektumtextures[k].tex);
     g_pEffect.SetTexture('g_MeshHeightmap', ojjektumtextures[k].heightmap);
+    g_pEffect.SetTexture('g_MeshOcclusionmap', ojjektumtextures[k].occlusionmap);
+    g_pEffect.SetTexture('g_MeshSpecularmap', ojjektumtextures[k].specularmap);
     g_pEffect.SetTexture('g_MeshLightmap',lightmap);
     g_pEffect.SetFloat ('HDRszorzo',HDRszorzo);
     g_peffect.SetVector('g_CameraPosition',D3DXVector4(campos.x,campos.y,campos.z,0));
     g_pd3ddevice.SetVertexdeclaration(vertdecl);
     g_peffect._Begin(@tmplw,0);
     g_peffect.BeginPass(0);
-   end;                                          
+   end;
   end
-  else if (g_peffect<>nil) and (ojjektumTextures[k].emitting = false) then
+  else if (g_peffect<>nil) and (detail>=2) and (ojjektumTextures[k].emitting = false) then
   begin
    if FAILED(g_peffect.SetTechnique('Shine')) then
     g_peffect:=nil
@@ -1796,6 +1805,8 @@ begin
     g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
     g_peffect.SetFloat ('FogStart',fogstart);
     g_peffect.SetFloat ('FogEnd',fogend);
+    g_peffect.SetFloat ('Fogc',fogc);
+    g_peffect.SetBool ('vanNormal',ojjektumtextures[k].normalmap);
     g_pEffect.SetTexture('g_MeshTexture', ojjektumtextures[k].tex);
     if ojjektumtextures[k].normalmap then
       g_pEffect.SetTexture('g_MeshHeightmap', ojjektumtextures[k].heightmap);
@@ -1804,6 +1815,19 @@ begin
     g_pEffect.SetFloat ('HDRszorzo',HDRszorzo);
     g_pEffect.SetFloat ('specHardness',ojjektumtextures[k].specHardness);
     g_pEffect.SetFloat ('specIntensity',ojjektumtextures[k].specIntensity);
+
+
+    if myfegyv=FEGYV_MPG then g_pEffect.setVector('lightColor',Vec4fromCardinal(weapons[1].col[1]))
+    else
+    if myfegyv=FEGYV_QUAD then g_pEffect.setVector('lightColor',Vec4fromCardinal(weapons[2].col[1]))
+    else
+    if myfegyv=FEGYV_NOOB then g_pEffect.setVector('lightColor',Vec4fromCardinal(weapons[3].col[1]))
+    else
+    if myfegyv=FEGYV_x72 then g_pEffect.setVector('lightColor',Vec4fromCardinal(weapons[4].col[1]))
+    else
+    g_pEffect.setVector('lightColor',D3DXVector4(1,0.97,0.6,1));
+
+    g_pEffect.SetFloat ('lightIntensity',lightIntensity);
     g_peffect.SetVector('g_CameraPosition',D3DXVector4(campos.x,campos.y,campos.z,0));
     g_pd3ddevice.SetVertexdeclaration(vertdecl);
     g_peffect._Begin(@tmplw,0);
@@ -1811,7 +1835,15 @@ begin
    end;
   end
   else
+  begin
    g_pd3ddevice.SetVertexdeclaration(vertdeclgagyi);
+  if (g_peffect<>nil) then
+  begin
+    if FAILED(g_peffect.SetTechnique('Shine')) then
+      g_peffect:=nil;
+  end;
+  end;
+
 
   for i:=0 to high(drawtable) do
   begin
@@ -1825,7 +1857,7 @@ begin
          g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,vertstart,0,vertcount,facestart,facecount);
   end;
 
-  if (g_peffect<>nil)  then
+  if (g_peffect<>nil) then
   begin
    g_peffect.Endpass;
    g_peffect._end;

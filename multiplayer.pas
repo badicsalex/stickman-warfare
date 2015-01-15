@@ -7,8 +7,8 @@ interface
 
 uses sysutils, socketstuff, typestuff, D3DX9, Direct3D9, windows, sha1, winsock2;
 const
- TOKEN_RATE=10; //ezredmásodpercenkénti tokenek száma
- TOKEN_LIMIT=2000; //bucket max mérete
+ TOKEN_RATE=30; //ezredmásodpercenkénti tokenek száma
+ TOKEN_LIMIT=6000; //bucket max mérete
  PRIOR_NINCSPLOVES=0.5; //nem lõttem rá pontosat
  PRIOR_NINCSLOVES=0.2; //egyátalán nem lõttem rá
  PRIOR_AUTOBAN=0.5;//mármint a másik van autóban
@@ -159,8 +159,7 @@ var
 implementation
 
 const
- shared_key:array [0..19] of SmallInt=(00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00);
-
+ shared_key:array [0..19] of SmallInt=(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
  CLIENT_VERSION=PROG_VER;
 
@@ -276,7 +275,7 @@ function decodeSharedKey(raw:SmallInt):byte;
 var
  decoded:integer;
 begin
- decoded:= (raw div 6)-3;
+ decoded:= (raw);
  Result:= decoded;
 end;
 

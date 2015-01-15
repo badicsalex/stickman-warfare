@@ -12,7 +12,7 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{$DEFINE undebug}
+{.$DEFINE undebug}
 {.$DEFINE panthihogomb}
 {.$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
@@ -22,6 +22,7 @@
 {.$DEFINE palyszerk}
 {.$DEFINE ajandekok}
 {.$DEFINE alttabengedes}
+{.$DEFINE matieditor}
 program Stickman;
 
 uses
@@ -36,6 +37,7 @@ uses
   filectrl,
   fizika,
   foliage ,
+  //generated,
   Math,
   Messages,
   MMSystem,
@@ -74,15 +76,18 @@ pow2i:array [0..15] of word=(1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16
 
 RB_MAX_IDO=6000;
 
-DETAIL_VIZ=1;
-DETAIL_POM=2;
+DETAIL_POM=1;
+DETAIL_LIGHT=2;
 DETAIL_MAX=2;
 
 POSTPROC_DISTORTION=1;
 POSTPROC_GREYSCALE=2;
-POSTPROC_MOTIONBLUR=3;
-POSTPROC_GLOW=4;
-POSTPROC_MAX=4;
+POSTPROC_GLOW=3;
+POSTPROC_MAX=3;
+
+WATER_MAX=3;
+
+PARTICLE_MAX=3;
 
 PSYS_SIMPLE=1;
 PSYS_GRAVITY=2;
@@ -94,7 +99,7 @@ PSYS_LIGHT=6;
 //itten balaszoljunk
 BALANCE_LAW_RAD=5;
 BALANCE_NOOB_RAD=7;
-BALANCE_X72_RAD=0.55;
+BALANCE_X72_RAD=0.57;
 
 
 //-----------------------------------------------------------------------------
@@ -102,7 +107,21 @@ BALANCE_X72_RAD=0.55;
 //-----------------------------------------------------------------------------
 var
   // REMOVE
+
+{$IFDEF matieditor}
+
+ 
   debugstr:string = ' ';
+  debugstr2:string = ' ';
+  me_id:integer;
+  me_mat:integer;
+  me_tid:integer;
+  me_spec:single;
+  me_hard:single;
+
+
+
+{$ENDIF}
 
   g_pD3D: IDirect3D9 = nil; // Used to create the D3DDevice
   g_pd3dDevice: IDirect3DDevice9 = nil; // Our rendering device
@@ -110,6 +129,9 @@ var
   g_pdynVB:IDirect3DVertexBuffer9 = nil;
   g_pIB:IDirect3DIndexBuffer9 = nil;
   g_pIBlvl2:IDirect3DIndexBuffer9 = nil;
+
+  desc:TD3DSurfacedesc;
+  
   homtex:IDirect3DTexture9 = nil;
   hoszin:cardinal;
   nhszin:cardinal;
@@ -156,7 +178,10 @@ var
 
   portalbaugras:boolean=false;
 
-  matView, matProj: TD3DMatrix;
+  war_1v1:boolean=false;
+  war_kb:boolean=false;
+
+//  matView, matProj: TD3DMatrix;
   cpy:Psingle; ///FRÖCCCS
   DIne:TdinputEasy = nil;
   noobtoltpos:TD3DXVector3;
@@ -164,8 +189,10 @@ var
   kickmsg:string;
   hardkick:boolean;
 
-  portalpos:TD3DXVector3;
+  portalpos,piramispos:TD3DXVector3;
   portalstarted:boolean = false;
+
+  menuopacity :single= 0;
 
 
 
@@ -214,7 +241,7 @@ var
   coordsniper:boolean=false;
 
   mstat:byte;
-  myfegyv:byte;
+//  myfegyv:byte;
   csipo,rblv,gugg,spc,iranyithato,objir:boolean;
   tulnagylokes:boolean;
   lovok:single;
@@ -275,7 +302,7 @@ var
   suntex:IDirect3DTexture9;
   villam:word;
   villambol:byte;
-  fogc,fogstart,fogend:single;
+//  fogc,fogstart,fogend,lightIntensity:single;
 
   noobproj,lawproj,x72proj:array of Tnamedprojectile;
   lawmesh,noobmesh:ID3DXMesh;
@@ -288,21 +315,26 @@ var
   effecttexture,reflecttexture:IDirect3DTexture9;
   waterbumpmap: IDirect3DTexture9;
   enableeffects:boolean;
-  opt_detail, opt_postproc:integer;
-  opt_rain,opt_widescreen:boolean;
+  
+
+  opt_detail,opt_postproc,opt_water,opt_particle:integer;
+  pre_opt_water:integer;
+  opt_motionblur:boolean;
+  opt_rain:boolean;
+  
   opt_imposters:boolean;
   png_screenshot:boolean;
   opt_radar,opt_nochat,opt_zonename:boolean;
   explosionbubbles:array of TDBubble;
   explosionripples:array of TDRipple;
-  g_pEffect:ID3DXEffect;
+//  g_pEffect:ID3DXEffect;
 
   fejcuccrenderer:TFejcuccrenderer;
   myfejcucc:integer;
 
   mfkmat:TD3DMatrix;
 
-  frust:Tfrustum;
+//  frust:Tfrustum;
 
   vegeffekt:integer;
 
@@ -313,7 +345,9 @@ var
   opt_taunts:boolean;
 
 
+
   printscreensurf:IDirect3DSurface9;
+  downsamplesurf:IDirect3DSurface9;
 
   armcount:byte;
   robhely:TD3DXVector3;
@@ -331,7 +365,7 @@ var
   
   {$IFDEF repkedomod}
   repszorzo:Single=0.5;
-  repules:boolean=false;
+  repules:boolean=true;
   {$ENDIF}
 //  re_gk:TD3DXVector3;
 //  re_pos:TD3DXVector3;
@@ -393,6 +427,9 @@ begin
   d3dpp.EnableAutoDepthStencil := True;
   d3dpp.PresentationInterval:= D3DPRESENT_INTERVAL_IMMEDIATE;
 
+
+
+
   if  not iswindowed then
   begin
    d3dpp.Windowed := false;
@@ -401,6 +438,17 @@ begin
   end;
 
   d3dpp.AutoDepthStencilFormat := D3DFMT_D32 ;
+
+  if g_pD3D.CheckDeviceMultiSampleType( D3DADAPTER_DEFAULT,
+                                        D3DDEVTYPE_HAL,
+                                        D3DFMT_X8R8G8B8,
+                                        iswindowed,
+                                        _D3DMULTISAMPLE_TYPE(multisampling),
+                                        nil) = D3D_OK then
+  begin
+  d3dpp.MultiSampleType := _D3DMULTISAMPLE_TYPE(multisampling);
+  d3dpp.SwapEffect := D3DSWAPEFFECT_DISCARD;
+  end;
 
 
   // Create the D3DDevice
@@ -429,6 +477,9 @@ end;
 function InitD3D(hWnd: HWND): HRESULT;
 var
 caps:TD3DCaps9;
+card:D3DADAPTER_IDENTIFIER9;
+cardname:string;
+i:integer;
 begin
   Result:= E_FAIL;
 
@@ -440,6 +491,8 @@ begin
    Exit;
   end;
 
+
+
   // Set up the structure used to create the D3DDevice. Since we are now
   // using more complex geometry, we will create a device with a zbuffer.
   if not TRY3d(true,hwnd) then
@@ -449,9 +502,25 @@ begin
     exit;
    end;
 
+
+  g_pD3D.GetAdapterIdentifier(D3DADAPTER_DEFAULT ,0,card);
+
+  for i:=0 to 512 do
+     if card.Description[i]=char(0) then break;
+
+  SetString(cardname, card.Description, i);
+
+  writeln(logfile,'Using video card: ',cardname);
+  writeln(logfile,'Available memory: ',inttostr(trunc(g_pd3dDevice.GetAvailableTextureMem()/1024/1024)),' MB');
+  writeln(logfile,'Resolution: ' + IntToStr(SCwidth) + 'x' + IntToStr(SCheight));
+  writeln(logfile,'Multisampling: ' + IntToStr(multisampling));
+
+  gpukey:= (card.DeviceIdentifier.D1) + (card.DeviceIdentifier.D2) + (card.DeviceIdentifier.D3);
+  for i:=low(card.DeviceIdentifier.D4) to high(card.DeviceIdentifier.D4) do
+  gpukey:= gpukey + (card.DeviceIdentifier.D4[i]);
+
   // Turn on culling
   g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
-
   //Developer stuff
 
  // g_pd3dDevice.SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
@@ -668,6 +737,35 @@ begin
  d3dxvec3scale(norm,norm,fastinvsqrt(lngt));
 end;
 
+procedure yandnormbokor(var xx,yy,zz:single;var norm:Td3dvector;scalfac:single);
+var
+lngt:single;
+k,l:integer;
+begin
+ yy:=wove(xx,zz);
+ vanottvalami(xx,yy,zz);
+
+ lngt:=d3dxvec3lengthsq(norm);
+ if lngt<0.00001 then lngt:=1;
+ d3dxvec3scale(norm,norm,fastinvsqrt(lngt));
+
+  //  for k:=0 to high(ojjektumarr) do
+  //  for l:=0 to ojjektumarr[k].hvszam-1 do
+  //   if ojjektumarr[k].raytestbol(D3DXVector3(xx,yy+1,zz),D3DXVector3(xx,yy,zz),l,COLLISION_SOLID) then
+  //   begin
+  //    norm.y:=-2;
+  //    break;
+  //   end;
+
+    for k:=0 to high(ojjektumarr) do
+    for l:=0 to ojjektumarr[k].hvszam-1 do
+     if tavpointpoint(ojjektumarr[k].holvannak[l],D3DXVector3(xx,yy,zz))<ojjektumarr[k].rad then
+     begin
+      norm.y:=-2;
+      break;
+     end;
+end;
+
 function palyvert(xx,yy,zz,scalfac:single;lvl:integer):TCustomVertex;
 var
 norm:Td3dVector;
@@ -713,8 +811,8 @@ begin
   end;
 
 
- ux:=xx/1+sin(zz/2)/2{+sin(zz/8){+perlin.complexnoise(1,xx+2000,zz,16,4,0.5)*3{+perlin.noise(xx/200,0.5,zz/200+100)*50};
- uz:=zz/1-cos(xx/2)/2{+cos(xx/8){+perlin.complexnoise(1,xx,zz+2000,16,4,0.5)*3{+perlin.noise(xx/200+100,0.5,zz/200)*50};
+ ux:=xx/1+sin(zz/2)/2+sin(zz/8)+perlin.complexnoise(1,xx+2000,zz,16,4,0.5)*3{+perlin.noise(xx/200,0.5,zz/200+100)*50};
+ uz:=zz/1-cos(xx/2)/2+cos(xx/8)+perlin.complexnoise(1,xx,zz+2000,16,4,0.5)*3{+perlin.noise(xx/200+100,0.5,zz/200)*50};
 
  u2x:=xx/16;
  u2z:=zz/16;
@@ -724,7 +822,7 @@ begin
   uz:=zz/2048+0.5;
   szin:=$FFFFFF;
  end;
- 
+
  result:=CustomVertex(xx,yy,zz,norm.x,norm.y,norm.z,szin,ux,uz,u2x,u2z);
 end;
 
@@ -855,8 +953,8 @@ begin
   copymemory(pointer(pVertices),pointer(addr(levels[lvl,0])),lvlsizp*lvlsizp*sizeof(Tcustomvertex));
  // zeromemory(pointer(pVertices),lvlsizp*lvlsizp*sizeof(Tcustomvertex));
   g_pVB.Unlock;
-  if lvl=4 then bokrok.update(@(levels[lvl,0]),advwove);
-  if lvl=1 then fuvek.update(@(levels[lvl,0]),advwove);
+  if lvl=4 then bokrok.update(@(levels[lvl,0]),yandnormbokor);
+  if lvl=1 then fuvek.update(@(levels[lvl,0]),yandnormbokor);
  // if lvl=0 then fuvek2.update(@(levels[lvl]),advwove);
 end;
 
@@ -1281,7 +1379,7 @@ begin
    laststate:= 'Loading object '''+ojjektumnevek[i]+'''';
    menu.DrawLoadScreen((40*i) div length(ojjektumnevek));
    ojjektumarr[i]:=nil;
-   ojjektumarr[i]:=T3dojjektum.Create('data\'+ojjektumnevek[i],g_pd3ddevice,ojjektumscalek[i].x,ojjektumscalek[i].y,ojjektumhv[i],ojjektumflags[i]);
+   ojjektumarr[i]:=T3dojjektum.Create('data/objects/'+ojjektumnevek[i],g_pd3ddevice,ojjektumscalek[i].x,ojjektumscalek[i].y,ojjektumhv[i],ojjektumflags[i]);
    if (ojjektumarr[i]=nil)  then
    begin
     writeln(logfile,'Brutal error loading object '''+ojjektumnevek[i]+'''');
@@ -1298,8 +1396,19 @@ begin
 
   end;
 
+
+  //list of ojjecttextures
+  //writeln(logfile,'SM0 texture list: ');
+
+  //for i:=0 to length(ojjektumTextures)-1 do
+  //begin
+  //  writeln(logfile,ojjektumTextures[i].name);
+  //end;
+
+
   d3dxvec3add(dnsvec,ojjektumarr[panthepulet].holvannak[0],ojjektumarr[panthepulet].vce);
   portalpos:=ojjektumarr[portalepulet].holvannak[0];
+  piramispos:=ojjektumarr[piramis].holvannak[0];
   dnsrad:=ojjektumarr[panthepulet].rad*1.4;
 
   result:=true;
@@ -1307,6 +1416,7 @@ begin
   laststate:= 'Loading objectrenderer ';
    menu.DrawLoadScreen(45);
   ojjektumrenderer:=T3DORenderer.Create(g_pd3ddevice);
+
 
  
   writeln(logfile,'Loaded objectrenderer');flush(logfile);
@@ -1354,36 +1464,38 @@ i,j,k,l:integer;
 l1c,l2c,l3c:TD3DXColor;
 lr:TD3DLockedrect;
 pbits:pointer;
-cmap1:array [0..255,0..255] of array4ofbyte;
 xx,yy,zz:single;
 tmp:single;
 n:TD3DXVector3;
 fucol,hocol,nhcol,wacol,kocol:TD3DXColor;
+cmap1:array of array4ofbyte;
+tmprow:array [0..1023] of array4ofbyte;
 col,lght1,lght2,ossz,veg:TD3DXColor;
 l1,l2:TD3DXVector3;
-fil:file of array4ofbyte;
 tmptex:IDIrect3DTexture9;
 begin
+
+ setlength(cmap1,1024*1024);
+
  Result:= E_FAIL;
  tmptex:=nil;
- if Failed(g_pd3dDevice.CreateTexture( 256, 256, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, tmptex, nil)) then Exit;
- if Failed(g_pd3dDevice.CreateTexture( 256, 256, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt1, nil)) then Exit;
- if Failed(g_pd3dDevice.CreateTexture( 256, 256, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt2, nil)) then Exit;
+ if Failed(g_pd3dDevice.CreateTexture( 1024, 1024, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, tmptex , nil)) then Exit;
+ if Failed(g_pd3dDevice.CreateTexture( 1024, 1024, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt1, nil)) then Exit;
+ if Failed(g_pd3dDevice.CreateTexture( 1024, 1024, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt2, nil)) then Exit;
 
  ;
  fucol:=D3DXColorFromDWord(stuffjson.GetInt(['color_grass']));
- fucol.a:=0;
+ fucol.a:=1;   //0
  kocol:=D3DXColorFromDWord(stuffjson.GetInt(['color_rock']));
- kocol.a:=1;
+ kocol.a:=1;   //1
  hocol:=D3DXColorFromDWord(stuffjson.GetInt(['color_sand']));
- hocol.a:=0;
+ hocol.a:=1;   //0
  nhcol:=D3DXColorFromDWord(stuffjson.GetInt(['color_wet_sand']));
- nhcol.a:=0;
+ nhcol.a:=1;   //0
  wacol:=D3DXColorFromDWord(stuffjson.GetInt(['color_water']));
- wacol.a:=0;
+ wacol.a:=1;   //1
 
- menu.lowermenutext:='Music: Unreal Superhero III Symphonic version by Jaakko Takalo';
- if (stuffjson.GetString(['lower_menu_text'])<>'') then menu.lowermenutext:= stuffjson.GetString(['lower_menu_text']);
+
 
 
  l1c:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_sun']));
@@ -1393,13 +1505,9 @@ begin
  //D3DXColor(116/255,178/255,67/255,0);
  kocol:=D3DXColor(110/255,110/255,108/255,1);
  hocol:= D3DXColor(250/255,200/255,200/255,0);
- if fileexists('data\cmap.raw') then
+ if fileexists('data\cmap.png') then
  begin
-  assignfile(fil,'data\cmap.raw');
-  reset(fil);
-  blockread(fil,cmap1,256*256);
-  closefile(fil)
-
+  LTFF(g_pd3dDevice, 'data\cmap.png', mt1);
  end
  else
  begin
@@ -1411,26 +1519,30 @@ begin
  D3DXVec3Normalize(l1, l1);
  l2:=l1; l2.x:=-l2.x;
 
- for i:=0 to 255 do
-  for j:=0 to 255 do
+ for i:=0 to 1023 do
+  for j:=0 to 1023 do
   begin
-   xx:=j-128;
-   zz:=i-128;
-   yandnorm(xx,yy,zz,n,8);
+   xx:=(j-512);
+   zz:=(i-512);
+   yandnorm(xx,yy,zz,n,2);
 
    for k:=0 to high(ojjektumarr) do
     for l:=0 to ojjektumarr[k].hvszam-1 do
      if ojjektumarr[k].raytestbol(D3DXVector3(xx,yy,zz),D3DXVector3(xx-ojjektumarr[k].rad*2,yy+ojjektumarr[k].rad*2,zz),l,COLLISION_SHADOW) then
      begin
-      n:=D3DXVector3(sqrt(2),sqrt(2),0);
+      n:=D3DXVector3(sqrt(2),min(n.y,sqrt(2)),0);
       break;
      end;
  //zz:=zz+(round(xx)mod 2)*scalfac/2;
    col:=fucol;
    if yy<0 then yy:=0;
    if yy<15 then col:=hocol;
-   if (n.y)<0.83 then col:=kocol;
-   if yy<10 then D3DXColorLerp(col,wacol,nhcol,yy/15);
+   if (n.y)<0.83 then
+   begin
+    D3DXColorScale(col,kocol,random(10)/100+0.9);
+   end;
+   if yy<10 then col:=nhcol;
+   if yy<9 then D3DXColorLerp(col,wacol,nhcol,yy/15);
    tmp:=D3DXVec3dot(n,l1);
    if tmp<0 then tmp:=0;
    D3DXColorscale(lght1,l1c,tmp);
@@ -1443,39 +1555,40 @@ begin
    D3DXColorAdd(ossz,ossz,l3c);
    D3DXColorModulate(veg,ossz,col);
 
-   cmap1[i,j,0]:=min(round(veg.b*255),255);
-   cmap1[i,j,1]:=min(round(veg.g*255),255);
-   cmap1[i,j,2]:=min(round(veg.r*255),255);
-   cmap1[i,j,3]:=min(round(col.a*255),255);
+   cmap1[j*1024+i,0]:=min(round(veg.b*255),255);
+   cmap1[j*1024+i,1]:=min(round(veg.g*255),255);
+   cmap1[j*1024+i,2]:=min(round(veg.r*255),255);
+   cmap1[j*1024+i,3]:=min(round(col.a*255),255);
   end;
-
-  assignfile(fil,'data\cmap.raw');
-  rewrite(fil);
-  blockwrite(fil,cmap1,256*256);
-  closefile(fil);
-
- end;
 
 
  result:=tmptex.LockRect(0, lr, nil, 0);
  if Failed(result) then Exit;
- for i:= 0 to 255 do
+ for i:= 0 to 1023 do
   begin
     pBits := PDWORD(Integer(lr.pBits)+i*lr.Pitch);
-    copymemory(pbits,addr(cmap1[i]),256*4);
+    for j:=0 to 1023 do
+      tmprow[j] := cmap1[j*1024+i];
+    copymemory(pbits,addr(tmprow),1024*4);
   end;
  tmptex.UnlockRect(0);
 
+ if not fileexists('data\cmap.png') then
+ begin
+   D3DXSaveTextureToFile( PChar('data\cmap.png'),D3DXIFF_PNG,tmptex,nil);
+ end;
+
  g_pd3ddevice.UpdateTexture(tmptex,mt1);
+
+ end;
+
+
 
  // MT2/////////////////////////////////////////////////
 
- if fileexists('data\cmap2.raw') then
+ if fileexists('data\cmap2.png') then
  begin
-  assignfile(fil,'data\cmap2.raw');
-  reset(fil);
-  blockread(fil,cmap1,256*256);
-  closefile(fil)
+  LTFF(g_pd3dDevice, 'data\cmap2.png', mt2);
 
  end
  else
@@ -1483,45 +1596,47 @@ begin
 
     menu.DrawLoadScreen(78);
 
- for i:=0 to 255 do
-  for j:=0 to 255 do
+ for i:=0 to 1023 do
+  for j:=0 to 1023 do
   begin
-   xx:=j-128;
-   zz:=i-128;
-   yandnorm(xx,yy,zz,n,8);
+   xx:=j-512;
+   zz:=i-512;
+   yandnorm(xx,yy,zz,n,2);
    for k:=0 to high(ojjektumnevek) do
     for l:=0 to ojjektumarr[k].hvszam-1 do
      if ojjektumarr[k].raytestbol(D3DXVector3(xx,yy,zz),D3DXVector3(xx,yy+ojjektumarr[k].rad*2,zz),l,COLLISION_SOLID) then
      begin
      // n:=ojjektumarr[k].raytest(D3DXVector3(xx,yy+ojjektumarr[k].rad*2,zz),D3DXVector3(xx,yy,zz),l);
      //  yy:=(n.y-yy)/3;
-      cmap1[i,j,1]:=255;//round(yy*255);
-      cmap1[i,j,0]:=255;//-$FF and round(yy*255);
-      cmap1[i,j,2]:=255;
-      cmap1[i,j,3]:=255;
+      cmap1[j*1024+i,1]:=255;//round(yy*255);
+      cmap1[j*1024+i,0]:=255;//-$FF and round(yy*255);
+      cmap1[j*1024+i,2]:=255;
+      cmap1[j*1024+i,3]:=255;
       break;
      end;
    end;
 
-  assignfile(fil,'data\cmap2.raw');
-  rewrite(fil);
-  blockwrite(fil,cmap1,256*256);
-  closefile(fil);
 
- end;
 
 
  result:=tmptex.LockRect(0, lr, nil, 0);
  if Failed(result) then Exit;
- for i:= 0 to 255 do
+ for i:= 0 to 1023 do
   begin
     pBits := PDWORD(Integer(lr.pBits)+i*lr.Pitch);
-    copymemory(pbits,addr(cmap1[i]),256*4);
+    for j:=0 to 1023 do
+      tmprow[j] := cmap1[j*1024+i];
+    copymemory(pbits,addr(tmprow),1024*4);
   end;
  tmptex.UnlockRect(0);
 
- g_pd3ddevice.UpdateTexture(tmptex,mt2);
+ if not fileexists('data\cmap2.png') then
+ begin
+   D3DXSaveTextureToFile( PChar('data\cmap2.png'),D3DXIFF_PNG,tmptex,nil);
+ end;
 
+ g_pd3ddevice.UpdateTexture(tmptex,mt2);
+  end;
 
  tmptex:=nil;
  Result:= S_OK;
@@ -1745,7 +1860,6 @@ var
   vmi:string;
   devicecaps: TD3DCaps9;
   backbuf:IDirect3Dsurface9;
-  desc:TD3DSurfacedesc;
   sky_ambient:integer;
   cloud_speed:single;
   cloud_color:TD3DXColor;
@@ -1790,6 +1904,7 @@ begin
   inc(i);
   setlength(weapons[i].col,1);
   weapons[i].col[0]:=stuffjson.GetInt(['weapon','DUST']);
+
 
 
   grass_dust:=stuffjson.GetInt(['color_grass_dust']);
@@ -1873,42 +1988,42 @@ begin
 
   bubbleeffect;
 
-  if not LTFF(g_pd3dDevice, 'data\grass.jpg',futex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\gnoise.jpg',noise2tex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\rock.jpg',kotex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\rnoise.jpg',noisetex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\sand.jpg',homtex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\grass.jpg',futex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\gnoise.jpg',noise2tex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\rock_01.jpg',kotex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\rnoise.jpg',noisetex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\sand.jpg',homtex) then exit;
     menu.DrawLoadScreen(55);
   writeln(logfile,'Loaded ground textures');flush(logfile);
-  if not LTFF(g_pd3dDevice, 'data\water.jpg', viztex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\water2.jpg', waterbumpmap) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\water.jpg', viztex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\water2.jpg', waterbumpmap) then exit;
   writeln(logfile,'Loaded water texture');flush(logfile);
-  if not LTFF(g_pd3dDevice, 'data\sky1.png', skytex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\sun1.png', suntex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\sky1.png', skytex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\gui\sun1.png', suntex) then exit;
 
   initsky;
   writeln(logfile,'Loaded Sky');flush(logfile);
     menu.DrawLoadScreen(60);
-  if FAILED(D3DXLoadMeshFromX('data\hummer.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
+  if FAILED(D3DXLoadMeshFromX('data\models\hummer.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
   if tempmesh=nil then exit;if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL or D3DFVF_TEX1,g_pd3ddevice,g_pautomesh)) then exit;
   if tempmesh<>nil then tempmesh:=nil;
 
-  if FAILED(D3DXLoadMeshFromX('data\antigrav.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
+  if FAILED(D3DXLoadMeshFromX('data\models\antigrav.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
   if tempmesh=nil then exit;if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL or D3DFVF_TEX1,g_pd3ddevice,g_pantigravmesh)) then exit;
   if tempmesh<>nil then tempmesh:=nil;
 
-  if FAILED(D3DXLoadMeshFromX('data\kerek.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
+  if FAILED(D3DXLoadMeshFromX('data\models\kerek.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
   if tempmesh=nil then exit;if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL or D3DFVF_TEX1,g_pd3ddevice,g_pkerekmesh)) then exit;
   if tempmesh<>nil then tempmesh:=nil;
   normalizemesh(G_pkerekmesh);
   normalizemesh(g_pautomesh);
   normalizemesh(g_pantigravmesh);
 
-  if FAILED(D3DXLoadMeshFromX('data\rocket003.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
+  if FAILED(D3DXLoadMeshFromX('data\models\rocket003.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
   if tempmesh=nil then exit;if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL + D3DFVF_DIFFUSE ,g_pd3ddevice,lawmesh)) then exit;
   if tempmesh<>nil then tempmesh:=nil;
 
-  if FAILED(D3DXLoadMeshFromX('data\gomb.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
+  if FAILED(D3DXLoadMeshFromX('data\models\gomb.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
   if tempmesh=nil then exit;if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL ,g_pd3ddevice,noobmesh)) then exit;
   if tempmesh<>nil then tempmesh:=nil;
 
@@ -1917,12 +2032,14 @@ begin
 
   tegla:=Tauto.create(d3dxvector3(1,0,0),d3dxvector3(0,1,0),d3dxvector3(0,0,1),d3dxvector3zero,d3dxvector3zero,0.9,0.99,hummkerekarr,1,0.1,0.03,0.2,0.3,0.2,0,0,false);
   tegla.disabled:=true;
-  if not LTFF(g_pd3dDevice, 'data\hummer.jpg', cartex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\antigrav.jpg', antigravtex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\kerektex.jpg', kerektex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\hummer.jpg', cartex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\antigrav.jpg', antigravtex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\kerektex.jpg', kerektex) then exit;
   writeln(logfile,'Loaded vehicles');
-                           
+
   result:=D3DXCreateTexture(g_pd3ddevice,SCWidth,SCheight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,effecttexture);
+
+
   //result:=D3DXCreateTexture(g_pd3ddevice,SCWidth div 2,SCheight div 2,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,effecttexture);
   if failed(result) then
   begin
@@ -1931,7 +2048,7 @@ begin
   end
   else
    writeln(logfile,'Full screen texture intitialized');
-                                                                                             
+
   result:=D3DXCreateTexture(g_pd3ddevice,SCWidth div 4,SCheight div 4,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,reflecttexture);
   if failed(result) or (reflecttexture=nil) then
   begin
@@ -1945,6 +2062,9 @@ begin
   backbuf.GetDesc(desc);
 
   g_pd3ddevice.CreateOffscreenPlainSurface(desc.Width,desc.height,desc.Format,D3DPOOL_SYSTEMMEM,printscreensurf,nil);
+  g_pd3ddevice.CreateRenderTarget(SCwidth,SCheight,D3DFMT_X8R8G8B8,D3DMULTISAMPLE_NONE,0,false,downsamplesurf,nil);
+
+
 
     addfiletoChecksum('data/effects.fx');
   if  devicecaps.PixelShaderVersion>=D3DPS_VERSION(2,0) then
@@ -2075,10 +2195,14 @@ begin
    menu.DrawLoadScreen(75);
    initmaptex;
    menu.DrawLoadScreen(80);
+
+    menu.lowermenutext:='Music: Unreal Superhero III Symphonic version by Jaakko Takalo';
+ if (stuffjson.GetString(['lower_menu_text'])<>'') then menu.lowermenutext:= stuffjson.GetString(['lower_menu_text']);
+ 
   writeln(logfile,'Initialized buffers');flush(logfile);
-  addfiletochecksum('data/bush256.png');
-  bokrok:=TFoliage.create(G_pd3ddevice,'bush256.png',1,1.2,-0.1);
-  fuvek:=TFoliage.create(G_pd3ddevice,'mg3.png',0.34,-0.32,0.34);
+  addfiletochecksum('data/textures/bush256.png');
+  bokrok:=TFoliage.create(G_pd3ddevice,'textures/bush256.png',1,1.2,-0.1);
+  fuvek:=TFoliage.create(G_pd3ddevice,'textures/mg3.png',0.34,-0.32,0.34);
   //fuvek2:=TFoliage.create( G_pd3ddevice,'mg3.png',0.1,-0.2,0.18);
   if not bokrok.betoltve then exit;
   if not fuvek.betoltve then exit;
@@ -2322,8 +2446,10 @@ begin
 end;
 
 procedure undebug_memory1;
+{$IFDEF undebug}
 var
 virt:pdword;
+{$ENDIF}
 begin
 {$IFDEF undebug}
   virt:=nil;
@@ -2731,8 +2857,10 @@ end;
 
 function NtQueryInformationProcess(hProcess: THandle;ProcessInformationClass: Integer;Var ProcessInformation;ProcessInformationLength: Integer;ReturnLength: PInteger): Integer; stdcall;external 'ntdll.dll';
 procedure undebug_debugobject;
+{$IFDEF undebug}
 var
  status,hdebugobject:dword;
+{$ENDIF}
 begin
 {$IFDEF undebug}
  hDebugObject:=0;
@@ -2863,6 +2991,7 @@ begin
   nemviz:=true;
   end;
 
+  
 
   //Új irányítás kód
   ds:=sin(szogx);
@@ -3172,6 +3301,7 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
      goto atugor;
     end
     else
+
       kiszall_cooldown:=0;
     //fegyv.addproj(FEGYV_M4A1,hollo,v2,M4_Golyoido);
     if myfegyv<>FEGYV_LAW then
@@ -3182,6 +3312,17 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
 
     if myfegyv=FEGYV_MP5A3 then mp5ptl:=mp5ptl+1;
     if myfegyv=FEGYV_X72 then x72gyrs:=x72gyrs+1/8;
+
+    if (myfegyv=FEGYV_QUAD)then
+    lightIntensity := lightIntensity + (1.5-lightIntensity)/4;
+
+    if (myfegyv=FEGYV_M82A1) or (myfegyv=FEGYV_MPG) or (myfegyv=FEGYV_X72) then
+    lightIntensity := 0.6;
+
+    if (myfegyv=FEGYV_MP5A3) or (myfegyv=FEGYV_M4A1) then
+    lightIntensity := 0.17;
+
+
 
     case myfegyv of
      FEGYV_M4A1:begin lovok:=0.5; cooldown:=1/7.44; hatralok:=0.05; end;   //balance
@@ -3481,8 +3622,10 @@ end;
 
 
 procedure undebug_registers;
+{$IFDEF undebug}
 var
  cont:Tcontext;
+{$ENDIF}
 begin
 {$IFDEF undebug}
  zeromemory(@cont,sizeof(cont));
@@ -3490,7 +3633,7 @@ begin
  getthreadcontext(getcurrentthread,cont);
  if (cont.Dr7<>0) then
     cpx^:=100000;
- {$ENDIF}
+{$ENDIF}
 end;
 
 procedure DoLAWRobbanas(mi:integer;rippl,dirt:boolean);
@@ -3550,15 +3693,15 @@ begin
    end;
   end;
   
-   if opt_detail=DETAIL_MAX then
+   if opt_particle>0 then
   if dirt then
    begin
     col := $FF884400;
-    if lawproj[mi].v3.y<15 then col := $FFFFF6B5;
-   for i:=0 to 100 do
+    if lawproj[mi].v3.y<=15 then col := $FFFFF6B5;
+   for i:=0 to 40*opt_particle do
     begin
     t:=randomvec(animstat*2+i*3,0.42);
-    Particlesystem_add(Coolingparticlecreate(lawproj[mi].v3,t,random(10)/90+0.1,0.1,0.163,col,$00000000,random(100)+330));
+    Particlesystem_add(Gravityparticlecreate(lawproj[mi].v3,t,random(10)/90+0.1,0.1,0.163,col,$00000000,random(100)+330));
 
     end;
     end;
@@ -3926,7 +4069,7 @@ laststate:='Docollisiontests 6';
 
    i:=0;
 
-  laststate:='Docollisiontests 7';
+  laststate:='Docollisiontests 7';   //Bugos?
 //NOOB
 
  while i<=high(noobproj) do
@@ -4435,14 +4578,14 @@ end;
 
 procedure handleparticlesystems;
 var
-n,a,b,lt:integer;
+n,a,b,lt,modifier:integer;
 atav,vis2:single;
 tmp:TD3DXVector3;
 begin
 
 
 n := high(particlesSyses);
-if opt_postproc > POSTPROC_DISTORTION then
+if opt_particle > 0 then
 for a:=0 to n do
 with particlesSyses[a] do
 begin
@@ -4450,27 +4593,31 @@ begin
     atav:=tavpointpointsq(from,tegla.pos)
   else
     atav:=tavpointpointsq(from,d3dxvector3(cpx^,cpy^,cpz^));
-     vis2 := vis;
-   if opt_detail = DETAIL_MAX then vis2 := vis * 3;
-  if (atav<sqr(vis2)) and ((hanyszor and period)=period) then
+  if (atav<sqr(vis*opt_particle)) and ((hanyszor and period)=period) then
   begin
       //jöhet a rajzolás
+      if opt_particle=1 then
+      modifier:=round(random(5)/5)-1;
+      if opt_particle=2 then
+      modifier:=random(1);
+      if opt_particle=PARTICLE_MAX then
+      modifier:=1;
 
       lt := lifetime + random(rndlt);
       case tipus of                                                                                             //todo random color
-      PSYS_SIMPLE:for b:=0 to amount do
+      PSYS_SIMPLE:for b:=0 to modifier*amount do
       begin
       D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
       D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
       Particlesystem_add(Simpleparticlecreate(from,tmp,ssize,esize,scolor+rcolor*random(10),ecolor,lt,texture));
       end;
-      PSYS_GRAVITY:for b:=0 to amount do    
+      PSYS_GRAVITY:for b:=0 to modifier*amount do
       begin
       D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
       D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
       Particlesystem_add(Gravityparticlecreate(from,tmp,ssize,esize,szorzo,scolor+rcolor*random(10),ecolor,lt,texture));
       end;
-      PSYS_COOLING:for b:=0 to amount do
+      PSYS_COOLING:for b:=0 to modifier*amount do
       begin
       D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
       D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
@@ -4539,7 +4686,7 @@ begin
     atav:=tavpointpointsq(vfrom,d3dxvector3(cpx^,cpy^,cpz^));
 
    vis2 := vis;
-   if opt_detail = DETAIL_MAX then vis2 := vis * 3;
+   if opt_particle>0 then vis2 := vis * 3;
    if atav<sqr(vis2) then
    begin
     if tip=0 then
@@ -4719,7 +4866,6 @@ begin
     if tavpointpointsq(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(posx,posy,posz))<rad*rad then
     tuleli:=true;
     end;
-
    if (not tuleli) then
     begin
     halal:=1;
@@ -4875,12 +5021,12 @@ begin
      walkmaterial := MAT_DEFAULT;
 
      if nagyeses then rezg := 3;
-     if eses and (opt_detail=DETAIL_MAX) then
+     if eses and (opt_particle>0) then
       begin
         ppos :=  D3DXVector3(cpx^,cpy^,cpz^);
         col := $FF88AB66;
         if ppos.y<15 then col := $FFFFF6B5;
-        for i:=0 to 50 do
+        for i:=0 to 20*opt_particle do
           begin
             tmp:=randomvec(animstat*2+i*3,0.12);
             Particlesystem_add(GravityparticleCreate(ppos,tmp,random(10)/60+0.03,0.1,0.123,col,$00000000,random(100)+170));
@@ -4990,17 +5136,16 @@ begin
   inc(rbido);
   if rbszam>-1 then
   rbido:=rbido mod (rbszam+1);
-  for i:=0 to rbszam do  begin
-  if (rongybabak[i].gmbk[0].y<10)  then
-
-     for j:=0 to length(bubbles) do
-   with bubbles[j] do
-   if (bubbles <> nil) and (tavpointpointsq(D3DXVector3(posx,posy,posz),D3DXVector3(rongybabak[i].gmbk[0].x,rongybabak[i].gmbk[0].y,rongybabak[i].gmbk[0].z))<rad*rad) then
-    tuleli:=true;
-
-
-  rongybabak[i].step(advwove,i=rbido, false); //TODO
-
+  for i:=0 to rbszam do begin
+{
+    bubi:=false;
+//    if (rongybabak[i].gmbk[0].y<10)  then
+      for j:=0 to length(bubbles) do
+        with bubbles[j] do
+          if false then
+            bubi:=true;
+                       }
+    rongybabak[i].step(advwove,i=rbido, false);
   end;
   i:=0;
   while i<=rbszam do
@@ -5164,7 +5309,7 @@ begin
   if opt_rain then
   if not (autoban and (d3dxvec3lengthsq(tmp)>sqr(0.2))) then
   for i:=round(felho.coverage) to 5 do
-   for j:=0 to 5 do
+   for j:=0 to 2*opt_particle do
      addesocsepp((i+2)*(10-round(felho.coverage))*2);
  end;
  end;
@@ -5175,7 +5320,7 @@ begin
   if opt_rain then
   if not (autoban and (d3dxvec3lengthsq(tmp)>sqr(0.2))) then
   for i:=round(felho.coverage) to 5 do
-   for j:=0 to 5 do
+   for j:=0 to 2*opt_particle do
      addesocsepp((i+2)*(10-round(felho.coverage))*2);
  end;
  {$ENDIF}
@@ -5238,6 +5383,7 @@ begin
  if (myfegyv=FEGYV_NOOB) and (lovok>0) then
  begin
   norm:=D3DXVector3(random(10000)-5000,random(10000)-5000,random(10000)-5000);
+  lightIntensity := lovok*1.5;
   fastvec3normalize(norm);
   tmp:=noobtoltpos;
   tmp:=D3DXVector3(tmp.x+norm.x*0.3,tmp.y+norm.y*0.3,tmp.z+norm.z*0.3);
@@ -5665,7 +5811,7 @@ korlat:=0;
 
  if opt_rain then
  for i:=round(felho.coverage) to 5 do
-  for j:=0 to 5 do
+  for j:=0 to 2*opt_particle do
     addesocsepp((i+2)*(10-round(felho.coverage))*2);
 
 
@@ -6467,7 +6613,7 @@ begin
  g_pd3dDevice.SetRenderState(D3DRS_ZFUNC, D3DCMP_ALWAYS);
  g_pd3dDevice.SetRenderState(D3DRS_ZWRITEENABLE, iTrue);
  g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
-  g_pd3dDevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
+ g_pd3dDevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
 
  //if (halal=0) or (halal>2.5) then
  g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
@@ -6502,7 +6648,7 @@ begin
   g_pd3dDevice.SetRenderState(D3DRS_FOGENABLE,itrue);
   fogstart:=0;
   fogend:=lerp(stuffjson.GetInt(['fog','radius_rainy']),stuffjson.GetInt(['fog','radius_sunny']),fogc);
-  if (cpy^<9) then fogend:=90;
+  if (cpy^<8.95+singtc/10) then fogend:=90;
 
  if mapmode>0 then
  begin
@@ -6567,11 +6713,11 @@ begin
      tmp := sikmetsz(aloves.pos,aloves.v2,10);
   if tmp.y<>0 then
   begin
-  for j:=0 to 15 do
+  for j:=0 to 6*opt_particle do
     ParticleSystem_Add(Gravityparticlecreate(tmp,d3dxvector3(-0.0167+random(10)/300,0.06+random(10)/270,-0.0167+random(10)/300),0.3,0.05,0.09,weapons[5].col[0],weapons[5].col[1],100));
   end;
 
-  if (opt_postproc>=POSTPROC_GREYSCALE) then
+  if (opt_particle>=1) then
   begin
   d3dxvec3subtract(tmp2,aloves.pos,aloves.v2);
   D3DXVec3Normalize(tmp2,tmp2);
@@ -6596,15 +6742,21 @@ begin
 
   if coordsniper then
   begin
-     GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT,fsettings);
+  for j:=high(multisc.chats) downto 3 do
+   multisc.chats[j]:=multisc.chats[j-3];
+   GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT,fsettings);
    fsettings.DecimalSeparator:='.';
-   multisc.chats[0].uzenet:='Coords: ';
+   multisc.chats[0].uzenet:='Coords: (' + IntToStr(random(1000)) + ')';
    multisc.chats[1].uzenet:='x: '+FloatToStrF(aloves.v2.x,ffFixed,7,2,fsettings)+
            '  y: '+FloatToStrF(aloves.v2.y,ffFixed,7,2,fsettings)+
            '  z: '+FloatToStrF(aloves.v2.z,ffFixed,7,2,fsettings);
+   multisc.chats[2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2,fsettings)+
+           '  angleV: '+FloatToStrF(szogy,ffFixed,7,2,fsettings);
+           
    multisc.chats[0].glyph:=0;
    multisc.chats[1].glyph:=0;
-   writeln(logfile,multisc.chats[0].uzenet,' ',multisc.chats[1].uzenet);
+   multisc.chats[2].glyph:=0;
+   writeln(logfile,multisc.chats[0].uzenet,' ',multisc.chats[1].uzenet,' ',multisc.chats[2].uzenet);
    coordsniper :=false;
   end;
 
@@ -6740,13 +6892,20 @@ end;
 
 
 procedure respawn;
+type
+TBunker = record
+  index:integer;
+  tav:single;
+  end;
 var
-x,i,j,ojjind:integer;
+x,p,b,i,j,ojjind:integer;
 tmp2:single;
 tmppos:TD3DXVector3;
-tmppont:single;
-maxpos:TD3DXVector3;
-maxpont:single;
+tmptav:single;
+legjobbpos:TD3DXVector3;
+Bunker:Tbunker;
+tmpBunker:Tbunker;
+bunkerek:array of TBunker;
 begin
  lastzone:='';
  multisc.killscamping:=multisc.kills;
@@ -6761,47 +6920,72 @@ begin
  mapbol:=false;
  halal:=0;
 
- if multisc.state1v1 then begin
+ if multisc.state1v1 or war_1v1 then begin
  autoban:= false;
- cpx^:=portalpos.x;    cpy^:=portalpos.y+1;    cpz^:=portalpos.z;
+ cpx^:=portalpos.x-2;    cpy^:=portalpos.y+1;    cpz^:=portalpos.z;
+ szogx:=1.57075;
+ end
+ else
+ if war_kb then begin
+ autoban:= false;
+// cpx^:=piramispos.x+10;    cpy^:=piramispos.y+1;    cpz^:=piramispos.z+1;
+ if myfegyv < 128 then begin
+ cpx^:=-836.49;    cpy^:=16.1;    cpz^:=-799.52;
  end
  else
  begin
- maxpont:=-1000000000000;
- maxpos:=D3DXVector3(0,100,0);
- for i:=0 to 5 do
- for ojjind:=0 to high(ojjektumarr) do
- if ((ojjektumflags[ojjind] and OF_SPAWNGUN)>0)  and (myfegyv<128) or
-    ((ojjektumflags[ojjind] and OF_SPAWNTECH)>0) and (myfegyv>=128) then
+  cpx^:=-777.60;    cpy^:=16.15;    cpz^:=-780.18;
+ end;
+  szogx:=-1.57075;
+ end
+ else
  begin
-  tmppos:=ojjektumarr[ojjind].holvannak[random(ojjektumarr[ojjind].hvszam)];
-  tmppont:=0;
-  for j:=0 to high(ppl) do
+ for i:=0 to high(ojjektumarr) do
+ if ((ojjektumflags[i] and OF_SPAWNGUN)>0)  and (myfegyv<128) or
+    ((ojjektumflags[i] and OF_SPAWNTECH)>0) and (myfegyv>=128) then
+    ojjind:=i;
+ for b:=0 to ojjektumarr[ojjind].hvszam-1 do
+ begin
+  tmppos:=ojjektumarr[ojjind].holvannak[b];
+  tmptav:=0;
+  for p:=0 to high(ppl) do
   begin
-
-    tmp2:=100-tavpointpoint(tmppos,ppl[j].pos.pos);
-    if tmp2<0 then tmp2:=0;
-    if tmp2>7 then tmp2:=0;
-    if (ppl[j].pls.fegyv xor myfegyv)>128 then
-     tmppont:=tmppont+tmp2*3
-
+    if (ppl[p].pls.fegyv xor myfegyv)>=128 then
+      tmptav:=tmptav+sqrt(tavpointpoint(tmppos,ppl[p].pos.pos));
   end;
-  if tmppont>maxpont then
-  begin
-   maxpont:=tmppont;
-   maxpos:=tmppos;
-  end;
+
+ Bunker.index:=b;
+ Bunker.tav:=tmptav;
+ SetLength(bunkerek, Length(bunkerek)+1);
+ bunkerek[High(bunkerek)]:=Bunker;
  end;
 
+
+  for i:=0 to High(bunkerek) do
+  for j:=0 to i do
+  begin
+    if bunkerek[i].tav<bunkerek[j].tav then
+    begin
+      tmpBunker:=bunkerek[i];
+      bunkerek[i]:=bunkerek[j];
+      bunkerek[j]:=tmpBunker;
+    end;
+  end;
+
+ i:=random(trunc(min(length(bunkerek), 4 + length(ppl)/5)));
+ legjobbpos:=ojjektumarr[ojjind].holvannak[bunkerek[i].index];
+
+
  tmp2:=stuffjson.GetFloat(['spawn_radius']);
- cpx^:=maxpos.x+tmp2*(random(10000)/5000-1)/2;
- cpy^:=maxpos.y+stuffjson.GetFloat(['spawn_height']);
- cpz^:=maxpos.z+tmp2*(random(10000)/5000-1)/2;
+ cpx^:=legjobbpos.x+tmp2*(random(10000)/5000-1)/2;
+ cpy^:=legjobbpos.y+stuffjson.GetFloat(['spawn_height']);
+ cpz^:=legjobbpos.z+tmp2*(random(10000)/5000-1)/2;
 
  NoNANINF(cpx^); NoNANINF(cpy^); NoNANINF(cpz^);
  end;
 
- szogx:=0;
+ if not (multisc.state1v1 or war_1v1 or war_kb) then
+  szogx:=0;
  szogy:=0;
  cpox^:=cpx^;cpoy^:=cpy^;cpoz^:=cpz^;
 
@@ -6836,6 +7020,11 @@ begin
  result:=CustomVertex(cpx^+xp*1500,10.1+singtc/10,cpz^+zp*1500,0,1,0,$7F7F7F7F,(cpx^+xp*1500)/3+singtc,(cpz^+zp*1500)/3+cosgtc+plsgtc,(cpx^+xp*1500)/6-singtc/3+plsgtc/3,(cpz^+zp*1500)/6-cosgtc/3);
 end;
 
+function ujvizvertex(xp,zp:single):TCustomvertex;
+begin
+ result:=CustomVertex(cpx^+xp*1500,10.1+singtc/10,cpz^+zp*1500,0,1,0,$7F7F7F7F,(cpx^+xp*1500)/3,(cpz^+zp*1500)/3,(cpx^+xp*1500)/6,(cpz^+zp*1500)/6);
+end;
+
 procedure renderviz;
 var
 viz:array [0..9] of TCustomVertex;
@@ -6843,25 +7032,27 @@ tmplw:longword;
 matViewProj,matKorr,matkorr2:TD3DMatrix;
 begin
  g_pd3dDevice.SetRenderState(D3DRS_FOGENABLE,itrue);
- if not( (G_peffect<>nil) and (opt_detail>=DETAIL_VIZ) )then
+ if not( (G_peffect<>nil) and (opt_water>0) )then
      g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,itrue);
- if ((cpy^<40) or (opt_detail>=DETAIL_VIZ)) and (mapmode=0) then
+ if ((cpy^<40) or (opt_water>0)) and (mapmode=0) then
  begin
  singtc:=sin((volttim mod 15000)*D3DX_PI*2/15000);
  cosgtc:=cos((volttim mod 15000)*D3DX_PI*2/15000);
  plsgtc:=(volttim mod 20000)/20000;
  end;
- viz[0]:=vizvertex(0,0);
- //viz[0].position.y:=10.1;
- viz[1]:=vizvertex(1,0);
- viz[2]:=vizvertex(1,1);
- viz[3]:=vizvertex(0,1);
- viz[4]:=vizvertex(-1,1);
- viz[5]:=vizvertex(-1,0);
- viz[6]:=vizvertex(-1,-1);
- viz[7]:=vizvertex(0,-1);
- viz[8]:=vizvertex(1,-1);
- viz[9]:=vizvertex(1,0);
+
+
+    viz[0]:=vizvertex(0,0);
+    viz[1]:=vizvertex(1,0);
+    viz[2]:=vizvertex(1,1);
+    viz[3]:=vizvertex(0,1);
+    viz[4]:=vizvertex(-1,1);
+    viz[5]:=vizvertex(-1,0);
+    viz[6]:=vizvertex(-1,-1);
+    viz[7]:=vizvertex(0,-1);
+    viz[8]:=vizvertex(1,-1);
+    viz[9]:=vizvertex(1,0);
+
  //{
  g_pd3dDevice.SetTexture(0,viztex);
  g_pd3dDevice.SetTexture(1,viztex);
@@ -6870,13 +7061,13 @@ begin
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, FAKE_HDR);
 
- g_pd3ddevice.drawprimitiveUP(D3DPT_TRIANGLEFAN,8,viz,sizeof(TCustomvertex));
- g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+
       //}
       //{
 
- if (G_peffect<>nil) and (opt_detail>=DETAIL_VIZ) and (cpy^>8.5) then
+ if (G_peffect<>nil) and (opt_water>0) and (cpy^>8.5) then
     begin
+
       g_peffect.SetTechnique('WaterReflection');
      matkorr:=D3DXMatrix(0.5,   0,  0,0,
                          0  ,-0.5,  0,0,
@@ -6894,16 +7085,28 @@ begin
 
      g_peffect._Begin(@tmplw,0);
      g_peffect.BeginPass(0);
+
      g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,itrue);
      //g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iFalse);
      g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_SRCALPHA);
      g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_INVSRCALPHA);
      g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
      g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,iFalse);
-      g_pd3ddevice.drawprimitiveUP(D3DPT_TRIANGLEFAN,8,viz,sizeof(TCustomvertex));
+
+     g_pd3ddevice.drawprimitiveUP(D3DPT_TRIANGLEFAN,8,viz,sizeof(TCustomvertex));
      g_peffect.Endpass;
      g_peffect._end;
-    end;  // }
+
+
+    end
+    else
+    begin
+      g_pd3ddevice.drawprimitiveUP(D3DPT_TRIANGLEFAN,8,viz,sizeof(TCustomvertex));
+    end;
+
+
+         
+ g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
  g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,itrue);
  g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,itrue);
  g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,ifalse);
@@ -7021,7 +7224,32 @@ begin
   glob_dmh:=glob_dmh+0.05;
 end;
 
+{$IFDEF matieditor}
 
+procedure matieditor;
+var
+closestojj,i,j:integer;
+mindist,dist:single;
+me_tex:TOjjektumTexture;
+begin
+ mindist := 100;
+ for i:=0 to high(ojjektumarr) do
+    for j:=0 to ojjektumarr[i].hvszam do
+      begin
+      dist := tavPointPoint(D3DXVector3(cpx^,cpy^,cpz^),ojjektumarr[i].holvannak[j]);
+      if dist<mindist then
+        begin
+        mindist := dist;
+        me_id := i;
+        debugstr := ojjektumarr[i].filenev;
+        end;
+      end;
+
+
+
+end;
+
+{$ENDIF}
 
 procedure drawHUD;
 const
@@ -7151,7 +7379,60 @@ begin
     hardkick:=true;
   end;
 
- if nohud then
+
+
+
+  aszin:=$FF;
+
+ if length(chatmost)>0 then
+ begin
+ if GetTickCount mod 1000 >500 then cursor:='_' else cursor:='';
+  if Copy(chatmost,1,4)=' /c ' then
+   menu.DrawSzinesChat(lang[36]+':'+Copy(chatmost,5,Length(chatmost))+cursor ,0,0.03,0.4,0.3,$FF00FF00)
+  else
+  if Copy(chatmost,1,4)=' /r ' then
+   menu.DrawSzinesChat(lang[38]+':'+Copy(chatmost,5,Length(chatmost))+cursor ,0,0.03,0.4,0.3,$FFFF00FF)
+  else
+  if (Copy(chatmost,1,4)=' /w ') and (pos(' ',Copy(chatmost,5,Length(chatmost)))>0) then
+  begin
+   rtmp:=pos(' ',Copy(chatmost,5,Length(chatmost)));
+   menu.DrawSzinesChat(lang[37]+'('+Copy(chatmost,5,rtmp-1)+'):'+Copy(chatmost,rtmp+4,Length(chatmost))+cursor ,0,0.03,0.4,0.3,$FFFF00FF)
+  end
+  else
+   menu.DrawSzinesChat('Chat:'+chatmost+cursor ,0,0.03,0.4,0.3,$FF000000+aszin);
+ end;
+
+
+
+ if (length(chatmost)<=0) then
+ begin
+ if not nohud then
+  for i:=0 to 7 do
+  begin
+    if (multisc.chats[i].glyph<>0) then begin
+     //cghash:=(((13)*16+12)*16+14)*16+15   {szin}+29*65536
+     menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.022,$1F*cardinal(8-i));
+     menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$1F000000*cardinal(8-i)+aszin);
+      end
+   else
+     menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$1F000000*cardinal(8-i)+aszin);
+  end;
+ end
+ else
+ begin
+  for i:=0 to 23 do
+ begin
+  if (multisc.chats[i].glyph<>0) then begin
+   menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.022,$FF);
+   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$FF000000+aszin);
+     end
+  else
+   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$FF000000+aszin);
+ end;
+ end;
+
+
+  if nohud then
   exit;
 
  setlength(ar,length(ppl));
@@ -7358,51 +7639,7 @@ begin
   menu.DrawSzinesChat(txt,0.89,0.37,1,0.39,$FF000000+betuszin);
 
 
- aszin:=$FF;
 
- if length(chatmost)>0 then
- begin
- if GetTickCount mod 1000 >500 then cursor:='_' else cursor:='';
-  if Copy(chatmost,1,4)=' /c ' then
-   menu.DrawSzinesChat(lang[36]+':'+Copy(chatmost,5,Length(chatmost))+cursor ,0,0.03,0.4,0.3,$FF00FF00)
-  else
-  if Copy(chatmost,1,4)=' /r ' then
-   menu.DrawSzinesChat(lang[38]+':'+Copy(chatmost,5,Length(chatmost))+cursor ,0,0.03,0.4,0.3,$FFFF00FF)
-  else
-  if (Copy(chatmost,1,4)=' /w ') and (pos(' ',Copy(chatmost,5,Length(chatmost)))>0) then
-  begin
-   rtmp:=pos(' ',Copy(chatmost,5,Length(chatmost)));
-   menu.DrawSzinesChat(lang[37]+'('+Copy(chatmost,5,rtmp-1)+'):'+Copy(chatmost,rtmp+4,Length(chatmost))+cursor ,0,0.03,0.4,0.3,$FFFF00FF)
-  end
-  else
-   menu.DrawSzinesChat('Chat:'+chatmost+cursor ,0,0.03,0.4,0.3,$FF000000+aszin);
- end;
-
- if length(chatmost)<=0 then
- begin
- for i:=0 to 7 do
- begin
-  if (multisc.chats[i].glyph<>0) then begin
-    //cghash:=(((13)*16+12)*16+14)*16+15   {szin}+29*65536
-   menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.022,$1F*cardinal(8-i));
-   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$1F000000*cardinal(8-i)+aszin);
-     end
-  else
-   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$1F000000*cardinal(8-i)+aszin);
- end;
- end
- else
- begin
-  for i:=0 to 23 do
- begin
-  if (multisc.chats[i].glyph<>0) then begin
-   menu.DrawChatGlyph(multisc.chats[i].glyph,0.005,0.06+(i)*0.022,$FF);
-   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$FF000000+aszin);
-     end
-  else
-   menu.DrawSzinesChat(multisc.chats[i].uzenet,0.015,0.05+(i)*0.022,0.4,0.2+(i)*0.02,$FF000000+aszin);
- end;
- end;
 
  {$IFDEF palyszerk}
  mit:='DELETE';
@@ -7487,6 +7724,19 @@ begin
  end;
 
 
+
+ {$IFDEF matieditor}
+
+
+  if me_mat<0 then me_mat:=0;
+  if me_mat>ojjektumarr[me_id].texszam-1 then me_mat:= ojjektumarr[me_id].texszam -1;
+
+  me_tid := ojjektumarr[me_id].textures[me_mat];
+  debugstr2 := ojjektumTextures[me_tid].name + ' i:' + FloatToStr(ojjektumTextures[me_tid].specIntensity) + ' h:' + FloatToStr(ojjektumTextures[me_tid].specHardness);
+
+  menu.drawtext(debugstr,0.2,0.8,1,1,1,$FFFFFFFF);
+  menu.drawtext(debugstr2,0.2,0.9,1,1,1,$FFFFFFFF);
+ {$ENDIF}
  //  menu.g_pSprite.Draw(inttostr(sizeof(TD3DXAttributeRange)),nil,nil,nil,$80FFFFFF);
 
 
@@ -7624,6 +7874,7 @@ begin
   exit;
  end;
 end;
+
 
 procedure drawminimap;
 type
@@ -8389,7 +8640,7 @@ begin
 
     g_pd3ddevice.SetTransform(D3DTS_TEXTURE1,identmatr);
     g_pd3ddevice.SetTransform(D3DTS_TEXTURE0,identmatr);
-    ojjektumrenderer.Draw(frust,nil,matview,matproj,fogstart,fogend,false);
+    ojjektumrenderer.Draw(opt_detail,nil,false);
     g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,   D3DTOP_DISABLE);
 
     g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
@@ -8451,7 +8702,11 @@ begin
    if ppl[i].pls.lo>1 then ppl[i].pls.lo:=1;
   end;
 
-  if halal>0 then halal:=halal+eltim; //nem volt /2
+  if halal>0 then
+  if war_kb or war_1v1 then
+  halal:=halal+(eltim/2)
+  else
+  halal:=halal+eltim; //nem volt /2
   if halal>6 then respawn;              //6 volt
   laststate:='Handlelovesek';
   Handlelovesek;
@@ -8511,14 +8766,19 @@ magicfuertek:array [0..4] of byte = (0,13,45,119,181);
 var
  i:integer;
  pos:TD3DVector;
- matViewproj:TD3DMatrix;
  tmplw:longword;
 begin
    laststate:='Rendering reflections';
 
+   if (myfegyv = FEGYV_MPG) then
+     (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.03))
+   else if (myfegyv = FEGYV_QUAD) then
+     (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.01))
+   else
+     (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.04));
 
    //hát, ez elõre kell. pont.
-  if (opt_detail>=DETAIL_VIZ) then
+  if (opt_water>0) then
    Renderreflectiontex;
 
    laststate:='Rendering';
@@ -8622,9 +8882,9 @@ begin
      g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
      g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
      g_pd3dDevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue);
-      g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $5);
+     g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $5);
      g_pd3dDevice.SetTexture(1,noisetex);
-     DrawLvl((cpy^>150));
+     //DrawLvl((cpy^>150));
       g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
       g_pd3dDevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
 
@@ -8712,7 +8972,7 @@ begin
     fejcuccrenderer.init;
     for i:=0 to high(ppl) do
     if ppl[i].pls.visible then
-    if tavpointpointsq(campos,ppl[i].pos.pos)<sqr(50) then
+    if tavpointpointsq(campos,ppl[i].pos.pos)<sqr(50+20*opt_detail) then
     begin
      setupmuksmatr(i);
      mat_world._41:=mat_world._41+ppl[i].pls.fejh.x;
@@ -8734,11 +8994,13 @@ begin
     g_pd3dDevice.SetRenderState(D3DRS_TEXTUREFACTOR,$FF5050FF);
     g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
 
-    if opt_detail<DETAIL_POM then
-     ojjektumrenderer.Draw(frust,nil,matview,matproj,fogstart,fogend,((myfegyv<>FEGYV_M82A1) or csipo) and not mapbol)
-    else
-      ojjektumrenderer.Draw(frust,g_peffect,matview,matproj,fogstart,fogend,((myfegyv<>FEGYV_M82A1) or  csipo ) and not mapbol);
+     if (opt_detail>0) and (g_pEffect<>nil) then
+        g_pEffect.SetTexture('g_MeshTexture', effecttexture);
 
+    if opt_detail>0 then
+    ojjektumrenderer.Draw(opt_detail,g_peffect,((myfegyv<>FEGYV_M82A1) or csipo) and not mapbol)
+    else
+    ojjektumrenderer.Draw(opt_detail,nil,((myfegyv<>FEGYV_M82A1) or csipo) and not mapbol);
     uninitojjektumok(g_pd3ddevice);
     g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
@@ -8915,7 +9177,7 @@ begin
 
     end;
 
-    laststate:='Rendering Alpha stuff (ff)';
+     laststate:='Rendering Alpha stuff (ff)';
     fegyv.FlushFegyeffekt;
 
     fegyv.unpreparealpha;
@@ -8923,6 +9185,8 @@ begin
     laststate:='Rendering Particle System';
 
     Particlesystem_render(matView);
+
+
 
    // re_gomb;
 
@@ -8953,9 +9217,11 @@ var
  tmplw:Longword;
  fajlnev:string;
  tmpvec:TD3DXVector3;
+// res:HRESULT;
+ rect:Prect;
 begin
   laststate:='Effects rendering';
- 
+
   if enableeffects and (opt_postproc>0) then
   begin
    backbuffer:=nil;
@@ -9000,10 +9266,9 @@ begin
      end;
 
 
-    if (G_peffect<>nil) and (opt_postproc=POSTPROC_GLOW) then
+    if (G_peffect<>nil) and (opt_postproc>=POSTPROC_GLOW) then
     if halal=0 then
      begin
-
       g_peffect.SetTechnique('FullScreenGlow');
 
       g_pEffect.SetTexture('g_MeshTexture', effecttexture);
@@ -9011,9 +9276,10 @@ begin
       g_peffect._Begin(@tmplw,0);
       g_peffect.BeginPass(0);
       g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,ifalse);
-      g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iTrue);
-      g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
-      g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_ONE);
+      g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iFalse);
+      //g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iTrue);
+      //g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
+      //g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_ONE);
       g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
       g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,ifalse);
       g_pd3ddevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE);
@@ -9025,7 +9291,7 @@ begin
 
 
      if (menu.lap=-1) then //MENÜBÕL nem kéne...
-    if (G_peffect<>nil) and (opt_postproc>=POSTPROC_MOTIONBLUR) then
+    if (G_peffect<>nil) and (opt_motionblur) then
      if autoban or ((rezg>0) and (robhely.y<>0) and (robhely.x<>0)) then
      if halal=0 then
      begin
@@ -9147,39 +9413,44 @@ begin
 
   if (GetAsyncKeyState(VK_SNAPSHOT)<>0) then
     begin
-  if png_screenshot then
-  //if (enableeffects) and (effecttexture<>nil) then
-  begin
+
    backbuffer:=nil;
    g_pd3ddevice.GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,backbuffer);
+
+   if multisampling>0 then
+   begin
+     rect := AllocMem(SizeOf(TRect));
+     rect.Left := 0;
+     rect.Top := 0;
+     rect.Right := SCwidth;
+     rect.Bottom := SCheight;
+     g_pd3dDevice.StretchRect(backbuffer,rect,downsamplesurf,rect,D3DTEXF_POINT);
+     g_pd3ddevice.GetRenderTargetData(downsamplesurf,printscreensurf);
+   end
+   else
    g_pd3ddevice.GetRenderTargetData(backbuffer,printscreensurf);
+
+
 
    longdateformat:='yyyy.mm.dd.';
    longtimeformat:='hh-nn-ss';
    shortdateformat:='yyyy.mm.dd.';
    shorttimeformat:='hh-nn-ss';
-   fajlnev:='screenshots/Stickman Warfare '+Datetostr(date)+' '+timetostr(time)+'.png';
-    if not directoryexists('screenshots') then createdirectory('screenshots',nil);
-   D3DXsavesurfacetofile(PChar(fajlnev),D3DXIFF_PNG,printscreensurf,nil,nil);
-   backbuffer:=nil;
-  end
-    
-  else
 
-  begin
-   backbuffer:=nil;
-   g_pd3ddevice.GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,backbuffer);
-   g_pd3ddevice.GetRenderTargetData(backbuffer,printscreensurf);
+   if not directoryexists('screenshots') then createdirectory('screenshots',nil);
 
-   longdateformat:='yyyy.mm.dd.';
-   longtimeformat:='hh-nn-ss';
-   shortdateformat:='yyyy.mm.dd.';
-   shorttimeformat:='hh-nn-ss';
-   fajlnev:='screenshots/Stickman Warfare '+Datetostr(date)+' '+timetostr(time)+'.jpg';
-    if not directoryexists('screenshots') then createdirectory('screenshots',nil);
-   D3DXsavesurfacetofile(PChar(fajlnev),D3DXIFF_JPG,printscreensurf,nil,nil);
+   if png_screenshot then
+   begin
+    fajlnev:='screenshots/Stickman Warfare '+Datetostr(date)+' '+timetostr(time)+'.png';
+    D3DXsavesurfacetofile(PChar(fajlnev),D3DXIFF_PNG,printscreensurf,nil,nil);
+   end
+   else
+   begin
+    fajlnev:='screenshots/Stickman Warfare '+Datetostr(date)+' '+timetostr(time)+'.jpg';
+    D3DXsavesurfacetofile(PChar(fajlnev),D3DXIFF_JPG,printscreensurf,nil,nil);
+   end;
+
    backbuffer:=nil;
-  end;
  end;
 end;
 
@@ -9255,15 +9526,22 @@ begin
   t1:=myfejcucc;
   write(fil2,t1);
 
-
-
   t1:=opt_detail;
   write(fil2,t1);
   t1:=opt_postproc;
   write(fil2,t1);
-  
+  t1:=opt_water;
+  write(fil2,t1);
+  t1:=opt_particle;
+  write(fil2,t1);
 
   if opt_rain then
+   t1:=1
+  else
+   t1:=0;
+  write(fil2,t1);
+
+  if opt_motionblur then
    t1:=1
   else
    t1:=0;
@@ -9299,12 +9577,6 @@ begin
    t1:=0;
   write(fil2,t1);
 
-  if opt_widescreen then
-   t1:=1
-  else
-   t1:=0;
-  write(fil2,t1);
-
   if png_screenshot then
    t1:=1
   else
@@ -9329,6 +9601,12 @@ begin
    t1:=0;
   write(fil2,t1);
 
+  if savepw then
+   t1:=1
+  else
+   t1:=0;
+  write(fil2,t1);
+
   finally
   closefile(fil2);
   end;
@@ -9337,7 +9615,7 @@ end;
 procedure handlemenuclicks;
 var
 fil:textfile;
-i,n:integer;
+i:integer;
 begin
  if not canbeadmin then
  if (pos('ADMIN',  uppercase(menufi[MI_NEV].valueS))>0) or
@@ -9407,6 +9685,12 @@ begin
   rewrite(fil);
   writeln(fil,menufi[MI_NEV].valueS);
   writeln(fil,myfegyv);
+  if (lasthash='-') then
+    lasthash:=menufipass.GetPasswordMD5;
+  if savepw and (menufipass.valueS<>'') then
+    writeln(fil,encodehash(lasthash))
+  else
+    writeln(fil,'-');
   closefile(fil);
   exit
  end;
@@ -9498,6 +9782,12 @@ begin
   rewrite(fil);
   writeln(fil,menufi[MI_NEV].valueS);
   writeln(fil,myfegyv);
+  if (lasthash='-') then
+    lasthash:=menufipass.GetPasswordMD5;
+  if savepw and (menufipass.valueS<>'') then
+    writeln(fil,encodehash(lasthash))
+  else
+    writeln(fil,'-');
   closefile(fil);
   menu.items[2,2].clicked:=false;
   menu.lap:=3;
@@ -9572,16 +9862,14 @@ begin
   exit;
  end;
 
- if menufi[MI_WIDESCREEN].clicked then
+ if menufi[MI_MOTIONBLUR].clicked then
  begin
-  menufi[MI_WIDESCREEN].clicked:=false;
-  opt_widescreen:=not opt_widescreen;
-  if opt_widescreen then
-   ASPECT_RATIO:=16/9
-  else
-   ASPECT_RATIO:=4/3;
+  menufi[MI_MOTIONBLUR].clicked:=false;
+  opt_motionblur:=not opt_motionblur;
   exit;
  end;
+
+
  {
  if menufi[MI_IMPOSTER].clicked then
  begin
@@ -9619,6 +9907,13 @@ begin
   exit;
  end;
 
+ if menufi[MI_SAVEPW].clicked then
+ begin
+  menufi[MI_SAVEPW].clicked:=false;
+  savepw:=not savepw;
+  exit;
+ end;
+
  if menufi[MI_MOUSE_ACC].clicked then
  begin
   menufi[MI_MOUSE_ACC].clicked:=false;
@@ -9639,13 +9934,28 @@ begin
   exit;
  end;
 
-
  opt_detail:=round(menufi[MI_DETAIL].elx*DETAIL_MAX);
  menufi[MI_DETAIL].elx:=opt_detail/DETAIL_MAX;
 
-
  opt_postproc:=round(menufi[MI_EFFECTS].elx*POSTPROC_MAX);
  menufi[MI_EFFECTS].elx:=opt_postproc/POSTPROC_MAX;
+
+ opt_water:=round(menufi[MI_WATER].elx*WATER_MAX);
+ menufi[MI_WATER].elx:=opt_water/WATER_MAX;
+
+ if pre_opt_water<>opt_water then
+ begin
+  case opt_water of
+  1: D3DXCreateTexture(g_pd3ddevice,SCWidth div 4,SCheight div 4,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,reflecttexture);
+  2: D3DXCreateTexture(g_pd3ddevice,SCWidth div 2,SCheight div 2,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,reflecttexture);
+  3: D3DXCreateTexture(g_pd3ddevice,SCWidth,SCheight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,reflecttexture);
+  end;
+  pre_opt_water:=opt_water;
+ end;
+
+ opt_particle:=round(menufi[MI_PARTICLE].elx*PARTICLE_MAX);
+ menufi[MI_PARTICLE].elx:=opt_particle/PARTICLE_MAX;
+
 
  if opt_taunts then
   menufi[MI_TAUNTS].valueS:='[X]'
@@ -9672,6 +9982,11 @@ begin
  else
   menufi[MI_RAIN].valueS:='[ ]';
 
+ if opt_motionblur then
+  menufi[MI_MOTIONBLUR].valueS:='[X]'
+ else
+  menufi[MI_MOTIONBLUR].valueS:='[ ]';
+
  if opt_radar then
   menufi[MI_RADAR].valueS:='[X]'
  else
@@ -9687,10 +10002,11 @@ begin
  else
   menufi[MI_ZONES].valueS:='[ ]';
 
- if opt_widescreen then
-  menufi[MI_WIDESCREEN].valueS:='[X]'
+ if savepw then
+  menufi[MI_SAVEPW].valueS:='[X]'
  else
-  menufi[MI_WIDESCREEN].valueS:='[ ]';
+  menufi[MI_SAVEPW].valueS:='[ ]';
+
 
  {if opt_imposters then
   menufi[MI_IMPOSTER].valueS:='[X]'
@@ -9742,7 +10058,8 @@ begin
 
 
 
- menu.Draw;
+ menu.Draw(menuopacity);
+ if menuopacity<0.98 then menuopacity := menuopacity + 0.02;
 
  g_pd3dDevice.Present(nil, nil, 0, nil);
 end;
@@ -9802,9 +10119,9 @@ begin
    GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT,fsettings);
    fsettings.DecimalSeparator:='.';
    multisc.chats[0].uzenet:='Coords: ('+copy(mit,pos(' /coords',mit)+length(' /coords')+1,100000)+')';
-   multisc.chats[1].uzenet:='"x" : '+FloatToStrF(cpx^,ffFixed,7,2,fsettings)+
-           ', "y" : '+FloatToStrF(cpy^,ffFixed,7,2,fsettings)+
-           ', "z" : '+FloatToStrF(cpz^,ffFixed,7,2,fsettings);
+   multisc.chats[1].uzenet:='x: '+FloatToStrF(cpx^,ffFixed,7,2,fsettings)+
+           '  y: '+FloatToStrF(cpy^,ffFixed,7,2,fsettings)+
+           '  z: '+FloatToStrF(cpz^,ffFixed,7,2,fsettings);
    multisc.chats[2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2,fsettings)+
            '  angleV: '+FloatToStrF(szogy,ffFixed,7,2,fsettings);
    multisc.chats[0].glyph:=0;
@@ -9817,7 +10134,7 @@ end;
 
 procedure findPlayerForChat(start:integer;command:string);
 var
-i,n,j,k:integer;
+i,n,k:integer;
 key:string;
 db:string;
 
@@ -9830,7 +10147,7 @@ begin
   begin
    if (Copy(LowerCase(ppl[i].pls.nev),1,Length(key))=LowerCase(key)) then
      begin
-     inc(j);
+//     inc(j);
      k:=i;
      db:= db + Copy(ppl[i].pls.nev,1,Length(key)) + ' ';
      end;
@@ -9839,7 +10156,7 @@ begin
   if k>0 then chatmost:=command + ppl[k].pls.nev + ' ';
   //if j=1 then debugstr:='kinek:('+inttostr(k)+') '+ppl[k].pls.nev
   //else
-  debugstr:='key:' + key + ' -> ' + ppl[k].pls.nev;
+//  debugstr:='key:' + key + ' -> ' + ppl[k].pls.nev;
 
 
 end;
@@ -9860,11 +10177,24 @@ begin
   end;
 
 
+  //if (chr(mit)='x') then begin //sajt
+  //multisc.weather:=random(20);
+  //end;
+
 
   if (chr(mit)='r') or (chr(mit)='R') then chatmost:=' /r ';
   if (chr(mit)='c') or (chr(mit)='C') then chatmost:=' /c ';
   {$IFDEF repkedomod}
   if (chr(mit)='p') or (chr(mit)='P') then repules := not repules;
+  {$ENDIF}
+  {$IFDEF matieditor}
+  if (chr(mit)='+') then me_mat := me_mat + 1;
+  if (chr(mit)='-') then me_mat := me_mat - 1;
+  if (chr(mit)='8') then ojjektumTextures[me_tid].specHardness := ojjektumTextures[me_tid].specHardness + 0.1;
+  if (chr(mit)='2') then ojjektumTextures[me_tid].specHardness := ojjektumTextures[me_tid].specHardness - 0.1;
+  if (chr(mit)='6') then ojjektumTextures[me_tid].specIntensity := ojjektumTextures[me_tid].specIntensity + 0.1;
+  if (chr(mit)='4') then ojjektumTextures[me_tid].specIntensity := ojjektumTextures[me_tid].specIntensity - 0.1;
+  if (chr(mit)='5') then   matieditor;
   {$ENDIF}
   if (chr(mit)='/') then chatmost:=' /';
   if (mit=VK_ESCAPE) and (not labelactive) then gobacktomenu:=true;
@@ -9875,7 +10205,11 @@ begin
    latszonaKL := 0;
    exit;
   end;
+
   if ((chr(mit)='f') or (chr(mit)='F')) and labelactive then labelactive:=false;
+
+  //debug stuff
+//  if ((chr(mit)='i') or (chr(mit)='I')) then glowdisable := not glowdisable; 
 
 
    exit;
@@ -9931,6 +10265,24 @@ begin
      mstat:=MSTAT_ALL;
 
     end
+  else
+    if (' /1v1war'=chatmost) and (halal=0) then
+    begin
+     war_1v1:=not war_1v1;
+     halal:=1;
+     setupmymuksmatr;
+     addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^),d3dxvector3(sin(szogx)*0.3,0.1,cos(szogx)*0.3),myfegyv,10,0,-1);
+     mstat:=MSTAT_ALL;
+    end
+  else
+    if (' /kbwar'=chatmost) and (halal=0) then
+    begin
+     war_kb:=not war_kb;
+     halal:=1;
+     setupmymuksmatr;
+     addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^),d3dxvector3(sin(szogx)*0.3,0.1,cos(szogx)*0.3),myfegyv,10,0,-1);
+     mstat:=MSTAT_ALL;
+    end
     else
     begin
      Multisc.Chat(chatmost);
@@ -9957,11 +10309,12 @@ end;
 
 procedure fillupmenu;
 var
-i,n:integer;
+i:integer;
 fil:textfile;
 fil2:file of single;
-str:string;
+str,password:string;
 t1:single;
+balstart,jobbveg,balveg,jobbstart,korr,bigtext,fent,sor:single;
 begin
  if not directoryexists('data\cfg') then createdirectory('data\cfg',nil);
  if fileexists('data\cfg\name.cfg') then
@@ -9971,6 +10324,10 @@ begin
   readln(fil,str);
   str:=stringreplace(str,' ','_',[rfReplaceAll]);
   readln(fil,myfegyv);
+  password:='';
+  lasthash:='';
+  readln(fil, lasthash);
+
   closefile(fil);
   if length(str)>15 then str:='Player';
  end
@@ -9979,43 +10336,51 @@ begin
   str:='Player';
   myfegyv:=255;
  end;
- 
+
+ balstart := 0.4-(0.8*(SCheight*0.5))/SCwidth;
+ balveg   := 0.4;
+ jobbstart:= 0.5;
+ jobbveg  := 0.5+(1.067*(SCheight*0.5))/SCwidth;
+ korr := (SCheight*1.333)/SCwidth;
+
+ bigtext := 0.8;
+
  //Menü lap all
  for i:=0 to 7 do
  begin
-  menu.Addteg(0.1,0.3,0.4,0.8,i);
-  menu.AddText(0.1,0.35,0.4,0.45,1,i,lang[0],true);
-  menu.AddText(0.1,0.5,0.4,0.6,1,i,lang[1],true);
-  menu.AddText(0.1,0.65,0.4,0.75,1,i,lang[2],true);
+  menu.Addteg(balstart,0.3,balveg,0.8,i);
+  menu.AddText(balstart,0.35,balveg,0.45,bigtext,i,lang[0],true);
+  menu.AddText(balstart,0.5,balveg,0.6,bigtext,i,lang[1],true);
+  menu.AddText(balstart,0.65,balveg,0.75,bigtext,i,lang[2],true);
  end;
 
  //Menü lap 0;
 
  // Invisible GazMSG
- menu.Addteg(0.45,0.3,0.9,0.8,0);
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,0);
  menu.tegs[0,1].visible:=false;
 
- menu.AddText(0.45,0.3,0.9,0.8,0.5,0,'WTF factor.',false);                    menufi[MI_GAZMSG]:=menu.items[0,3];
+ menu.AddText(jobbstart,0.3,jobbveg,0.8,0.5,0,'WTF factor.',false);           menufi[MI_GAZMSG]:=menu.items[0,3];
  menufi[MI_GAZMSG].visible:=false;
 
  //Menü lap 1 -- Connect
- menu.Addteg(0.5,0.3,0.9,0.8,1);
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,1);
 
- menu.AddText( 0.5,0.7,0.9,0.8,1,1,lang[3],true);                   menufi[MI_CONNECT]:=menu.items[1,3];
- menu.AddText(0.5,0.35,0.63,0.375,0.5,1,lang[4],false);
- menu.AddTextBox(0.63,0.35,0.88,0.375,0.5,1,str,15);                   menufi[MI_NEV]:=menu.items[1,5];
- menu.AddText(0.5,0.475,0.63,0.5,0.5,1,lang[5],false);
- menu.AddText(0.57,0.45,0.9,0.525,1,1,'TECH',true);                    menufi[MI_TEAM]:=menu.items[1,7];
- menu.AddText(0.5,0.525,0.63,0.575,0.5,1,lang[6],false);
- menu.AddText(0.57,0.525,0.9,0.575,1,1,lang[7],true);                 menufi[MI_FEGYV]:=menu.items[1,9];
- menu.AddText(0.5,0.6,0.63,0.65,0.5,1,lang[8],false);
+ menu.AddText(      jobbstart,  0.7,  jobbveg,0.8,1,1,lang[3],true);                   menufi[MI_CONNECT]:=menu.items[1,3];
+ menu.AddText(      jobbstart,  0.35, jobbstart+korr*0.13,0.375,0.5,1,lang[4],false);
+ menu.AddTextBox(jobbstart+korr*0.13,0.344,jobbveg-korr*0.05,0.389,0.5,1,str,15);                   menufi[MI_NEV]:=menu.items[1,5];
+ menu.AddText(jobbstart,0.475,jobbstart+korr*0.13,0.5,0.5,1,lang[5],false);
+ menu.AddText(jobbstart+korr*0.13,0.45,jobbveg-korr*0.05,0.525,1,1,'TECH',true);                    menufi[MI_TEAM]:=menu.items[1,7];
+ menu.AddText(jobbstart,0.525,jobbstart+korr*0.13,0.575,0.5,1,lang[6],false);
+ menu.AddText(jobbstart+korr*0.13,0.525,jobbveg-korr*0.05,0.575,1,1,lang[7],true);                 menufi[MI_FEGYV]:=menu.items[1,9];
+ menu.AddText(jobbstart,0.6,0.63,0.65,0.5,1,lang[8],false);
  menu.AddText(0.70,0.58,0.76,0.67,1,1,'',true);                        menufi[MI_HEAD]:=menu.items[1,11];
- menu.AddText(0.5,0.4,0.63,0.425,0.5,1,lang[9],false);             menufi[MI_PASS_LABEL]:=menu.items[1,12];
- menu.AddPasswordBox(0.63,0.4,0.88,0.425,0.5,1,0,18,'');menufipass:=menu.items[1,13] as T3DMIPasswordBox;
- menu.AddText(0.5,0.4,0.9,0.425,0.5,1,'['+lang[10]+']',true);menufi[MI_REGISTERED]:=menu.items[1,14];
+ menu.AddText(jobbstart,0.4,jobbstart+korr*0.13,0.425,0.5,1,lang[9],false);             menufi[MI_PASS_LABEL]:=menu.items[1,12];
+ menu.AddPasswordBox(jobbstart+korr*0.13,0.394,jobbveg-korr*0.05,0.439,0.5,1,0,18,'');     menufipass:=menu.items[1,13] as T3DMIPasswordBox;
+ menu.AddText(jobbstart+korr*0.05,0.4,jobbveg-korr*0.05,0.435,0.5,1,'['+lang[10]+']',true);menufi[MI_REGISTERED]:=menu.items[1,14];
 
- menu.AddText(0.67,0.58,0.7,0.67,1,1,'<',true);                        menufi[MI_HEADBAL]:=menu.items[1,15];
- menu.AddText(0.76,0.58,0.8,0.67,1,1,'>',true);                        menufi[MI_HEADJOBB]:=menu.items[1,16];
+ menu.AddText(jobbstart+0.13*korr,0.58,jobbstart+0.18*korr,0.67,1,1,'<',true);                        menufi[MI_HEADBAL]:=menu.items[1,15];
+ menu.AddText(jobbstart+0.3*korr,0.58,jobbstart+0.35*korr,0.67,1,1,'>',true);                        menufi[MI_HEADJOBB]:=menu.items[1,16];
 
 
  menufi[MI_PASS_LABEL].visible:=false;
@@ -10024,82 +10389,93 @@ begin
 
 
  //Menü lap 2 --- Options
- menu.Addteg(0.5,0.3,0.9,0.8,2);
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,2);
 
- menu.AddText(0.55,0.35,0.85,0.45,1,2,lang[12],true);      menufi[MI_GRAPHICS]:=menu.items[2,3];
- menu.AddText(0.55,0.45,0.85,0.55,1,2,lang[13],true);         menufi[MI_SOUND]:=menu.items[2,4];
- menu.AddText(0.55,0.55,0.85,0.65,1,2,lang[14],true);      menufi[MI_CONTROLS]:=menu.items[2,5];
- menu.AddText(0.55,0.65,0.85,0.75,1,2,lang[11],true);      menufi[MI_INTERFACE]:=menu.items[2,6];
+ menu.AddText(jobbstart,0.35,jobbveg,0.45,1,2,lang[12],true);      menufi[MI_GRAPHICS]:=menu.items[2,3];
+ menu.AddText(jobbstart,0.45,jobbveg,0.55,1,2,lang[13],true);         menufi[MI_SOUND]:=menu.items[2,4];
+ menu.AddText(jobbstart,0.55,jobbveg,0.65,1,2,lang[14],true);      menufi[MI_CONTROLS]:=menu.items[2,5];
+ menu.AddText(jobbstart,0.65,jobbveg,0.75,1,2,lang[11],true);      menufi[MI_INTERFACE]:=menu.items[2,6];
 
  //Menü lap 3 --- Exit
- menu.Addteg(0.5,0.3,0.9,0.8,3);
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,3);
 
- menu.AddText(0.5,0.5,0.9,0.6,0.5,3,lang[58],true);  // Idáig nem ért el a Menufi[]
- menu.AddText(0.5,0.6,0.9,0.7,0.5,3,lang[15],true);
- menu.AddText(0.5,0.4,0.9,0.5,0.5,3,lang[16],false);
+ menu.AddText(jobbstart,0.5,jobbveg,0.6,0.5,3,lang[58],true);  // Idáig nem ért el a Menufi[]
+ menu.AddText(jobbstart,0.6,jobbveg,0.7,0.5,3,lang[15],true);
+ menu.AddText(jobbstart,0.4,jobbveg,0.5,0.5,3,lang[16],false);
 
  //Menü lap 4 --- Options-Graphics
- menu.Addteg(0.5,0.3,0.9,0.8,4);
+ sor:=0.034;
+ fent:=0.3;
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,4);
 
- menu.AddText(0.5 ,0.350,0.63,0.400,0.5,4,lang[17],false);
- menu.Addcsuszka(0.63,0.350,0.84,0.400,1,4,'',0.5);       menufi[MI_DETAIL]:=menu.items[4,4];
+ menu.AddText(jobbstart ,fent+sor*1,jobbstart+0.13*korr,fent+sor*2,0.5,4,lang[17],false);
+ menu.Addcsuszka(jobbstart+0.13*korr,fent+sor*1,jobbveg-0.03*korr,fent+sor*2,1,4,'',0.5);       menufi[MI_DETAIL]:=menu.items[4,4];
 
- menu.AddText(0.5 ,0.450,0.63,0.500,0.5,4,lang[18],false);
- menu.Addcsuszka(0.63,0.450,0.84,0.500,1,4,'',0.5);       menufi[MI_EFFECTS]:=menu.items[4,6];
+ menu.AddText(jobbstart ,fent+sor*3,jobbstart+0.13*korr,fent+sor*4,0.5,4,lang[18],false);
+ menu.Addcsuszka(jobbstart+0.13*korr,fent+sor*3,jobbveg-0.03*korr,fent+sor*4,1,4,'',0.5);       menufi[MI_EFFECTS]:=menu.items[4,6];
 
- menu.AddText(0.51 ,0.520,0.59,0.560,0.5,4,lang[19],false);
- menu.AddText(0.59 ,0.520,0.67,0.560,1,4,'[X]',true); menufi[MI_RAIN]:=menu.items[4,8];
+ menu.AddText(jobbstart ,fent+sor*5,jobbstart+0.13*korr,fent+sor*6,0.5,4,lang[77],false);
+ menu.Addcsuszka(jobbstart+0.13*korr,fent+sor*5,jobbveg-0.03*korr,fent+sor*6,1,4,'',0.5);       menufi[MI_WATER]:=menu.items[4,8];
 
- menu.AddText(0.70 ,0.520,0.80,0.560,0.5,4,lang[35],false);
- menu.AddText(0.80 ,0.520,0.88,0.560,1,4,'[X]',true); menufi[MI_WIDESCREEN]:=menu.items[4,10];
- 
- menu.AddText(0.51 ,0.580,0.69,0.640,0.5,4,lang[74],false);
- menu.AddText(0.69 ,0.580,0.77,0.640,0.5,4,'[X]',true); menufi[MI_SCREENSHOT]:=menu.items[4,12];
+ menu.AddText(jobbstart ,fent+sor*7,jobbstart+0.13*korr,fent+sor*8,0.5,4,lang[78],false);
+ menu.Addcsuszka(jobbstart+0.13*korr,fent+sor*7,jobbveg-0.03*korr,fent+sor*8,1,4,'',0.5);       menufi[MI_PARTICLE]:=menu.items[4,10];
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*9,jobbstart+korr*0.2,fent+sor*10,0.5,4,lang[19],false);
+ menu.AddText(jobbstart+korr*0.2 ,fent+sor*9,jobbstart+korr*0.3,fent+sor*10,1,4,'[X]',true); menufi[MI_RAIN]:=menu.items[4,12];
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*11,jobbstart+korr*0.2,fent+sor*12,0.5,4,lang[79],false);
+ menu.AddText(jobbstart+korr*0.2 ,fent+sor*11,jobbstart+korr*0.3,fent+sor*12,1,4,'[X]',true); menufi[MI_MOTIONBLUR]:=menu.items[4,14];
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*13,jobbstart+korr*0.2,fent+sor*14,0.5,4,lang[74],false);
+ menu.AddText(jobbstart+korr*0.2 ,fent+sor*13,jobbstart+korr*0.3,fent+sor*14,0.5,4,'[X]',true); menufi[MI_SCREENSHOT]:=menu.items[4,16];
 
  //menu.AddText(0.51 ,0.64,0.69,0.68,0.5,4,lang[75],false);
  //menu.AddText(0.69 ,0.64,0.77,0.68,0.5,4,'[X]',true); menufi[MI_IMPOSTER]:=menu.items[4,14];
 
  //Menü lap 5 --- Options-Sound
- menu.Addteg(0.5,0.3,0.9,0.8,5);
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,5);
 
- menu.AddText(0.5 ,0.350,0.63,0.400,0.5,5,lang[20],false);
- menu.Addcsuszka(0.63,0.350,0.84,0.400,1,5,'',0.5);  menufi[MI_VOL]:=menu.items[5,4];
+ menu.AddText(jobbstart ,0.350,jobbstart+0.13*korr,0.400,0.5,5,lang[20],false);
+ menu.Addcsuszka(jobbstart+0.13*korr,0.350,jobbveg-0.03*korr,0.400,1,5,'',0.5);  menufi[MI_VOL]:=menu.items[5,4];
 
- menu.AddText(0.5 ,0.450,0.63,0.500,0.5,5,lang[21],false);
- menu.Addcsuszka(0.63,0.450,0.84,0.500,1,5,'',0.5);  menufi[MI_MP3_VOL]:=menu.items[5,6];
+ menu.AddText(jobbstart ,0.450,jobbstart+0.13*korr,0.500,0.5,5,lang[21],false);
+ menu.Addcsuszka(jobbstart+0.13*korr,0.450,jobbveg-0.03*korr,0.500,1,5,'',0.5);  menufi[MI_MP3_VOL]:=menu.items[5,6];
 
- menu.AddText(0.51 ,0.520,0.59,0.560,0.5,5,lang[22],false);
- menu.AddText(0.59 ,0.520,0.67,0.560,1,5,'[X]',true); menufi[MI_TAUNTS]:=menu.items[5,8];
+ menu.AddText(jobbstart ,0.520,jobbstart+0.15*korr,0.560,0.5,5,lang[22],false);
+ menu.AddText(jobbstart+0.15*korr ,0.520,jobbstart+0.2*korr,0.560,1,5,'[X]',true); menufi[MI_TAUNTS]:=menu.items[5,8];
 
- menu.AddText(0.70 ,0.520,0.80,0.560,0.5,5,lang[23],false);
- menu.AddText(0.80 ,0.520,0.88,0.560,1,5,'[X]',true); menufi[MI_R_CAR]:=menu.items[5,10];
+ menu.AddText(jobbstart+korr*0.2 ,0.520,jobbstart+0.35*korr,0.560,0.5,5,lang[23],false);
+ menu.AddText(jobbstart+0.35*korr ,0.520,jobbstart+0.4*korr,0.560,1,5,'[X]',true); menufi[MI_R_CAR]:=menu.items[5,10];
 
- menu.AddText(0.51 ,0.580,0.59,0.650,0.5,5,lang[24],false);
- menu.AddText(0.59 ,0.560,0.67,0.650,1,5,'[X]',true); menufi[MI_R_AMBIENT]:=menu.items[5,12];
+ menu.AddText(jobbstart ,0.580,jobbstart+0.15*korr,0.650,0.5,5,lang[24],false);
+ menu.AddText(jobbstart+0.15*korr ,0.560,jobbstart+0.2*korr,0.650,1,5,'[X]',true); menufi[MI_R_AMBIENT]:=menu.items[5,12];
 
- menu.AddText(0.70 ,0.580,0.80,0.650,0.5,5,lang[25],false);
- menu.AddText(0.80 ,0.580,0.88,0.650,1,5,'[X]',true); menufi[MI_R_ACTION]:=menu.items[5,14];
+ menu.AddText(jobbstart+korr*0.2 ,0.580,jobbstart+0.35*korr,0.650,0.5,5,lang[25],false);
+ menu.AddText(jobbstart+0.35*korr ,0.580,jobbstart+0.4*korr,0.650,1,5,'[X]',true); menufi[MI_R_ACTION]:=menu.items[5,14];
 
  //Menü lap 6 --- Controls
- menu.Addteg(0.5,0.3,0.9,0.8,6);
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,6);
 
- menu.AddText(0.5,0.350,0.63,0.400,0.5,6,lang[26],false);
- menu.AddText(0.84,0.350,0.9,0.400,0.5,6,'0.1',false);               menufi[MI_MOUSE_SENS_LAB]:=menu.items[6,4];
- menu.Addcsuszka(0.63,0.350,0.84,0.400,1,6,'',0.5);                  menufi[MI_MOUSE_SENS]:=menu.items[6,5];
- menu.AddText(0.5 ,0.420,0.7,0.460,0.5,6,lang[27],false);
- menu.AddText(0.7 ,0.420,0.8,0.460,1,6,'[WTF]',true);              menufi[MI_MOUSE_ACC]:=menu.items[6,7];
+ menu.AddText(jobbstart,0.350,jobbstart+korr*0.3,0.400,0.5,6,lang[26],false);
+ menu.AddText(jobbveg-korr*0.2,0.350,jobbveg,0.400,0.5,6,'0.1',false);               menufi[MI_MOUSE_SENS_LAB]:=menu.items[6,4];
+ menu.Addcsuszka(jobbstart+korr*0.05,0.420,jobbveg-korr*0.05,0.470,1,6,'',0.5);                  menufi[MI_MOUSE_SENS]:=menu.items[6,5];
+ menu.AddText(jobbstart ,0.50,jobbstart+0.3*korr,0.560,0.5,6,lang[27],false);
+ menu.AddText(jobbstart+0.3*korr ,0.50,jobbstart+0.35*korr,0.560,1,6,'[WTF]',true);              menufi[MI_MOUSE_ACC]:=menu.items[6,7];
 
  //Menü lap 7 --- Interface
- menu.Addteg(0.5,0.3,0.9,0.8,7);
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,7);
 
- menu.AddText(0.5 ,0.420,0.8,0.460,0.5,7,lang[66],false);
- menu.AddText(0.8 ,0.420,0.9,0.460,1,7,'[X]',true); menufi[MI_RADAR]:=menu.items[7,4];
+ menu.AddText(jobbstart ,0.420,jobbstart+0.3*korr,0.460,0.5,7,lang[66],false);
+ menu.AddText(jobbstart+0.3*korr ,0.420,jobbveg,0.460,1,7,'[X]',true); menufi[MI_RADAR]:=menu.items[7,4];
 
- menu.AddText(0.5 ,0.480,0.8,0.520,0.55,7,lang[67],false);
- menu.AddText(0.8 ,0.480,0.9,0.52,1,7,'[X]',true); menufi[MI_CHAT]:=menu.items[7,6];
+ menu.AddText(jobbstart ,0.480,jobbstart+0.3*korr,0.520,0.5,7,lang[67],false);
+ menu.AddText(jobbstart+0.3*korr ,0.480,jobbveg,0.52,1,7,'[X]',true); menufi[MI_CHAT]:=menu.items[7,6];
 
- menu.AddText(0.5 ,0.540,0.8,0.580,0.5,7,lang[68],false);
- menu.AddText(0.8 ,0.540,0.9,0.580,1,7,'[X]',true); menufi[MI_ZONES]:=menu.items[7,8];
+ menu.AddText(jobbstart ,0.540,jobbstart+0.3*korr,0.580,0.5,7,lang[68],false);
+ menu.AddText(jobbstart+0.3*korr ,0.540,jobbveg,0.580,1,7,'[X]',true); menufi[MI_ZONES]:=menu.items[7,8];
+
+ menu.AddText(jobbstart ,0.600,jobbstart+0.3*korr,0.640,0.5,7,lang[76],false);
+ menu.AddText(jobbstart+0.3*korr ,0.600,jobbveg,0.640,1,7,'[X]',true); menufi[MI_SAVEPW]:=menu.items[7,10];
 // menu.AddText(0.45,0.3,0.9,0.8,0.5,6,'Sorry, no other settings. Yet.',false);
 
  if myfegyv<128 then
@@ -10140,14 +10516,22 @@ begin
   opt_detail:=round(t1);
   read(fil2,t1);
   opt_postproc:=round(t1);
-
+  read(fil2,t1);
+  opt_water:=round(t1);
+  read(fil2,t1);
+  opt_particle:=round(t1);
   
   menufi[MI_DETAIL].elx:=opt_detail/DETAIL_MAX;
   menufi[MI_EFFECTS].elx:=opt_postproc/POSTPROC_MAX;
+  menufi[MI_WATER].elx:=opt_water/WATER_MAX;
+  menufi[MI_PARTICLE].elx:=opt_particle/PARTICLE_MAX;
 
 
   read(fil2,t1);
   opt_rain:=t1>0.5;
+
+  read(fil2,t1);
+  opt_motionblur:=t1>0.5;
 
   read(fil2,t1);
   opt_taunts:=t1>0.5;
@@ -10162,14 +10546,6 @@ begin
   read(fil2,t1);
   mp3car:=t1>0.5;
 
-  t1:=0;
-  if not eof(fil2) then
-   read(fil2,t1);
-  opt_widescreen:=t1>0.5;
-  if opt_widescreen then
-   ASPECT_RATIO:=16/9
-  else
-   ASPECT_RATIO:=4/3;
 
   read(fil2,t1);
   png_screenshot:=t1>0.5;
@@ -10183,22 +10559,34 @@ begin
   read(fil2,t1);
   opt_zonename:=t1>0.5;
 
+  read(fil2,t1);
+  savepw:=t1>0.5;
+  if savepw then
+  begin
+    menufi[MI_REGISTERED].clicked:=true;
+    lasthash:=decodehash(lasthash);
+  end;
+
+
   closefile(fil2);
  end
  else
  begin
   menufi[MI_MOUSE_SENS].elx:=0.5;
-  menufi[MI_VOL].elx:=1;
-  menufi[MI_MP3_VOL].elx:=1;
+  menufi[MI_VOL].elx:=0.5;
+  menufi[MI_MP3_VOL].elx:=0.5;
   opt_detail:=DETAIL_MAX;
-  opt_postproc:=POSTPROC_MOTIONBLUR;
+  opt_postproc:=POSTPROC_GREYSCALE;
+  opt_water:=2;
+  opt_particle:=2;
   opt_rain:=true;
-  opt_widescreen:=false;
+  opt_motionblur:=false;
   png_screenshot:=false;
   opt_taunts:=true;
   opt_radar:=true;
   opt_nochat:=false;
   opt_zonename:=true;
+  savepw:=false;
   mouseacc:=true;
   mp3ambient:=false;
   mp3action:=false;
@@ -10274,6 +10662,48 @@ begin
   end;
   
  end;
+end;
+
+procedure loadVideoIni;
+var
+fil:TextFile;
+line,l2:string;
+begin
+
+if FileExists('data/video.ini') then
+begin
+  assignfile(fil,'data/video.ini');
+  reset(fil);
+
+  while not eof(fil) do
+  begin
+  ReadLn(fil,line);
+  l2 := copy(line,1,pos('=',line)-1);
+
+  if (l2 = 'width') then SCwidth := strtoint(copy(line,pos('=',line)+1,length(line)));
+  if (l2 = 'height') then SCheight := strtoint(copy(line,pos('=',line)+1,length(line)));
+
+  ASPECT_RATIO:=SCwidth/SCheight;
+
+  if (l2 = 'multisampling') then multisampling := strtoint(copy(line,pos('=',line)+1,length(line)));
+  if (l2 = 'windowed') then iswindowed := strtoint(copy(line,pos('=',line)+1,length(line)))=1;
+  if (l2 = 'normals') then isnormals := strtoint(copy(line,pos('=',line)+1,length(line)))=1;
+  if (l2 = 'langid') then nyelv := strtoint(copy(line,pos('=',line)+1,length(line))) and $3FF;
+
+  end;
+
+  pixelX:= 1/SCwidth;
+  pixelY:= 1/SCheight;
+  vertScale:= SCheight/600;
+  ASPECT_RATIO:=SCwidth/SCheight;
+
+  closefile(fil);
+
+
+
+
+end;
+
 end;
 
 //-----------------------------------------------------------------------------
@@ -10371,8 +10801,8 @@ try
  anticheat1:=round(time*86400000)-timegettime;
 
   
-  addfiletochecksum('data/4919.png');
-  if checksum<>2305457788 then
+  addfiletochecksum('data/gui/4919.png');
+  if checksum<>524770836 then
   begin
    messagebox(0,'Do NOT alter the 4919 logo in ANY WAY please. We don''t like that.', 'Stickman Warfare',0);
    exit;
@@ -10384,8 +10814,11 @@ try
   wc.hInstance:= GetModuleHandle(nil);
   RegisterClassEx(wc);
 
+  nyelv:=GetSystemDefaultLangID and $3FF;
 
-  iswindowed:=commandlineoption('windowed');
+  loadVideoIni;
+
+  iswindowed:=iswindowed or commandlineoption('windowed');
   safemode:=commandlineoption('safemode');
 
   // Create the application's window
@@ -10431,7 +10864,7 @@ try
   writeln(logfile,'---------------------------------------');
 
   writeln(logfile,'Game started at:',formatdatetime( 'yyyy.mm.dd/hh:nn:ss',date+time));
-  nyelv:=GetSystemDefaultLangID and $3FF;
+
   writeln(logfile,'Loading lang file (LANGID=',nyelv,')');       flush(logfile);
   addfiletochecksum('data/lang.ini');
   loadlang('data/lang.ini',nyelv);
@@ -10449,7 +10882,6 @@ try
   perlin:=Tperlinnoise.create(stuffjson.GetInt(['random_seed']));
   laststate:='Loading';
 
-  
 
   DIne:=TdinputEasy.create(hWindow);
   if Dine=nil then
@@ -10483,8 +10915,8 @@ try
 
 
   menu:=T3dMenu.Create(g_pd3ddevice,safemode);
-  if not LTFF(g_pd3dDevice, 'data\chat.png',menu.chatbubble) then exit;
-  addfiletoChecksum('data/chat.png');
+  if not LTFF(g_pd3dDevice, 'data/gui/chat.png',menu.chatbubble) then exit;
+  addfiletoChecksum('data/gui/chat.png');
   writeln(logfile,'Loading menu');flush(logfile);
   laststate:='Loading menu';
   if menu=nil then
@@ -10609,8 +11041,9 @@ try
 
     multisc:=TMMOServerClient.Create(servername,25252+random(1024),
                                     copy(menufi[MI_NEV].valueS,1,15),
-                                    menufipass.GetPasswordMD5,
+                                    lasthash,
                                     myfegyv,myfejcucc);
+
     multisc.weather:=felho.coverage; //ehh, ennyit a csodálatos OOP-rõl.
     multip2p:=TMMOPeerToPeer.Create(multisc.myport,myfegyv);
     writeln(logfile,'Network initialized');
