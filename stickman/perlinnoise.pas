@@ -2,7 +2,7 @@ unit PerlinNoise;
 
 interface
 
-uses Sysutils,Classes, math;
+uses math;
 
 const
    cPERLIN_TABLE_SIZE = 256;

@@ -149,7 +149,7 @@ var
  posrads:array of Tposrad;
  bubbles:array of Tbubble;
  lightmapbm:array [0..2047,0..2047,0..3] of byte;
- panthepulet,piramis,portalepulet,ATportalhely:integer;
+ panthepulet,portalepulet,ATportalhely:integer;
  DNSvec:TD3DXVector3;
  DNSrad:single;
 
@@ -292,12 +292,11 @@ begin
  inherited create;
   betoltve:=false;
   
-
   nincsrad:=((flags and OF_DONTFLATTEN)>0) or ((flags and OF_FITTOTERRAIN)>0);
 
   filenev:=fnev;
 
-  addfiletochecksum(fnev+'_lm.bmp');
+  addfiletochecksum(fnev+'lm.bmp');
   if length(posok)>0 then
   begin
    hvszam:=length(posok);
@@ -460,7 +459,7 @@ begin
   if not nincsrad then
   begin
    j:=length(posrads);
-   setlength(posrads,length(posrads)+hvszam);
+   setlength(posrads,j+hvszam);
    for i:=0 to hvszam-1 do
    with posrads[i+j] do
    begin
@@ -1017,6 +1016,11 @@ begin
  setlength(ojjektumhv,n);
  setlength(ojjektumflags,n);
 
+ panthepulet:=-1; //modoknak
+ portalepulet:=-1;
+ ATportalhely:=-1;
+
+
  for i:=0 to n-1 do
  begin
   ojjektumnevek[i]:=stuffjson.GetKey(['buildings'],i);
@@ -1031,12 +1035,8 @@ begin
   if stuffjson.GetKey(['buildings'],i)='kispiri' then
    portalepulet:=i;
 
-  if stuffjson.GetKey(['buildings'],i)='mayan' then
-   piramis:=i;
-
   if stuffjson.GetKey(['buildings'],i)='portal_inst' then
    ATportalhely:=i;
-
 
 
 

@@ -369,13 +369,13 @@ begin
    if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(15 + 15*(SCHeight/600)), 0, FW_BOLD  , 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Arial', g_pFont )) then
     Exit;
   write(logfile,'fontmini, ');flush(logfile);
- if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(9 + 9*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontmini )) then
+ if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(9 + 9*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontmini )) then
    Exit;
   write(logfile,'fontingame, ');flush(logfile);
- if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(12.5 + 12.5*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontingame )) then
+ if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(12.5 + 12.5*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontingame )) then
    Exit;
   writeln(logfile,'fontchat.');flush(logfile);
- if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(6.5 + 6.5*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontchat )) then
+ if FAILED(D3DXCreateFont(g_pD3dDevice, trunc(6.5 + 6.5*(SCHeight/600)), 0, FW_NORMAL, 0, FALSE, DEFAULT_CHARSET, OUT_RASTER_PRECIS, PROOF_QUALITY, DEFAULT_PITCH or FF_SWISS, 'Verdana', g_pFontchat )) then
    Exit;
   write(logfile,'Other...');flush(logfile);
  if FAILED(D3DXCreateSprite(g_pd3dDevice,g_pSprite)) then
@@ -393,7 +393,7 @@ begin
    Exit;
  end;
 
- if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/cglyphs.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_FILTER_NONE,D3DX_FILTER_NONE,0,nil,nil,cglyphs)) then
+ if FAILED(D3DXCreateTextureFromFileEx(g_pd3dDevice,'data/gui/cglyphs.png',16,16,0,0,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,D3DX_FILTER_POINT,D3DX_FILTER_POINT,0,nil,nil,cglyphs)) then
  begin
    writeln(logfile,'Could not load data/gui/cglyphs.png');flush(logfile);
    Exit;
@@ -747,7 +747,7 @@ begin
      (pos[i].z<1) then
    begin
      a:=-(pos2[i].y-pos[i].y)/40;
-     if a<1/40 then continue;
+//     if a<1/40 then continue;
      mat._11:=a;mat._12:=0;mat._13:=0;mat._14:=0;
      mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
      mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
@@ -877,7 +877,6 @@ begin
   src.Bottom:=src.Top+4;
   g_psprite.Draw(cglyphs,@src,nil,@pos,(alpha shl 24)+hash);
  end;
-
 end;
 
 procedure T3DMenu.DrawText(mit:string;posx,posy,posx2,posy2:single;meret:byte;color:cardinal);
@@ -888,10 +887,12 @@ begin
  rect.Top:=round(posy*SCheight); rect.Bottom:=round(posy2*SCheight);
  rect.Left:=round(posx*SCwidth); rect.Right:=round(posx2*SCwidth);
  case meret of
-  0:g_pfontchat.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_NOCLIP,color);
+  0:
+  begin
+    g_pfontchat.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_NOCLIP,color);
+  end;
   1:
   begin
-
    g_pfontingame.DrawTextA(g_psprite,Pchar(mit),length(mit),@rect,DT_CENTER+DT_NOCLIP,color);
   end;
   2:
@@ -936,9 +937,11 @@ str:string;
 escapepos:integer;
 nextcolor:integer;
 alpha2:integer;
+i,j:integer;
 begin
  rect.Top:= round(posy*SCheight); rect.Bottom:=round(posy2*SCheight);
  rect.Left:=round(posx*SCwidth);  rect.Right:= round(posx2*SCwidth);
+
  nextcolor:=color;
  alpha2:=(color shr 2) and $FF000000;
  while length(mit)>0 do
@@ -962,11 +965,11 @@ begin
    rect2:=rect;
 
    if shadow then begin
-   rect2.Top:=rect.Top+1;
+   rect2.Right:=rect.Right+1;
    rect2.Bottom:=rect.Bottom+1;
    g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,$55FFFFFF);
    rect2:=rect;
-   rect2.Right:=rect.Right+1;
+   rect2.Top:=rect.Top+1;
    rect2.Left:=rect.Left+1;
    g_pfontchat.DrawTextA(g_psprite,Pchar(str),length(str),@rect2,DT_NOCLIP,$55FFFFFF);
    end;

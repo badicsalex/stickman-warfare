@@ -2,10 +2,8 @@ unit fizika;
 
 interface
 uses
-  Sysutils,
   Direct3D9,
   D3DX9,
-  Math,
   typestuff,
   muksoka;
 const

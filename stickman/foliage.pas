@@ -1,7 +1,7 @@
 unit foliage;
 
 interface
-uses  Sysutils, Direct3D9, D3DX9, Windows, Math, Typestuff, PerlinNoise;
+uses  Sysutils, Direct3D9, D3DX9, Windows, Typestuff, PerlinNoise;
 type
 
  PBokorVertex = ^TBokorVertex;
@@ -152,9 +152,10 @@ begin
  g_pd3dDevice.SetStreamSource(0, g_pVB, 0, SizeOf(Tbokorvertex));
  g_pd3dDevice.SetIndices(g_pIB);
  g_pd3dDevice.SetTexture(0,g_pTexture);
+
  g_pd3dDevice.SetFVF(D3DFVF_bokorvertex);
- g_pd3dDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,32*32*12,0,32*32*8)
- // g_pd3dDevice.DrawPrimitive(D3DPT_TRIANGLELIST,0,32*32*4)
+ g_pd3dDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,32*32*12,0,32*32*8);
+//  g_pd3dDevice.DrawPrimitive(D3DPT_TRIANGLELIST,0,32*32*4)
 end;
 
                                 //1,2,3,4, jobb,bal,fel,le
