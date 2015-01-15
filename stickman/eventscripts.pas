@@ -385,7 +385,7 @@ begin
  betoltve:=false;
  vege:=true;
  g_pD3Ddevice:=adevice;
- if not LTFF (g_pd3dDevice,'data\metal003.bmp',fotex) then
+ if not LTFF (g_pd3dDevice,'data\textures\metal003.bmp',fotex) then
    Exit;
  if not LTFF (g_pd3dDevice,dir+'kekpiros.bmp',kekpirostex) then
    Exit;

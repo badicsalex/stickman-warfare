@@ -169,7 +169,7 @@ implementation
 
 const
  shared_key:array [0..19] of SmallInt=(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
- 
+
  CLIENT_VERSION=PROG_VER;
 
  CLIENTMSG_LOGIN=1;
