@@ -70,7 +70,7 @@ function fenykorcreate (pos,seb,szel,hossz:TD3DXVector3;szor1,szor2,vstszor:sing
 function fenylightcreate(pos,vec:TD3DXVector3;startsiz,endsiz:single;startcolor,endcolor:cardinal;lifetime:word;texture:integer=TX_HOMALY):Tparticle;
 var
 particles,rparticles,tparticles:array of Tparticle;
-weapons:array of TWeaponType;
+
  particlehgh:integer=-1;
 implementation
 var

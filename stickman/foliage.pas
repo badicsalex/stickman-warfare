@@ -29,7 +29,7 @@ type
   constructor Create(dev:Idirect3ddevice9; texnam:string; ahscale,avscale,avpls:single);
   procedure Init;
   procedure Render;
-  procedure update(lvl:Plvl;advwove:Tadvwove);
+  procedure update(lvl:Plvl;yandnorm:Tyandnorm);
   destructor Destroy;reintroduce;
  end;
 
@@ -177,7 +177,7 @@ case jbfl of
 end;
 end;  }
 
-procedure Tfoliage.update(lvl:Plvl;advwove:Tadvwove);
+procedure Tfoliage.update(lvl:Plvl;yandnorm:Tyandnorm);
 var
 i,j,k:integer;
 Vmost:Tbokorvertex;
@@ -195,15 +195,15 @@ for i:=0 to 31 do
  begin
 
   vec:=lvl[i*32+j].position;
+  d3dxvec3add(vec,vec,D3DXVector3(perlin.Noise(vec.x,0.5,vec.z)*pls,0, perlin.Noise(vec.x,1.5,vec.z)*pls));
 
   n:=lvl[i*32+j].normal;
-  if  (n.y<0.83) or (n.y>1) or (vec.y<16) then
-   vec:=D3DXVector3Zero
-   else
-  begin
-      d3dxvec3add(vec,vec,D3DXVector3(perlin.Noise(vec.x,0.5,vec.z)*pls,0, perlin.Noise(vec.x,1.5,vec.z)*pls));
-      vec.y:=advwove(vec.x,vec.z);
-  end;
+
+  yandnorm(vec.x,vec.y,vec.z,n,1);
+
+  if  (n.y=-2) or (n.y<0.83) or (n.y>1) or (vec.y<16) then
+   vec:=D3DXVector3Zero;
+
 
   for k:=0 to 11 do
   begin
