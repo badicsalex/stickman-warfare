@@ -23,6 +23,7 @@
 {.$DEFINE ajandekok}
 {.$DEFINE alttabengedes}
 {.$DEFINE matieditor}
+
 program Stickman;
 
 uses
@@ -360,6 +361,12 @@ var
   sand_dust:cardinal;
 
   nemviz:boolean;
+
+  profile_start:TLargeInteger;
+  profile_stop:TLargeInteger;
+  profile_frequency:TLargeInteger;
+  profile_mecha:TLargeInteger;
+  profile_render:TLargeInteger;
 
   //////////////////////////// M E D A L _ V A R I A B L E S //////////////////////
   
@@ -6019,8 +6026,8 @@ begin
     currevent:=TSpaceshipEvent.Create(g_pd3ddevice,true,'data\event\');
   end;
 
-  if portalevent<>nil then
-   portalevent.Phase(multisc.doeventphase);
+  //if portalevent<>nil then
+  // portalevent.Phase(multisc.doeventphase);
 
   if multisc.doevent='portal' then
   portalevent.phs:=1;
@@ -6030,6 +6037,21 @@ begin
 
   if multisc.doevent='enablekill' then
   disablekill := false;
+
+
+  if ((multisc.doevent='kbwar') and (multisc.doeventphase=1)) then
+    begin
+     war_kb:= true;
+
+     if (halal=0) then
+     begin
+      halal:=1;
+      setupmymuksmatr;
+      addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^),d3dxvector3(sin(szogx)*0.3,0.1,cos(szogx)*0.3),myfegyv,10,0,-1);
+     end;
+    end;
+
+  if ((multisc.doevent='kbwar') and (multisc.doeventphase=0)) then war_kb:= false;
 
 
 
@@ -7752,7 +7774,7 @@ begin
  // menu.drawtext(inttostr(bufplayingcount)+'/'+inttostr(length(bufplaying)),0.2,0.9,0.8,1,2,$70000000+betuszin);
  // menu.drawtext(inttostr(playsoundcount)+':'+inttostr(stopsoundcount)+'>'+inttostr(specialcreatecount),0.2,0.8,0.8,0.9,2,$70000000+betuszin);
   playsoundcount:=0; stopsoundcount:=0; specialcreatecount:=0;
-  // menu.drawtext(inttostr(g_pd3ddevice.GetAvailableTextureMem div (1024*1024)),0.2,0.8,0.8,0.9,2,$70000000+betuszin);
+  menu.drawtext('M:'+inttostr(profile_mecha)+' R:'+inttostr(profile_render),0.2,0.8,0.8,0.9,2,$70000000+betuszin);
 
 // for i:=0 to 12 do
  // menu.drawtext(inttostr(kic[i]),0.3,0.1+i/20,0.5,0.2+i/20,true,$FFFF0000);
@@ -8676,8 +8698,13 @@ begin
   animstat:=(timegettime mod 1000)/1000;
 
   laststate:='MMO stuff';
+
+
+
   handleMMO;
   handlemmocars;
+
+
   //dummypos.pos.z:=dummypos.pos.z+2*eltim;
   //dummypos.pos.y:=advwove(dummypos.pos.x,dummypos.pos.z);
 
@@ -8707,7 +8734,10 @@ begin
   halal:=halal+(eltim/2)
   else
   halal:=halal+eltim; //nem volt /2
-  if halal>6 then respawn;              //6 volt
+  if halal>6 then respawn;         //6 volt
+
+
+
   laststate:='Handlelovesek';
   Handlelovesek;
   laststate:='Handledoglodesek';
@@ -9228,7 +9258,9 @@ begin
    efftexsurf:=nil;
 
    g_pd3ddevice.GetBackBuffer(0,0,D3DBACKBUFFER_TYPE_MONO,backbuffer);
+
    effecttexture.GetSurfaceLevel(0,efftexsurf);
+   
    if failed(g_pd3ddevice.StretchRect(backbuffer,nil,efftexsurf,nil,D3DTEXF_LINEAR)) then enableeffects:=false;
 
    backbuffer:=nil;
@@ -9497,10 +9529,24 @@ procedure GameLoop;
 var
 d3derr:integer;
 begin
+
+ QueryPerformanceCounter(profile_start);
+
  undebug_magic1; // Mechanics;
  undebug_untrace;
+
+ QueryPerformanceCounter(profile_stop);
+ profile_mecha := (MSecsPerSec*(profile_stop-profile_start)) div profile_frequency;
+
+ QueryPerformanceCounter(profile_start);
+
  RenderScene;
  RenderPostprocess;
+
+ QueryPerformanceCounter(profile_stop);
+ profile_render := (MSecsPerSec*(profile_stop-profile_start)) div profile_frequency;
+
+
  d3derr:=g_pd3dDevice.Present(nil, nil, 0, nil);
   // Present the backbuffer contents to the display
   lostdevice:= lostdevice or (D3DERR_DEVICELOST = d3derr);
@@ -10275,21 +10321,11 @@ begin
      mstat:=MSTAT_ALL;
     end
   else
-    if (' /kbwar'=chatmost) and (halal=0) then
-    begin
-     war_kb:=not war_kb;
-     halal:=1;
-     setupmymuksmatr;
-     addrongybaba(d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^),d3dxvector3(sin(szogx)*0.3,0.1,cos(szogx)*0.3),myfegyv,10,0,-1);
-     mstat:=MSTAT_ALL;
-    end
-    else
-    begin
-     Multisc.Chat(chatmost);
-     mstat:=MSTAT_ALL;
-
-
-    end;
+  begin
+    Multisc.Chat(chatmost);
+    mstat:=MSTAT_ALL;
+  end;
+  
   chatmost:='';
   exit;
  end;
@@ -10670,6 +10706,14 @@ fil:TextFile;
 line,l2:string;
 begin
 
+  SCwidth := GetSystemMetrics(SM_CXSCREEN);
+  SCheight := GetSystemMetrics(SM_CYSCREEN);
+  texture_res:= 1;
+  isnormals := true;
+  iswindowed := false;
+  ASPECT_RATIO:=SCwidth/SCheight;
+  
+
 if FileExists('data/video.ini') then
 begin
   assignfile(fil,'data/video.ini');
@@ -10689,12 +10733,12 @@ begin
   if (l2 = 'windowed') then iswindowed := strtoint(copy(line,pos('=',line)+1,length(line)))=1;
   if (l2 = 'normals') then isnormals := strtoint(copy(line,pos('=',line)+1,length(line)))=1;
   if (l2 = 'langid') then nyelv := strtoint(copy(line,pos('=',line)+1,length(line))) and $3FF;
+  if (l2 = 'texture_res') then texture_res := strtoint(copy(line,pos('=',line)+1,length(line)));
 
   end;
 
   pixelX:= 1/SCwidth;
   pixelY:= 1/SCheight;
-  vertScale:= SCheight/600;
   ASPECT_RATIO:=SCwidth/SCheight;
 
   closefile(fil);
@@ -10703,6 +10747,8 @@ begin
 
 
 end;
+
+  vertScale:= SCheight/600;
 
 end;
 
@@ -11058,6 +11104,8 @@ try
     AFstart;
 
     multisc.opt_nochat:=opt_nochat;
+
+    QueryPerformanceFrequency(profile_frequency);
 
     SetMainVolume(menufi[MI_VOL].elx);
     laststate:='Initialzing game 5';

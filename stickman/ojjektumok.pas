@@ -246,12 +246,15 @@ begin
    if LTFF(a_d3dDevice,'data/textures/'+hmnev,heightmap) then
     addfiletochecksum('data/textures/'+hmnev);
 
+  if isnormals then
+  begin
   normalnev:=stuffjson.GetString(['materials',nev,'normalmap']);
   if (normalnev<>'') then
    if LTFF(a_d3dDevice,'data/textures/'+normalnev,heightmap) then
    begin
     normalmap := true;
    end;
+  end;
 
  end;
  result:=otnszam;

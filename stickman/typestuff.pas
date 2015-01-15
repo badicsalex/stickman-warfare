@@ -457,7 +457,7 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=208000;
+  PROG_VER=208010;
   datachecksum=$75053BEC;
 var
   checksum:Dword=0;
@@ -471,6 +471,7 @@ var
   SCheight:integer=(800*3) div 4;
   ASPECT_RATIO:double=4/3;
   pixelX,pixelY,vertScale:single;
+  texture_res:byte;
 
   frust:TFrustum;
   g_pEffect:ID3DXEffect;
@@ -749,7 +750,6 @@ function encodehash(hash:string):string;
 var
   i:byte;
 begin
-writeln(logfile,hash);
   if hash='-' then
   exit;
   for i:=1 to 40 do
@@ -758,14 +758,12 @@ writeln(logfile,hash);
     hash[i]:=goodchars[looptobyte(unloop(hash[i]) -2 + looptobyte(trunc(perlin.Noise1D(gpukey/1000 + i)*40000)))];
   end;
   result:=hash;
-writeln(logfile,hash);
 end;
 
 function decodehash(crypt:string):string;
 var
   i:byte;
 begin
-writeln(logfile,crypt);
   if crypt='-' then
   exit;
   for i:=1 to 40 do
@@ -773,7 +771,6 @@ writeln(logfile,crypt);
     crypt[i]:=goodchars[looptobyte(unloop(crypt[i]) - looptobyte(trunc(perlin.Noise1D(gpukey/1000 + i)*40000)))];
   end;
   result:=crypt;
-writeln(logfile,crypt);
 end;
 
 
@@ -1411,15 +1408,27 @@ var
   gotolni:boolean;
   probal:byte;
   eredm:HRESULT;
+  info :TD3DXImageInfo;
+  width:integer;
 label
   vissz;
 begin
+
+  D3DXGetImageInfoFromFile(PChar(nev),info);
+  width:=info.Width;
+  if (nev='data\cmap.png') or (nev='data\hs\hstex.bmp') then
+  width:=info.Width  
+  else if info.Width > 64 then
+  width:=info.Width div round(power(2,2-texture_res));
+  
+//  writeln(logfile,width);
+
 // result:=false;
   probal:=0;
   vissz:
     gotolni:=false;
   try
-    eredm:=D3DXCreateTextureFromFileEx(aDevice,PChar(nev),D3DX_DEFAULT ,D3DX_DEFAULT,0 ,0,D3DFMT_A8R8G8B8,
+    eredm:=D3DXCreateTextureFromFileEx(aDevice,PChar(nev),width ,width,0 ,0,D3DFMT_A8R8G8B8,
       fav3DPOOL,D3DX_DEFAULT,D3DX_DEFAULT ,0,nil,nil, tex);
     if FAILED(eredm) then
     begin
