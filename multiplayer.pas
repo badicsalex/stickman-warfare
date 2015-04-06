@@ -157,7 +157,6 @@ type
 
  end;
 
-function decodeSharedKey(raw:SmallInt):byte;
 
 var
  servername:string = 'stickman.hu';
@@ -168,7 +167,7 @@ var
 implementation
 
 const
- shared_key:array [0..19] of SmallInt=(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+shared_key:array [0..19] of byte=($00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00);
 
  CLIENT_VERSION=PROG_VER;
 
@@ -292,15 +291,6 @@ vagy
 
  STATUS_CHATOFF = 2; // már nem használt
 
-function decodeSharedKey(raw:SmallInt):byte;
-var
- decoded:integer;
-begin
- decoded:= (raw);
- Result:= decoded;
-end;
-
-
 procedure TMMOServerClient.SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
 var          
  frame:TSocketFrame;
@@ -361,7 +351,7 @@ i:integer;
  ujcrypto:TSHA1Digest;
 begin
  for i:=0 to 19 do
-  crypto[i]:=crypto[i] xor decodeSharedKey(shared_key[i]);
+  crypto[i]:=crypto[i] xor (shared_key[i]);
  ujcrypto:=SHA1Hash(@crypto[0],20);
  for i:=0 to 19 do
   crypto[i]:=ujcrypto[i];

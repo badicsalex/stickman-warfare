@@ -20,10 +20,11 @@ type
     value:string;
     fade:word;
     color:longword;
-    constructor create(input:string;col:longword);
+    constructor create(input:string;col:longword;f:word);
   end;
 
   TStringArray = array of string;
+  TSingleArray = array of single;
 
   Tnev=array [1..32] of char;
   Tjelszo=array [1..32] of char;
@@ -263,6 +264,12 @@ const uresplayer:Tplayer=();
 
 type
 
+  TSoundData = record
+    filename:string;
+    haromd,freq,effects:boolean;
+    mindistance:single;
+  end;
+
   TTeleport = record
     vfrom,vto:TD3DXVector3;
     rad:single;
@@ -270,10 +277,52 @@ type
     tip:integer;
   end;
 
+  TTrigger = record
+    name:string;
+    pos:TD3DXVector3;
+    rad:single;
+    touched:boolean;
+    ontouchscript:string;
+    onusescript:string;
+    onleavescript:string;
+    active:boolean;
+    restart:cardinal;
+  end;
+
+  TScript = record
+    name:string;
+    instructions:array of string;
+  end;
+
   TLabel = record
     pos:TD3DXVector3;
     rad:single;
     text:string;
+  end;
+
+  TVecVar = record
+    pos:TD3DXVector3;
+    name:string;
+  end;
+
+  TNumVar = record
+    num:single;
+    name:string;
+  end;
+
+  TStrVar = record
+    text:string;
+    name:string;
+  end;
+
+  TBind = record
+    key:char;
+    script:string;
+  end;
+
+  TTimedscript = record
+    time:cardinal;
+    script:string;
   end;
 
   TParticleSys = record
@@ -284,6 +333,9 @@ type
     amount,period,lifetime,rndlt:integer;
     ssize,esize,vis:single;
     texture:integer;
+    disabled:bool;
+    name:string;
+    restart:cardinal;
   end;
 
 
@@ -467,8 +519,8 @@ type
   Tojjrectarr= array of Tojjrect;
 const
  //STICKMAN
-  PROG_VER=209010;
-  datachecksum=$83DC3EF0;
+  PROG_VER=209020;
+  datachecksum=$A47A6AAB;
 var
   checksum:Dword=0;
   nyelv:integer;
@@ -506,6 +558,7 @@ var
   lasthash:string='-';
   gpukey:integer=0;
   goodchars:shortstring='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; //62
+  goodchars2:shortstring='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ023456789'; //62
 
   opt_detail:integer;
   betuszin,color_menu_normal,color_menu_select,color_menu_info:longword;
@@ -729,8 +782,8 @@ function Vec4fromCardinal(num:cardinal):TD3DXVector4;
 function looptobyte(i:integer):byte;
 function unloop(c:char):byte;
 
-function encodehash(hash:string):string;
-function decodehash(crypt:string):string;
+function encodehash(hash:string;high:integer=40):string;
+function decodehash(crypt:string;high:integer=40):string;
 
 procedure split(delimiter: char; str: string; strinList: TStringList);
 function splitstring(s:string;c:char):TStringArray;
@@ -803,12 +856,12 @@ begin
  end;
 end;
 
-constructor THUDmessage.create(input:string;col:longword);
+constructor THUDmessage.create(input:string;col:longword;f:word);
 begin
 inherited create;
 value:=input;
-fade:=500;
 color:=col;
+fade:=f;
 end;
 
 function nthBit(b:byte;o:byte):boolean;
@@ -872,13 +925,13 @@ begin
   end;
 end;
 
-function encodehash(hash:string):string;
+function encodehash(hash:string;high:integer=40):string;
 var
   i:byte;
 begin
   if hash='-' then
   exit;
-  for i:=1 to 40 do
+  for i:=1 to high do
   begin
     //hash[i]:=goodchars[looptobyte(unloop(hash[i]) + looptobyte(trunc(perlin.Noise1D(gpukey/1000 + i)*40000)))-2];
     hash[i]:=goodchars[looptobyte(unloop(hash[i]) -2 + looptobyte(trunc(perlin.Noise1D(gpukey/1000 + i)*40000)))];
@@ -886,13 +939,13 @@ begin
   result:=hash;
 end;
 
-function decodehash(crypt:string):string;
+function decodehash(crypt:string;high:integer=40):string;
 var
   i:byte;
 begin
   if crypt='-' then
   exit;
-  for i:=1 to 40 do
+  for i:=1 to high do
   begin
     crypt[i]:=goodchars[looptobyte(unloop(crypt[i]) - looptobyte(trunc(perlin.Noise1D(gpukey/1000 + i)*40000)))];
   end;
@@ -1565,17 +1618,25 @@ var
   probal:byte;
   eredm:HRESULT;
   info :TD3DXImageInfo;
-  width:integer;
+  w,h:integer;
 label
   vissz;
 begin
 
   D3DXGetImageInfoFromFile(PChar(nev),info);
-  width:=info.Width;
+  w:=info.Width;
+  h:=info.Height;
   if (nev='data\cmap.png') or (nev='data\hs\hstex.bmp') then
-  width:=info.Width  
+  begin
+
+  end
   else if info.Width > 64 then
-  width:=info.Width div round(power(2,2-texture_res));
+  begin
+    w:=info.Width div round(power(2,2-texture_res));
+    h:=info.Height div round(power(2,2-texture_res));
+  end;
+
+
 
 //  if not AnsiContainsStr(nev,'lm') then
 //  width:=1;   //strutils ki
@@ -1587,7 +1648,7 @@ begin
   vissz:
     gotolni:=false;
   try
-    eredm:=D3DXCreateTextureFromFileEx(aDevice,PChar(nev),width ,width,0 ,0,D3DFMT_A8R8G8B8,
+    eredm:=D3DXCreateTextureFromFileEx(aDevice,PChar(nev),w ,h,0 ,0,D3DFMT_A8R8G8B8,
       D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT ,0,nil,nil, tex);
     if FAILED(eredm) then
     begin
