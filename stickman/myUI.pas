@@ -86,6 +86,7 @@ type
    medal:string;
    medaltex:IDirect3DTexture9;
    medalanimstart:integer;
+   medalstate:integer;   
    
    
    lclick,rclick,mclick:boolean;
@@ -628,34 +629,35 @@ end;
 
 procedure T3DMenu.DrawMedal;
 var
-y,state:integer;
-a:single;
+y:single;
+
 mat:TD3DMatrix;
 apos:TD3DXvector3;
+pCenter:TD3DXVector3;
 begin
-
-
- //  a:=SCwidth/1024;
- //mat._11:=a;mat._12:=0;mat._13:=0;mat._14:=0;
- //mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
- //mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
- //mat._41:=0;mat._42:=0;mat._43:=0;mat._44:=1;
-
- // g_pSprite.SetTransform(mat);
-  state := GetTickCount - medalanimstart;
-  if state>2000 then
-    medalanimstart:=0;
-
-  if (state>400) and (state<1600) then y:=465
-  else
-  if state<400 then y:=600-round(135*state/400)
-  else
-  if state>1600 then y:=465+round(135*(state-1600)/400);
-
-  apos:=D3DXVector3(300/a,y/a,0);
-   g_pSprite.Draw(medaltex,nil,nil,@apos,$FFFFFFFF);
-   
   g_pSprite.SetTransform(identmatr);
+
+//  state := GetTickCount - medalanimstart;
+  medalstate := medalstate +10;
+
+  if medalstate>2000 then
+  begin
+    medalanimstart:=0;
+    medalstate:=0;
+  end;
+
+  if (medalstate>=400) and (medalstate<=1600) then y:=0.5
+  else
+  if medalstate<400 then y:=1.0-(medalstate/800)
+  else
+  if medalstate>1600 then y:=0.5+((medalstate-1600)/800);
+
+  apos:=D3DXVector3(SCWidth/2,SCHeight*y,0);
+
+  pCenter := D3DXVector3(100,0,0);
+
+  g_pSprite.Draw(medaltex,nil,@pCenter,@apos,$FFFFFFFF);
+
 end;
 
 
@@ -672,8 +674,7 @@ begin
  //mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
  //mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
  //mat._41:=0;mat._42:=0;mat._43:=0;mat._44:=1;
- //g_pd3dDevice.Clear(0, nil, D3DCLEAR_TARGET or D3DCLEAR_ZBUFFER,
-  //                    $FFFFFFFF, 1.0, 0);
+ g_pd3dDevice.Clear(0, nil, D3DCLEAR_ZBUFFER, $FFFFFFFF, 1.0, 0);
   // Begin the scene
   if SUCCEEDED(g_pd3dDevice.BeginScene) then
   begin

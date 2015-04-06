@@ -57,6 +57,7 @@ uses
   PerlinNoise,
   qjson,
   sky,
+  StrUtils,
   Sysutils,
   //SyncObjs,
   //ShellApi,
@@ -109,6 +110,9 @@ BALANCE_NOOB_RAD=5.5;
 BALANCE_X72_RAD=0.62; //minimum
 BALANCE_H31_RAD=1.0;
 
+T_CONST=0;
+T_OPERATOR=1;
+
 
 //-----------------------------------------------------------------------------
 // Global variables
@@ -130,6 +134,12 @@ var
 
 
 {$ENDIF}
+
+
+  tojasok : array [0..10] of TD3DXVector3; //husvet
+  tojasok2 : array [0..10] of boolean;             //husvet
+  megvanmind:boolean=false;                                //husvet
+
 
   g_pD3D: IDirect3D9 = nil; // Used to create the D3DDevice
   g_pd3dDevice: IDirect3DDevice9 = nil; // Our rendering device
@@ -167,7 +177,8 @@ var
   {$IFDEF panthihogomb}
   hogombmesh:ID3DXMesh = nil;
   {$ENDIF}
-  bokrok,fuvek:Tfoliage; //Növényzet
+  foliages:array of Tfoliage; //Növényzet
+  foliagelevels:array of integer;
   ojjektumrenderer:T3DORenderer;
   propsystem:TPropsystem;
   fegyv:Tfegyv = nil;
@@ -205,8 +216,16 @@ var
 
   menuopacity :single= 0;
 
+  scripts:array of TScript;
+  vecVars:array of TVecVar;
+  numVars:array of TNumVar;
+  strVars:array of TStrVar;
+  actualscript:string;
+  actualscriptline:integer;
+  scriptdepth:integer = 0;
+  scriptevaling:array [0..50] of boolean;
 
-
+  usebutton:boolean = false;
 
   cmx,cmz:integer;
   szogx,szogy,mszogx,mszogy:single;
@@ -250,6 +269,8 @@ var
 
   coordsniper:boolean=false;
   fsettings:TFormatSettings;
+
+  addchatindex:integer;
 
   {$IFDEF propeditor}
   debugstr:string;
@@ -361,7 +382,15 @@ var
 
   teleports:array of TTeleport;
   particlesSyses:array of TParticleSys;
+  particlesProtos:array of TParticleSys;
   labels:array of TLabel;
+  triggers:array of TTrigger;
+  binds:array of TBind;
+  timedscripts:array of TTimedscript;
+
+  sounds:array of TSoundData;
+
+  displaycloseevent:string;
   
   opt_taunts:boolean;
 
@@ -387,7 +416,7 @@ var
   profile_start:TLargeInteger;
   profile_stop:TLargeInteger;
   profile_frequency:TLargeInteger;
-  profile_mecha:TLargeInteger;
+  profile_mecha:TLargeInteger;                                                                         
   profile_render:TLargeInteger;
 {$ENDIF}
   //////////////////////////// M E D A L _ V A R I A B L E S //////////////////////
@@ -401,7 +430,8 @@ var
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
+procedure evalscriptline(line:string); forward;
+procedure evalScript(name:string); forward;
 
 
 function collerp(c1,c2:cardinal):cardinal;
@@ -832,6 +862,13 @@ begin
    szin:=$FFFFFEFF;
  {$IFEND}
 
+ for i:=0 to length(grounds)-1 do
+  with grounds[i] do
+ begin
+  if tavpointpointsq(D3DXVector3(posx,0,posz),D3DXVector3(xx,0,zz))<radius*radius then
+   szin:=color;
+  end;
+
  for i:=0 to length(bubbles)-1 do
   with bubbles[i] do
  begin
@@ -992,8 +1029,12 @@ begin
   copymemory(pointer(pVertices),pointer(addr(levels[lvl,0])),lvlsizp*lvlsizp*sizeof(Tcustomvertex));
  // zeromemory(pointer(pVertices),lvlsizp*lvlsizp*sizeof(Tcustomvertex));
   g_pVB.Unlock;
-  if lvl=4 then bokrok.update(@(levels[lvl,0]),yandnormbokor);
-  if lvl=1 then fuvek.update(@(levels[lvl,0]),yandnormfu);
+
+  for i:=0 to Length(foliages)-1 do
+    if foliagelevels[i]=lvl then foliages[i].update(@(levels[lvl,0]),yandnormfu);
+
+  //if lvl=4 then bokrok.update(@(levels[lvl,0]),yandnormbokor);
+  //if lvl=1 then fuvek.update(@(levels[lvl,0]),yandnormfu);
  // if lvl=0 then fuvek2.update(@(levels[lvl]),advwove);
 end;
 
@@ -1303,9 +1344,36 @@ end;
 
 procedure loadspecials;
 var
-i,n:integer;
+i,j,n,m:integer;
 tmp:String;
+height,width,offset:single;
 begin
+
+ n:=stuffjson.GetNum(['foliages']);
+ setlength(foliages,n);
+ setlength(foliagelevels,n);
+ for i:=0 to n-1 do
+  begin
+   height:=stuffjson.GetFloat(['foliages',i,'height']);
+   width:=stuffjson.GetFloat(['foliages',i,'width']);
+   offset:=stuffjson.GetFloat(['foliages',i,'offset']);
+   tmp:=stuffjson.GetString(['foliages',i,'texture']);
+   foliagelevels[i] := stuffjson.GetInt(['foliages',i,'level']);
+   foliages[i] := TFoliage.create(G_pd3ddevice,'textures/'+tmp,height,width,offset);
+  end;
+
+ n:=stuffjson.GetNum(['sounds']);
+ setlength(sounds,n);
+ for i:=0 to n-1 do
+  with sounds[i] do
+  begin
+   filename:= stuffjson.GetString(['sounds',i,'filename']);
+   haromd := stuffjson.GetBool(['sounds',i,'haromd']);
+   freq := stuffjson.GetBool(['sounds',i,'freq']);
+   effects := stuffjson.GetBool(['sounds',i,'effects']);
+   mindistance:=stuffjson.GetFloat(['sounds',i,'mindistance']);
+  end;
+
  n:=stuffjson.GetNum(['teleports']);
  setlength(teleports,n);
  for i:=0 to n-1 do
@@ -1347,23 +1415,18 @@ begin
   end;
 
  n:=stuffjson.GetNum(['particle_systems']);
- setlength(particlesSyses,n);
+ setlength(particlesProtos,n);
  for i:=0 to n-1 do
-  with particlesSyses[i] do
+  with particlesProtos[i] do
   begin
-   with from do
-   begin
-    x:=stuffjson.GetFloat(['particle_systems',i,'from','x']);
-    y:=stuffjson.GetFloat(['particle_systems',i,'from','y']);
-    z:=stuffjson.GetFloat(['particle_systems',i,'from','z']);
-   end;
-
    with spd do
    begin
     x:=stuffjson.GetFloat(['particle_systems',i,'speed','x']);
     y:=stuffjson.GetFloat(['particle_systems',i,'speed','y']);
     z:=stuffjson.GetFloat(['particle_systems',i,'speed','z']);
    end;
+
+   name:=stuffjson.GetString(['particle_systems',i,'name']);
 
    spdrnd:=stuffjson.GetFloat(['particle_systems',i,'random_speed']);
    rnd:=stuffjson.GetFloat(['particle_systems',i,'random_tangent']);
@@ -1397,6 +1460,54 @@ begin
 
   end;
 
+ n := stuffjson.GetNum(['emitters']);
+ m := length(particlesProtos);
+ setlength(particlesSyses,n);
+ for i:=0 to m-1 do
+ begin
+  for j:=0 to n-1 do
+  begin
+   if particlesProtos[i].name = stuffjson.GetString(['emitters',j,'type']) then
+   begin
+    particlesSyses[j] := particlesProtos[i];
+    particlesSyses[j].name := stuffjson.GetKey(['emitters'],j);
+    with particlesSyses[j].from do
+    begin
+      x:=stuffjson.GetFloat(['emitters',j,'x']);
+      y:=stuffjson.GetFloat(['emitters',j,'y']);
+      z:=stuffjson.GetFloat(['emitters',j,'z']);
+    end;
+   end;
+  end;
+ end;
+
+ n:=stuffjson.GetNum(['scripts']);
+ setlength(scripts,n);
+ for i:=0 to n-1 do
+  with scripts[i] do
+  begin
+   m := stuffjson.GetNum(['scripts',i]);
+   setlength(scripts[i].instructions,m);
+   scripts[i].name := stuffjson.GetKey(['scripts'],i);
+
+   for j:=0 to m-1 do
+     scripts[i].instructions[j] := stuffjson.GetString(['scripts',i,j]);
+  end;
+
+  n:=stuffjson.GetNum(['triggers']);
+  setlength(triggers,n);
+  for i:=0 to n-1 do
+  with triggers[i] do
+  begin
+   name := stuffjson.GetKey(['triggers'],i);
+   pos := D3DXVector3(stuffjson.GetFloat(['triggers',name,'x']),stuffjson.GetFloat(['triggers',name,'y']),stuffjson.GetFloat(['triggers',name,'z']));
+   rad := stuffjson.GetFloat(['triggers',name,'radius']);
+   touched := false;
+   ontouchscript := stuffjson.GetString(['triggers',name,'ontouch']);
+   onusescript := stuffjson.GetString(['triggers',name,'onuse']);
+   onleavescript := stuffjson.GetString(['triggers',name,'onleave']);
+   active := true;
+  end;
 
 end;
 
@@ -1739,6 +1850,8 @@ begin
 end;
 
 procedure loadsounds;
+var
+i,n:integer;
 begin
   menu.DrawLoadScreen(85);
 
@@ -1747,48 +1860,10 @@ begin
 
 
 //  laststate:='Loading sound files';
-  LoadSound('gunshot',true,false,true,3);
-  LoadSound('walkground',true,true,true,1);
-  LoadSound('rocks',true,true,true,1);
-  LoadSound('walkwater',true,false,true,1);
-  LoadSound('plasmashot2',true,false,true,2);
-  LoadSound('m82shot',true,false,true,7);     //5
-  LoadSound('4shot',true,false,true,4);
-  LoadSound('antigrav',true,true,true,1);
-  LoadSound('hummer',true,true,true,10);
-  LoadSound('death1',true,false,true,1);
-  LoadSound('death2',true,false,true,1);      //10
-  LoadSound('death3',true,false,true,1);
-  LoadSound('rain',false,false,true,1);
-  LoadSound('thd',false,false,true,1);
-  LoadSound('whoosh',true,true,true,0.1);
-  LoadSound('charge',true,true,true,2);       //15
-  LoadSound('rocket',true,false,true,2);
-  LoadSound('niceexp',true,true,true,6);
-  LoadSound('noobshot',true,false,true,2);
-  LoadSound('noobexp',true,false,true,7);
-  LoadSound('rocketshot',true,false,true,2);  //20
-  LoadSound('x72exp',true,true,true,1);
-  LoadSound('mp5',true,false,true,2);
-  LoadSound('x72shot',true,false,true,3);
-  LoadSound('pajzs',true,false,true,1);
-  LoadSound('teleport',true,false,true,1);    //25
-  LoadSound('mechanic',true,false,true,1);
-  LoadSound('lwhoosh',true,false,true,0.1);
-  LoadSound('creak',true,true,true,20);
-  LoadSound('lasertiu',true,true,true,20);
-  LoadSound('lownoise',true,true,true,15);    //30
-  LoadSound('biglas',true,true,true,10);
-  LoadSound('uberexp',true,false,true,100);
-  LoadSound('mechahuge',true,false,true,30);
-  LoadSound('largeser',true,true,true,2);
-  LoadSound('knock',true,true,true,20);        //35
-  LoadSound('openedportal',true,true,true,10);
-  LoadSound('walkmetal',true,true,true,1);
-  LoadSound('walkwood',true,true,true,1);
-  LoadSound('snowfire',true,true,true,1);
-  LoadSound('suck',true,true,true,2);         //40
-
+  n := length(sounds)-1;
+  for i:=0 to n do
+  with sounds[i] do
+    LoadSound(filename,haromd,freq,effects,mindistance);
 
   menu.DrawLoadScreen(87);
 
@@ -1798,7 +1873,7 @@ begin
 
 //  laststate:='Loading taunts';
   LoadStrm('tch\begin');        //0  TECH
-  LoadStrm('tch\end');                        
+  LoadStrm('tch\end');
   LoadStrm('tch\targ_el');
   LoadStrm('tch\subj_ter');
   LoadStrm('tch\sens_rep_own');
@@ -2007,6 +2082,24 @@ begin
    if (rad<=3) then rad := 3;
   end;
 
+  x:=0;
+
+  for i:=0 to stuffjson.GetNum(['surface_modifiers'])-1 do
+  begin
+   setlength(grounds,length(grounds) + stuffjson.GetNum(['surface_modifiers',i,'position']));
+   for j:=0 to stuffjson.GetNum(['surface_modifiers',i,'position'])-1 do
+   begin
+    with grounds[x] do
+    begin
+      posx:=stuffjson.GetFloat(['surface_modifiers',i,'position',j,'x']);
+      posz:=stuffjson.GetFloat(['surface_modifiers',i,'position',j,'z']);
+      radius:=stuffjson.GetFloat(['surface_modifiers',i,'radius']);
+      color:=stuffjson.GetInt(['surface_modifiers',i,'color']);
+    end;
+    inc(x);
+   end;
+  end;
+
   for i:=0 to 3 do
   begin
    hummkerekarr[i].x:=stuffjson.GetFloat(['vehicle','gun','wheels','position',i,'x']);
@@ -2097,7 +2190,9 @@ begin
                     stuffjson.GetFloat(['props',i,'position',j,'z'])),
                     stuffjson.GetFloat(['props',i,'position',j,'rot']),
                     stuffjson.GetFloat(['props',i,'position',j,'scale']),
-                    stuffjson.GetFloat(['props',i,'position',j,'light'])
+                    stuffjson.GetFloat(['props',i,'position',j,'light']),
+                    stuffjson.GetString(['props',i,'position',j,'name']),
+                    stuffjson.GetFloat(['props',i,'position',j,'invisible'])<>1.0
                     );
   end;
 
@@ -2332,16 +2427,16 @@ begin
  
   writeln(logfile,'Initialized buffers');flush(logfile);
   addfiletochecksum('data/textures/bush256.png');
- {$IFDEF winter}
-  bokrok:=TFoliage.create(G_pd3ddevice,'textures/bush256.png',1,-1.2,1.2);
- {$ELSE}
-  bokrok:=TFoliage.create(G_pd3ddevice,'textures/bush256.png',1,1.2,-0.1);
- {$ENDIF}
+ //{$IFDEF winter}
+ // bokrok:=TFoliage.create(G_pd3ddevice,'textures/bush256.png',1,-1.2,1.2);
+ //{$ELSE}
+ // bokrok:=TFoliage.create(G_pd3ddevice,'textures/bush256.png',1,1.2,-0.1);
+ //{$ENDIF}
 
-  fuvek:=TFoliage.create(G_pd3ddevice,'textures/mg3.png',0.34,-0.32,0.34);
+  //fuvek:=TFoliage.create(G_pd3ddevice,'textures/mg3.png',0.34,-0.32,0.34);
   //fuvek2:=TFoliage.create( G_pd3ddevice,'mg3.png',0.1,-0.2,0.18);
-  if not bokrok.betoltve then exit;
-  if not fuvek.betoltve then exit;
+  //if not bokrok.betoltve then exit;
+  //if not fuvek.betoltve then exit;
   //if not fuvek2.betoltve then exit;
   writeln(logfile,'Loaded foliage');flush(logfile);
 
@@ -2757,12 +2852,12 @@ begin
       begin
         if (minute mod 10)<5 then
         begin
-          if ((ppl[p].pls.fegyv xor myfegyv)>=128) and D3DXVector3Equal(ppl[p].pos.pos,D3DXVector3Zero) then
+          if ((ppl[p].pls.fegyv xor myfegyv)>=128) and not D3DXVector3Equal(ppl[p].pos.pos,D3DXVector3Zero) then
             tmptav:=tmptav+sqrt(tavpointpoint(tmppos,ppl[p].pos.pos));
         end
         else
         begin //csapatra spawnol, meg félig ellenségre
-          if D3DXVector3Equal(ppl[p].pos.pos,D3DXVector3Zero) then
+          if not D3DXVector3Equal(ppl[p].pos.pos,D3DXVector3Zero) then
             if ((ppl[p].pls.fegyv xor myfegyv)>=128) then
               tmptav:=tmptav+0.5*sqrt(tavpointpoint(tmppos,ppl[p].pos.pos))
             else
@@ -3285,14 +3380,14 @@ hudInfoColor:=col;
 end;
 
 
-procedure addHudMessage(input:string;col:longword);
+procedure addHudMessage(input:string;col:longword;f:word=500);
 var
   i:byte;
 begin
   for i:=high(hudMessages) downto low(hudMessages)+1 do
     hudMessages[i]:=hudMessages[i-1];
 
-  hudMessages[i]:=THUDMessage.create(input,col);
+  hudMessages[i]:=THUDMessage.create(input,col,f);
 end;
 
 procedure stepHudMessages;
@@ -3680,6 +3775,7 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
     if not((myfegyv=FEGYV_QUAD)and csipo) or autoban then
     begin
       labelactive:=false;
+      evalscript(displaycloseevent);
 
       if autoban then
       begin
@@ -4064,16 +4160,17 @@ var
 // avec:TD3DXVector3;
  col:cardinal;
 begin
+
+  t:=lawproj[mi].v3;
+
  for i:=0 to 100 do
  begin
-  t:=lawproj[mi].v3;
   randomplus(t,animstat+i,15);
   Particlesystem_add(Bulletcreate(lawproj[mi].v3,t,10,10,0.03,$00A0A050,0,true));
  end;
 
  for i:=0 to 100 do
  begin
-  t:=lawproj[mi].v3;
   randomplus(t,animstat*10+i,7.35);
   Particlesystem_add(SimpleparticleCreate(t,randomvec(animstat*10+i,0.05),2,0,$00FFFF00,$01FF0000,random(20)+20));
  end;
@@ -5086,15 +5183,89 @@ begin
  end;
 end;
 
- procedure handleHDR;
+
+
+function maketojashash():string; //husvet
+var
+i:integer;
+begin
+result:='';
+
+for i:=low(tojasok2) to high(tojasok2) do
+begin
+if tojasok2[i] then
+  result:=result + '1'
+else
+  result:=result + goodchars2[1 + random(61)];  //SZIGSZALLAG POWEEEER
+end;
+
+
+//writeln(logfile,'hash be:');
+//writeln(logfile,result);
+
+result:=encodehash(result,11);
+//writeln(logfile,result);
+end;
+
+procedure settojas2(s:string); //husvet
+var
+i:integer;
+tmpBool:boolean;
+begin
+
+//writeln(logfile,'hash ki:');
+s:=decodehash(s,11);
+//writeln(logfile,s);
+
+for i:=low(tojasok2) to high(tojasok2) do
+begin
+if (s[i+1] = '1') then
+  tojasok2[i]:=true
+else
+  tojasok2[i]:=false;
+end;
+
+
+   tmpBool:=true;
+   for i:=low(tojasok2) to high(tojasok2) do
+   begin
+     if not tojasok2[i] then
+       tmpBool:=false;
+   end;
+
+   if tmpBool then
+   begin
+     megvanmind:=true;
+   end;
+
+
+end;
+
+function megtalalttosatok():integer; //husvet
+var
+i:integer;
+begin
+result:=0;
+
+for i:=low(tojasok2) to high(tojasok2) do
+begin
+if tojasok2[i] then
+  result:=result + 1;
+end;
+end;
+
+
+procedure handleHDR;
 var
 tmpmat:TD3DMatrix;
 tmpvec,tmpvec2:array [0..7] of TD3DVector;
 i,j,k,a,tmpint:integer;
 vec0,vec1:TD3DVector;
+holvagyok:TD3DVector;
 tmp:integer;
 mennyit:single;
 bol:boolean;
+tmpBool:boolean;
 begin
 
  d3dxmatrixinverse(tmpmat,nil,matView);
@@ -5103,6 +5274,7 @@ begin
  constraintvec(vec0);
  vec1:=vec0; vec1.y:=vec1.y+100;
 
+ //TODO: ezeket elrakni innen a picsába egy másik procedureba
  mennyit:=3;
  nemlohet:=false;
 
@@ -5114,7 +5286,37 @@ begin
     (cpz^>portalpos.z-9) and (cpz^<portalpos.z+8) and
     (cpy^>portalpos.y-1) and (cpy^<portalpos.y+4) then  nemlohet:=true;
 
-  if disablekill then  nemlohet:=true;
+
+ if not megvanmind then //husvet
+ begin
+   holvagyok:=D3DXVector3(cpx^,cpy^,cpz^);
+   for i:=0 to 10 do
+   begin
+     if (tavpointpointsq(holvagyok, tojasok[i]) < 1) and not tojasok2[i] then
+     begin
+       tojasok2[i]:=true;
+       if not (megtalalttosatok() = length(tojasok2)) then
+         addHudMessage(lang[82] + inttostr(length(tojasok2)-megtalalttosatok()) + '.',color_menu_normal,650);
+       //marker
+     end;
+   end;
+
+   tmpBool:=true;
+   for i:=low(tojasok2) to high(tojasok2) do
+   begin
+     if not tojasok2[i] then
+       tmpBool:=false;
+   end;
+
+   if tmpBool then
+   begin
+     megvanmind:=true;
+     multisc.Medal('H','U');
+     addHudMessage(lang[83],color_menu_normal,1000);
+   end;
+ end;
+
+  if disablekill then  nemlohet:=true;
 
  if (nemlohet) and (kiszall_cooldown<1) then kiszall_cooldown:=kiszall_cooldown+0.01;
 
@@ -5323,19 +5525,23 @@ var
 n,a,b,lt,modifier:integer;
 atav:single;
 tmp:TD3DXVector3;
+now:cardinal;
 begin
 
-
+now := GetTickCount;
 n := high(particlesSyses);
 if opt_particle > 0 then
 for a:=0 to n do
 with particlesSyses[a] do
 begin
+  if disabled and (restart >0) and (restart < now) then
+    disabled := false;
+
   if autoban then
     atav:=tavpointpointsq(from,tegla.pos)
   else
     atav:=tavpointpointsq(from,d3dxvector3(cpx^,cpy^,cpz^));
-  if (atav<sqr(vis*opt_particle)) and ((hanyszor and period)=period) then
+  if (atav<sqr(vis*opt_particle)) and ((hanyszor and period)=period) and (not disabled) then
   begin
       //jöhet a rajzolás
       if opt_particle=1 then
@@ -5400,10 +5606,89 @@ end;
 
 procedure drawLabel;
 begin
- menu.Addteg(0.1,0.1,0.9,0.9,8);
+ menu.Addteg(0.3,0.3,0.7,0.7,8);
  menu.DrawKerekitett(menu.tegs[8,1]);
  menu.g_psprite.Flush;
- menu.DrawMultilineText(labeltext,0.1,0.1,0.9,0.9,1,$FFFFFFFF);
+ menu.DrawMultilineText(labeltext,0.3,0.3,0.7,0.7,1,$FFFFFFFF);
+end;
+
+procedure handletimedscripts;
+var
+i,j,n:integer;
+now:cardinal;
+begin
+  n:=length(timedscripts);
+  now := GetTickCount;
+
+  for i:=0 to n-1 do
+  begin
+    if timedscripts[i].time < now then
+    begin
+      evalscript(timedscripts[i].script);
+    end;
+  end;
+
+  for i:=0 to length(timedscripts)-1 do
+  begin
+    if timedscripts[i].time < now then
+    begin
+      for j:=i to length(timedscripts)-2 do
+        timedscripts[j] := timedscripts[j+1];
+      SetLength(timedscripts,length(timedscripts)-1);
+    end;
+  end;
+end;
+
+procedure handletriggers;
+var
+i,n:integer;
+atav:single;
+begin
+  n:=Length(triggers);
+  for i:=0 to n-1 do
+  with triggers[i] do
+  begin
+    if active then
+    begin
+      if autoban then
+        atav:=tavpointpointsq(pos,tegla.pos)
+      else
+        atav:=tavpointpointsq(pos,d3dxvector3(cpx^,cpy^,cpz^));
+
+      if atav<sqr(rad) then
+      begin
+        if (not touched) then
+        begin
+          evalscriptline('$thistrigger = '+name);
+          evalScript(ontouchscript);
+          touched := true;
+        end;
+
+        if (usebutton) then
+        begin
+          evalscriptline('$thistrigger = '+name);
+          evalScript(onusescript);
+        end;
+
+      end
+      else
+      begin
+        if touched then
+        begin
+          evalscriptline('$thistrigger = '+name);
+          evalscript(onleavescript);
+        end;
+        touched := false;
+      end
+    end
+    else
+    begin
+      if (restart > 0) and (restart < GetTickCount) then
+        active := true;
+    end;
+
+  end;
+  usebutton := false;
 end;
 
 procedure handleteleports;
@@ -5879,6 +6164,9 @@ begin
   handleteleports;
   handleparticlesystems;
   handlelabels;
+  handletriggers;
+  handletimedscripts;
+  propsystem.updatedynamic;
 
   if multisc.state1v1 and multisc.atrak then         // atrakas 1v1 uzemmodba
   begin
@@ -6857,7 +7145,7 @@ begin
  begin
   if multisc.doevent='spaceship' then
   begin
-  addHudmessage('spaceshipppp',500);      //sajt
+  //addHudmessage('spaceshipppp',500);      //sajt
    if currevent<>nil then
     if not (currevent is TSpaceshipEvent) then
     begin
@@ -7599,21 +7887,21 @@ begin
 
   if coordsniper then
   begin
-  for j:=high(multisc.chats) downto 3 do
-   multisc.chats[j]:=multisc.chats[j-3];
    fsettings.DecimalSeparator:='.';
-   multisc.chats[0].uzenet:='Coords: (' + IntToStr(random(1000)) + ')';
-   multisc.chats[1].uzenet:='x: '+FloatToStrF(aloves.v2.x,ffFixed,7,2,fsettings)+
+
+   multisc.chats[addchatindex].uzenet:='Coords: (' + IntToStr(random(1000)) + ')';
+   multisc.chats[addchatindex+1].uzenet:='x: '+FloatToStrF(aloves.v2.x,ffFixed,7,2,fsettings)+
            '  y: '+FloatToStrF(aloves.v2.y,ffFixed,7,2,fsettings)+
            '  z: '+FloatToStrF(aloves.v2.z,ffFixed,7,2,fsettings);
-   multisc.chats[2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2,fsettings)+
+   multisc.chats[addchatindex+2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2,fsettings)+
            '  angleV: '+FloatToStrF(szogy,ffFixed,7,2,fsettings);
            
-   multisc.chats[0].glyph:=0;
-   multisc.chats[1].glyph:=0;
-   multisc.chats[2].glyph:=0;
-   writeln(logfile,multisc.chats[0].uzenet,' ',multisc.chats[1].uzenet,' ',multisc.chats[2].uzenet);
+   multisc.chats[addchatindex].glyph:=0;
+   multisc.chats[addchatindex+1].glyph:=0;
+   multisc.chats[addchatindex+2].glyph:=0;
+   writeln(logfile,multisc.chats[addchatindex].uzenet,' ',multisc.chats[addchatindex+1].uzenet,' ',multisc.chats[addchatindex+2].uzenet);
    coordsniper :=false;
+   addchatindex := addchatindex+3;
   end;
   
  {$IFDEF propeditor}
@@ -8174,6 +8462,7 @@ begin
  end
  else
  begin
+ addchatindex := 0;
   for i:=0 to 23 do
  begin
   if (multisc.chats[i].glyph<>0) then begin
@@ -9974,9 +10263,13 @@ begin
 
     laststate:='Rendering bushes';
     setupidentmatr;
-    bokrok.init;
-    bokrok.render;
-    fuvek.render;
+
+    for i:=0 to Length(foliages)-1 do
+    begin
+      foliages[i].init;
+      foliages[i].render;
+    end;
+
    // fuvek2.render;
     g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, ifalse);
 
@@ -10522,6 +10815,7 @@ begin
   end;
 end;
 
+
 procedure handlemenuclicks;
 var
 fil:textfile;
@@ -10575,7 +10869,6 @@ begin
  if menufi[MI_CONNECT].clicked or ((menu.lap=1) and menu.keyb[DIK_RETURN]) then
  begin
 
-
   menufi[MI_CONNECT].clicked:=false;
 
   menu.lap:=-1;
@@ -10601,6 +10894,8 @@ begin
     writeln(fil,encodehash(lasthash))
   else
     writeln(fil,'-');
+
+  writeln(fil,maketojashash()); //husvet
   closefile(fil);
   exit
  end;
@@ -10722,6 +11017,8 @@ begin
     writeln(fil,encodehash(lasthash))
   else
     writeln(fil,'-');
+
+  writeln(fil,maketojashash()); //husvet
   closefile(fil);
 
 
@@ -11048,7 +11345,753 @@ begin
 
 end;
 
-procedure handleparancsok(var mit:string);
+procedure evalScript(name:string);
+var
+i,j,n,m:integer;
+begin
+  if name='' then exit;
+  
+  scriptdepth := 0;
+  scriptevaling[scriptdepth] := true;
+
+  n := Length(scripts);
+  for i:=0 to n-1 do
+  begin
+    if scripts[i].name=name then
+    begin
+      m := Length(scripts[i].instructions);
+      actualscript:=name;
+      for j:=0 to m-1 do
+      begin
+        actualscriptline := j+1;
+        evalscriptline(scripts[i].instructions[j]);
+      end;
+
+      scriptdepth := 0;
+      scriptevaling[scriptdepth] := true;
+
+      exit;
+    end;
+  end;
+end;
+
+function getVecVar(name:string):TD3DXVector3;
+var
+i,n:integer;
+begin
+  n := length(vecVars);
+  result := D3DXVector3Zero;
+  for i:=0 to n-1 do
+  if vecVars[i].name=name then
+  begin
+    result := vecVars[i].pos;
+    exit;
+  end;
+  multisc.chats[addchatindex].uzenet:='No such vector variable: '+name;
+  addchatindex := addchatindex+1;
+end;
+
+function getNumVar(name:string):single;
+var
+i,n:integer;
+begin
+  n := length(numVars);
+  result := 0;
+  for i:=0 to n-1 do
+  if numVars[i].name=name then
+  begin
+    result := numVars[i].num;
+    exit;
+  end;
+  multisc.chats[addchatindex].uzenet:='No such numeric variable: '+name;
+  addchatindex := addchatindex +1;
+end;
+
+
+procedure scripterror(text:string);
+begin
+writeln(logfile, text,' in ', actualscript, ' : ', actualscriptline);
+end;
+
+function compute(words:TStringArray):TSingleArray;
+var
+i,j,n:integer;
+tmp:TD3DXVector3;
+error: Integer;
+numnum,varnum:integer;
+nums,vars:array[0 .. 2] of single;
+operator:char;
+value:single;
+r:TSingleArray;
+begin
+  // ! a vektor változó
+  // % a szám változó
+
+  n := length(words)+1;
+  SetLength(words,n);
+  words[n-1] := '//';
+  
+  for i:=0 to n-1 do
+  if words[i][1]='!' then
+  begin
+    tmp := getVecVar(copy(words[i],2,length(words[i])-1));
+
+    SetLength(words,n+2);
+    n := n+2;
+    if i<>n-2 then
+      for j:= n-1 downto i+3 do
+        words[j] := words[j-2];
+    words[i] := FloatToStr(tmp.x);
+    words[i+1] := FloatToStr(tmp.y);
+    words[i+2] := FloatToStr(tmp.z);
+
+  end else
+  if words[i][1]='%' then
+    words[i] := FloatToStr(getNumVar(copy(words[i],2,length(words[i])-1)));
+
+  //számoljunk, most hogy nincsenek változók
+  numnum := 0;
+  operator := ' ';
+  for i:=0 to n-1 do
+  begin
+
+    val(words[i], value, error);
+
+    if error=0 then
+    begin   //szám!
+
+      inc(numnum); //számoljuk hány szám jön egymás után
+
+      if numnum>3 then
+      begin
+        scripterror('Unexpected fourth number: '+words[i]);
+        exit;
+      end;
+
+      nums[numnum-1] := value;
+
+    end
+    else
+    begin
+
+      if (operator<>' ') then  // az operátorok mûködése
+      begin
+        if (numnum=1) and (varnum=1) then
+        begin
+          if operator='+' then vars[0] := vars[0] + nums[0];
+          if operator='-' then vars[0] := vars[0] - nums[0];
+          if operator='*' then vars[0] := vars[0] * nums[0];
+          if operator='/' then vars[0] := vars[0] / nums[0];
+        end else
+        if (numnum=3) and (varnum=1) then
+        begin
+          if operator='+' then begin scripterror('Single and vector addition'); exit end;
+          if operator='-' then begin scripterror('Single and vector substraction'); exit end;
+          if operator='*' then begin vars[0]:=vars[0]*nums[0]; vars[1]:=vars[0]*nums[1]; vars[2]:=vars[0]*nums[2]; end;
+          if operator='/' then begin vars[0]:=vars[0]/nums[0]; vars[1]:=vars[0]/nums[1]; vars[2]:=vars[0]/nums[2]; end;
+        end else
+        if (numnum=1) and (varnum=3) then
+        begin
+          if operator='+' then begin scripterror('Single and vector addition'); exit end;
+          if operator='-' then begin scripterror('Single and vector substraction'); exit end;
+          if operator='*' then begin vars[0]:=vars[0]*nums[0]; vars[1]:=vars[1]*nums[0]; vars[2]:=vars[2]*nums[0]; end;
+          if operator='/' then begin scripterror('Vector and single division'); exit end;
+        end else
+        if (numnum=3) and (varnum=3) then
+        begin
+          if operator='+' then begin vars[0]:=vars[0]+nums[0]; vars[1]:=vars[1]+nums[1]; vars[2]:=vars[2]+nums[2]; end;
+          if operator='-' then begin vars[0]:=vars[0]-nums[0]; vars[1]:=vars[1]-nums[2]; vars[2]:=vars[2]-nums[2]; end;
+          if operator='*' then begin vars[0]:=vars[0]*nums[0]; vars[1]:=vars[1]*nums[1]; vars[2]:=vars[2]*nums[2]; end;
+          if operator='/' then begin vars[0]:=vars[0]/nums[0]; vars[1]:=vars[1]/nums[1]; vars[2]:=vars[2]/nums[2]; end;
+        end else
+
+
+      end
+      else
+      begin
+        if (numnum=1) then begin vars[0] := nums[0]; varnum:=1 end else
+        if (numnum=3) then begin vars[0] := nums[0]; vars[1] := nums[1]; vars[2] := nums[2]; varnum:=3 end;
+      end;
+
+      if (words[i]='+') or (words[i]='-') or (words[i]='*') then
+      begin
+        if (numnum=0) or (numnum=2)  then
+        begin
+          scripterror('Unexpected operator: '+words[i]);
+          exit;
+        end;
+
+        operator := words[i][1];
+        numnum := 0;
+
+      end
+      else
+      if (words[i]='//') then  //vége!
+      begin
+        SetLength(r,3);
+        r[0] := vars[0];
+        r[1] := vars[1];
+        r[2] := vars[2];
+        result := r;
+      end
+      else
+      begin
+        scripterror('Syntax error: '+words[i]);
+        exit;
+      end;
+    end;
+  end;
+
+end;
+
+function computevecs(words:array of string):TD3DXVector3;
+var
+tmp:TSingleArray;
+tmp2:TStringArray;
+i,n:integer;
+begin
+
+  n :=  length(words);
+  setLength(tmp2,n);
+  for i:=0 to n-1 do
+    tmp2[i] := words[i] ;
+
+  tmp:=compute(tmp2);
+  Result := D3DXVector3(tmp[0],tmp[1],tmp[2]);
+end;
+
+function computenums(words:array of string):single;
+var
+tmp:TSingleArray;
+tmp2:TStringArray;
+i,n:integer;
+begin
+
+  n :=  length(words);
+  setLength(tmp2,n);
+  for i:=0 to n-1 do
+    tmp2[i] := words[i] ;
+
+  tmp:=compute(tmp2);
+  Result := tmp[0];
+end;
+
+function varToString(input:string):string;
+var
+i,n:integer;
+varname:string;
+begin
+  result := input;
+  if input[1] = '%' then
+  begin
+    varname := copy(input,2,length(input)-1);
+    n := Length(numVars);
+    for i:=0 to n-1 do
+      if numVars[i].name = varname then
+      begin
+        result := FormatFloat('0.####',numVars[i].num);
+        exit;
+      end;
+  end
+  else
+  if input[1] = '!' then
+  begin
+    varname := copy(input,2,length(input)-1);
+    n := Length(vecVars);
+    for i:=0 to n-1 do
+      if vecVars[i].name = varname then
+      begin
+        result := FloatToStr(vecVars[i].pos.x) + ', ' + FloatToStr(vecVars[i].pos.y) + ', ' + FloatToStr(vecVars[i].pos.z);
+        exit;
+      end;
+  end
+  else
+  if input[1] = '$' then
+  begin
+    if input = '$_' then begin result := ' '; exit; end;
+    if input = '$NL' then begin result := AnsiString(#13#10); exit; end;
+    varname := copy(input,2,length(input)-1);
+    n := Length(strVars);
+    for i:=0 to n-1 do
+      if strVars[i].name = varname then
+      begin
+        result := strVars[i].text;
+        exit;
+      end;
+  end
+end;
+
+procedure varCompare(args:array of string);
+var
+argnum,i,j,k:integer;
+v1,v2:single;
+truth:boolean;
+op:string;
+a,b:TStringArray;
+begin
+    argnum := length(args);
+    //find the comparator
+    for i:=0 to argnum-1 do
+      if (args[i]='=') or (args[i]='>') or (args[i]='<') or (args[i]='<>') or (args[i]='>=') or (args[i]='<=') then
+      begin
+        op := args[i];
+        SetLength(a,i);
+        SetLength(b,argnum-i-1);
+
+        for j:=0 to i-1 do
+          a[j] := args[j];
+
+        for j:=0 to argnum-i-2 do
+          b[j] := args[i+1+j];
+
+        v1 := compute(a)[0];
+        v2 := compute(b)[0];
+        truth := false;
+
+        if (op='=') then
+          begin if (v1=v2) then truth:=true; end
+        else
+        if (op='<') then
+          begin if (v1<v2) then truth:=true; end
+        else
+        if (op='>') then
+          begin if (v1>v2) then truth:=true; end
+        else
+        if (op='!=') then
+          begin if (v1<>v2) then truth:=true; end
+        else
+        if (op='<=') then
+          begin if (v1<=v2) then truth:=true; end
+        else
+        if (op='>=') then
+          if (v1>=v2) then truth:=true;
+
+        inc(scriptdepth);
+        scriptevaling[scriptdepth] := truth;
+        
+        exit;
+      end;
+end;
+
+procedure evalscriptline(line:string);
+var
+args:array of string;
+len,i,j,argnum:integer;
+tmp:string;
+v1:single;
+t:char;
+
+begin
+
+  //bontsuk szavakra, és tegyük egy args arraybe
+  len := Length(line);
+  j := 0;
+  SetLength(args,1);
+
+  for i:=1 to len do begin
+    if (line[i]=' ') then
+    begin
+      if ((Length(args[j])>0)) then
+      begin
+        inc(j);
+        SetLength(args,j+1);
+      end;
+    end
+    else
+    begin
+      args[j] := args[j] + line[i];
+    end;
+  end;
+
+  DecimalSeparator := '.';
+  argnum := Length(args);
+  //behelyettesítés
+  for i:=1 to Length(args)-1 do
+  begin
+    if args[i]='!playerpos' then
+    begin
+      setLength(args,Length(args)+2);
+      argnum := argnum+2;
+      for j:= argnum-1 downto i+1 do
+        args[j] := args[j-2];
+      args[i] := FloatToStr(cpx^);
+      args[i+1] := FloatToStr(cpy^);
+      args[i+2] := FloatToStr(cpz^);
+
+    end;
+  end;
+
+  //wow, tudunk valamit
+
+  if (args[0]='else') then
+  begin
+    if scriptdepth>0 then
+    begin
+      scriptevaling[scriptdepth] := not scriptevaling[scriptdepth] and scriptevaling[scriptdepth-1];
+    end
+    else
+      scripterror('Unexpected else');
+    exit;
+  end
+  else
+
+  if (args[0]='endif') then
+  begin
+    if scriptdepth>0 then
+    begin
+      dec(scriptdepth);
+    end
+    else
+      scripterror('Unexpected endif');
+    exit;
+  end
+  else
+
+  if (args[0]='if') then
+  begin
+    if not scriptevaling[scriptdepth] then
+    begin
+      inc(scriptdepth);
+      scriptevaling[scriptdepth] := false;
+    end
+    else
+    varCompare(copy(args,1,argnum-1));
+
+    exit;
+  end
+  else
+
+  if not scriptevaling[scriptdepth] then exit;
+
+  if (Length(args)>1) then
+  begin
+    t := args[0][1];
+    if (t='!') and (args[1]='=') then
+    begin
+      for i:=0 to Length(vecvars)-1 do
+      if args[0]='!'+vecvars[i].name then
+        vecvars[i].pos := computevecs(copy(args,2,argnum-2));
+      exit;
+    end
+    else
+    if (t='%') and (args[1]='=') then
+    begin
+      for i:=0 to Length(numVars)-1 do
+      if args[0]='%'+numVars[i].name then
+        numVars[i].num := computenums(copy(args,2,argnum-2));
+      exit;
+    end
+    else
+    if (t='$') and (args[1]='=') then
+    begin
+      for i:=0 to Length(strvars)-1 do
+      if args[0]='$'+strvars[i].name then
+      begin
+        tmp := '';
+        for j:=2 to Length(args)-1 do
+        begin
+          tmp := tmp + varToString(args[j]);
+          //if j<Length(args)-1 then tmp := tmp + ' ';
+        end;
+        strvars[i].text := tmp;
+      end;
+
+
+      exit;
+    end;
+  end;
+  
+  //új változó
+  if (args[0]='var') and (Length(args)>1) then
+  begin
+    if (args[1][1]='%') then
+    begin
+      setLength(numVars,length(numVars)+1);
+      numVars[length(numVars)-1].name := copy(args[1],2,Length(args[1])-1);
+    end
+    else
+    if (args[1][1]='!') then
+    begin
+      setLength(vecvars,length(vecvars)+1);
+      vecvars[length(vecvars)-1].name := copy(args[1],2,Length(args[1])-1);
+    end
+    else
+    if (args[1][1]='$') then
+    begin
+      setLength(strvars,length(strvars)+1);
+      strvars[length(strvars)-1].name := copy(args[1],2,Length(args[1])-1);
+    end;
+    exit;
+  end
+  else
+
+  if (args[0]='getlang') and (Length(args)>1) then
+  begin
+    t := args[1][1];
+    if (t='$') then
+    begin
+      for i:=0 to Length(strvars)-1 do
+      if args[1]='$'+strvars[i].name then   //megvan mibe tesszük
+      begin
+        tmp := '';
+        j := trunc(computenums(copy(args,2,argnum-2)));
+        if sizeof(lang)< j then
+          strvars[i].text := lang[j];
+        exit;
+      end;
+
+
+
+    end;
+  end
+  else
+
+  if (args[0]='bind') then
+  begin
+    if Length(args)<3 then begin scripterror('Not enough paramater for bind'); exit; end;
+    if (args[1]='closedisplay') then
+      displaycloseevent := args[2]
+    else
+    begin
+      for i:=0 to Length(binds)-1 do
+        if binds[i].key = args[1][1] then
+        begin
+          binds[i].script := args[2];
+          exit;
+        end;
+      SetLength(binds,Length(binds)+1);
+      binds[Length(binds)-1].key := args[1][1];
+      binds[Length(binds)-1].script := args[2];
+      end;
+    exit;
+  end
+  else
+
+  if (args[0]='unbind') then
+  begin
+    if Length(args)<2 then begin scripterror('Not enough paramater for unbind'); exit; end;
+    if (args[1]='closedisplay') then
+      displaycloseevent := ''
+    else
+    begin
+      for i:=0 to Length(binds)-1 do
+        if binds[i].key = args[1][1] then
+        begin
+          for j:=i to Length(binds)-2 do
+            binds[j] := binds[j+1];
+          SetLength(binds,length(binds)-1);
+        end;
+    end;
+    exit;
+  end
+  else
+
+  if (args[0]='unbindall') then
+  begin
+    SetLength(binds,0);
+    exit;
+  end
+  else
+
+  //nagy kiírás középre
+  if (args[0]='fastinfo') then
+  begin
+    for i:=1 to Length(args)-1 do
+      tmp := tmp + ' ' + varToString(args[i]);
+
+    addHudMessage(tmp,255,betuszin);
+    exit;
+  end
+  else
+
+  //chat kiírás
+  if (args[0]='print') then
+  begin
+    for i:=1 to Length(args)-1 do
+      tmp := tmp + ' ' + varToString(args[i]);
+
+    multisc.chats[addchatindex].uzenet:=tmp;
+    addchatindex := addchatindex+1;
+    exit;
+  end
+  else
+
+  //ablakos kiírás
+  if (args[0]='display') then
+  begin
+    for i:=1 to Length(args)-1 do
+      tmp := tmp + ' ' + varToString(args[i]);
+
+      labeltext := tmp;
+      labelactive := true;
+      exit;
+  end
+  else
+
+  if (args[0]='closedisplay') then
+  begin
+    labelactive := false;
+    exit;
+  end;
+
+  //részecske rendszer kikapcs
+  if (args[0]='particle_stop') and (Length(args)>2) then
+  begin
+    for i:=0 to Length(particlesSyses)-1 do
+      if particlesSyses[i].name=args[1] then
+        begin
+        particlesSyses[i].disabled := true;
+        v1 := computenums(copy(args,2,argnum-2));
+        if v1 = 0 then
+          particlesSyses[i].restart := 0
+        else
+          particlesSyses[i].restart :=  gettickcount + trunc(v1);
+      end;
+    exit;
+  end
+  else
+
+  //részecske rendszer bekapcs
+  if (args[0]='particle_start') and (Length(args)>1) then
+  begin
+    for i:=0 to Length(particlesSyses)-1 do
+      if particlesSyses[i].name=args[1] then
+        particlesSyses[i].disabled := false;
+    exit;
+  end
+  else
+
+  //prop elrejtés
+  if (args[0]='prop_hide') and (Length(args)>1) then
+  begin
+    propsystem.setVisibility(args[1],false);
+    exit;
+  end
+  else
+
+  //prop elõhozás
+  if (args[0]='prop_show') and (Length(args)>1) then
+  begin
+    propsystem.setVisibility(args[1],true);
+    exit;
+  end
+  else
+
+  if (args[0]='trigger_enable') and (Length(args)>1) then
+  begin
+    tmp := varToString(args[1]);
+    for i:=0 to Length(triggers)-1 do
+      if triggers[i].name = tmp then
+        triggers[i].active := true;
+    exit;
+  end
+  else
+
+  if (args[0]='trigger_disable') and (Length(args)>2) then
+  begin
+    tmp := varToString(args[1]);
+    for i:=0 to Length(triggers)-1 do
+      if triggers[i].name = tmp then
+      begin
+        triggers[i].active := false;
+        v1 := computenums(copy(args,2,argnum-2));
+        if v1 = 0 then
+          triggers[i].restart := 0
+        else
+          triggers[i].restart :=  gettickcount + trunc(v1);
+      end;
+    exit;
+  end
+  else
+
+  if (args[0]='dynamizate') and (Length(args)>1) then
+  begin
+    tmp := varToString(args[1]);
+    propsystem.dynamizate(tmp).speed := D3DXVector3(0,0.5,0);
+    exit;
+  end
+  else
+
+  if (args[0]='dynamic_speed') and (Length(args)>4) then
+  begin
+    tmp := varToString(args[1]);
+    propsystem.getdynamic(tmp).speed := computevecs(copy(args,2,argnum-2));
+
+    exit;
+  end
+  else
+
+  if (args[0]='prop_position') and (Length(args)>4) then
+  begin
+    tmp := varToString(args[1]);
+    propsystem.getprop(tmp).pos := computevecs(copy(args,2,argnum-2));
+
+    exit;
+  end
+  else
+
+  if (args[0]='prop_rotation') and (Length(args)>2) then
+  begin
+    tmp := varToString(args[1]);
+    propsystem.getprop(tmp).rot := computenums(copy(args,2,argnum-2));
+
+    exit;
+  end
+  else
+
+  if (args[0]='particle_position') and (Length(args)>4) then
+  begin
+    tmp := varToString(args[1]);
+    for i:=0 to length(particlesSyses)-1 do
+      if particlesSyses[i].name = tmp then
+      particlesSyses[i].from := computevecs(copy(args,2,argnum-2));
+
+    exit;
+  end
+  else
+
+  //law robbanás
+  if (args[0]='explode') then
+  begin
+    AddLAW(D3DXVector3Zero,computevecs(copy(args,1,argnum-1)),-1);
+    exit;
+  end
+  else
+
+  //hang
+  if (args[0]='sound') and (Length(args)>4) then
+  begin
+    playsound(StrToInt(args[1]),false,integer(timegettime)+random(10000),true,D3DXVector3(StrToFloat(args[2]),StrToFloat(args[3]),StrToFloat(args[4])));
+    exit;
+  end
+  else
+
+  //script
+  if (args[0]='script') and (Length(args)>1) then
+  begin
+    evalScript(args[1]);
+    exit;
+  end
+  else
+
+  if (args[0]='timeout') and (Length(args)>2) then
+  begin
+    SetLength(timedscripts,length(timedscripts)+1);
+    with timedscripts[length(timedscripts)-1] do
+    begin
+      script := args[1];
+      time := gettickcount + trunc(computenums(copy(args,2,argnum-2)));
+    end;
+    exit;
+  end
+  else
+
+   multisc.chats[addchatindex].uzenet:='Unhandled scriptline: '+line;
+   addchatindex := addchatindex+1;
+
+end;
+
+procedure handleparancsok(var mit:String);
 var
 i:integer;
  {$IFDEF propeditor}
@@ -11070,6 +12113,8 @@ begin
 
   if pos(' /sniper',mit)=1 then
    coordsniper:=true;
+
+  if pos(' //',mit)=1 then evalscriptline(copy(mit,4,length(mit)-3));
 
  {$IFDEF propeditor}
     if pos(' /p',mit)=1 then
@@ -11112,9 +12157,8 @@ begin
 
 
 
-      for i:=high(multisc.chats) downto 1 do
-      multisc.chats[i]:=multisc.chats[i-1];
-      multisc.chats[0].uzenet:='Propok mentve';
+      multisc.chats[addchatindex].uzenet:='Propok mentve';
+      addchatindex := addchatindex+1;
     end;
  {$ENDIF}
 
@@ -11122,16 +12166,17 @@ begin
   begin
    for i:=high(multisc.chats) downto 3 do
     multisc.chats[i]:=multisc.chats[i-3];
-   multisc.chats[0].uzenet:='Coords: ('+copy(mit,pos(' /coords',mit)+length(' /coords')+1,100000)+')';
-   multisc.chats[1].uzenet:='x: '+FloatToStrF(cpx^,ffFixed,7,2,fsettings)+
-           '  y: '+FloatToStrF(cpy^,ffFixed,7,2,fsettings)+
-           '  z: '+FloatToStrF(cpz^,ffFixed,7,2,fsettings);
-   multisc.chats[2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2,fsettings)+
+   multisc.chats[addchatindex].uzenet:='Coords: ('+copy(mit,pos(' /coords',mit)+length(' /coords')+1,100000)+')';
+   multisc.chats[addchatindex+1].uzenet:='"x": '+FloatToStrF(cpx^,ffFixed,7,2,fsettings)+
+           ',  "y": '+FloatToStrF(cpy^,ffFixed,7,2,fsettings)+
+           ',  "z": '+FloatToStrF(cpz^,ffFixed,7,2,fsettings);
+   multisc.chats[addchatindex+2].uzenet:='angleH: '+FloatToStrF(szogx,ffFixed,7,2,fsettings)+
            '  angleV: '+FloatToStrF(szogy,ffFixed,7,2,fsettings);
-   multisc.chats[0].glyph:=0;
-   multisc.chats[1].glyph:=0;
-   multisc.chats[2].glyph:=0;
-   writeln(logfile,multisc.chats[0].uzenet,' ',multisc.chats[1].uzenet,' ',multisc.chats[2].uzenet);
+   multisc.chats[addchatindex].glyph:=0;
+   multisc.chats[addchatindex+1].glyph:=0;
+   multisc.chats[addchatindex+2].glyph:=0;
+   writeln(logfile,multisc.chats[addchatindex].uzenet,' ',multisc.chats[addchatindex+1].uzenet,' ',multisc.chats[addchatindex+2].uzenet);
+   addchatindex := addchatindex+3;
   end;
 end;
 
@@ -11223,12 +12268,45 @@ begin
 
   if (chr(mit)='r') or (chr(mit)='R') then chatmost:=' /r ';
   if (chr(mit)='c') or (chr(mit)='C') then chatmost:=' /c ';
+
+  //script binds
+  for i:=0 to Length(binds)-1 do
+  begin
+    if Length(binds)=0 then break;
+    if LowerCase(chr(mit)) = binds[i].key then
+     evalScript(binds[i].script);
+  end;
+
+
   {$IFDEF repkedomod}
+//  if (chr(mit)='p') or (chr(mit)='P') then multisc.Medal('W','U'); //marker
   if (chr(mit)='p') or (chr(mit)='P') then repules := not repules;
+//  if (chr(mit)='g') or (chr(mit)='G') then multisc.Medal('H','U');
+  if (chr(mit)='g')  then
+  begin
+  cpx^:=-283;
+  cpy^:=20;
+  cpz^:=-108;
+  cpox^:=-283;
+  cpoy^:=20;
+  cpoz^:=-108;
+//    multisc.Medal('C','3');
+
+  end;
+
+  if (chr(mit)='h')  then
+  begin
+     multisc.Medal('H','U');
+
+  end;
+
 //  if (chr(mit)='n') then addHudMessage('asd',$FF0000);;
   if (chr(mit)='x') then multisc.weather:=multisc.weather+1;
   if (chr(mit)='v') then multisc.weather:=0;
   //if (chr(mit)='r') then multisc.doevent:='spaceship';
+
+
+
 
   {$ENDIF}
   {$IFDEF matieditor}
@@ -11253,14 +12331,23 @@ begin
   {$ENDIF}
   if (chr(mit)='/') then chatmost:=' /';
   if (mit=VK_ESCAPE) and (not labelactive) then gobacktomenu:=true;
-  if (mit=VK_ESCAPE) and labelactive then labelactive:=false;
+  if (mit=VK_ESCAPE) and labelactive then
+  begin
+    labelactive:=false;
+    evalscript(displaycloseevent);
+  end;
+  if ((chr(mit)='f') or (chr(mit)='F')) then usebutton := true;
   if ((chr(mit)='f') or (chr(mit)='F')) and not labelactive and labelvolt then
   begin
    labelactive:=true;
    latszonaKL := 0;
    exit;
   end;
-  if ((chr(mit)='f') or (chr(mit)='F')) and labelactive then labelactive:=false;
+  if ((chr(mit)='f') or (chr(mit)='F')) and labelactive then
+  begin
+    labelactive:=false;
+    evalscript(displaycloseevent);
+  end;
 
   //debug stuff
 //  if ((chr(mit)='i') or (chr(mit)='I')) then glowdisable := not glowdisable; 
@@ -11389,12 +12476,13 @@ end;
 
 
 
+
 procedure fillupmenu;
 var
 i:integer;
 fil:textfile;
 fil2:file of single;
-str,password:string;
+str,password,tojashash:string;
 t1:single;
 balstart,jobbveg,balveg,jobbstart,korr,bigtext,fent,sor:single;
 begin
@@ -11409,6 +12497,8 @@ begin
   password:='';
   lasthash:='';
   readln(fil, lasthash);
+  readln(fil, tojashash); //husvet
+  settojas2(tojashash);   //husvet
 
   closefile(fil);
   if length(str)>15 then str:='Player';
@@ -12053,7 +13143,24 @@ begin //                 BEGIIIN
     if color_menu_info=0 then color_menu_info:=$FF000000;
 
     for i:=low(hudMessages) to high(hudMessages) do
-      hudMessages[i]:=THUDMessage.create('',0); //init
+      hudMessages[i]:=THUDMessage.create('',0,1); //init
+
+    for i:=0 to 10 do
+    begin
+      tojasok2[i]:=false;
+    end;
+
+    tojasok[0]:=D3DXVector3(-424.54, 28.99, -18.86);
+    tojasok[1]:=D3DXVector3(-215.43, 29.67, -32.48);
+    tojasok[2]:=D3DXVector3(-279.37, 20.47, -107.53);
+    tojasok[3]:=D3DXVector3(-336.22, 21.06, -163.35);
+    tojasok[4]:=D3DXVector3(-404.91, 50.23, 55.92);
+    tojasok[5]:=D3DXVector3(-126.66, 69.43, 75.95);
+    tojasok[6]:=D3DXVector3(-140.30, 19.44, 169.30);
+    tojasok[7]:=D3DXVector3(-264.42, 33.78, 157.57);
+    tojasok[8]:=D3DXVector3(-336.38, 22.98, 160.24);
+    tojasok[9]:=D3DXVector3(-427.12, 37.91, 111.23);
+    tojasok[10]:=D3DXVector3(-353.98, 12.77, -20.47);
 
     GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT,fsettings);
     fsettings.DecimalSeparator:='.';
@@ -12188,6 +13295,8 @@ begin //                 BEGIIIN
       laststate:='Initialzing game 3';
 
       respawn;
+      evalScript('startup');
+      evalscriptline('var $thistrigger');
 
       laststate:='Initialzing game 4';
       if not iswindowed then

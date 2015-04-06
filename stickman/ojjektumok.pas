@@ -83,7 +83,6 @@ type
 
  T3DORenderer = class (Tobject)
  public
-  lightmap:IDirect3DTexture9;
   imposters:IDirect3DTexture9;
   imposrender:ID3DXRenderToSurface;
   impossurf:IDirect3DSurface9;
@@ -112,6 +111,12 @@ type
   posx,posy,posz:single;
   rad:single;
   gomb:ID3DXMesh;
+ end;
+
+ Tground = record
+  posx,posz:single;
+  radius:single;
+  color:longword;
  end;
 
 procedure initojjektumok(g_pd3ddevice:IDirect3DDevice9;hdrtop:cardinal);
@@ -148,7 +153,8 @@ var
  currenttriarr:Tacctriarr;
  posrads:array of Tposrad;
  bubbles:array of Tbubble;
- lightmapbm:array [0..2047,0..2047,0..3] of byte;
+ grounds:array of Tground;
+// lightmapbm:array [0..2047,0..2047,0..3] of byte;
  panthepulet,portalepulet,ATportalhely:integer;
  DNSvec:TD3DXVector3;
  DNSrad:single;
@@ -296,7 +302,21 @@ begin
 
   filenev:=fnev;
 
-  addfiletochecksum(fnev+'lm.bmp');
+
+  if LTFF(a_d3ddevice, fnev+'lm.png',lightmap) then
+  begin
+    addfiletochecksum(fnev+'lm.png');
+  end
+  else
+  begin
+    addfiletochecksum(fnev+'lm.bmp');
+    if not LTFF(a_d3ddevice, fnev+'lm.bmp',lightmap) then exit;
+  end;
+
+
+
+
+
   if length(posok)>0 then
   begin
    hvszam:=length(posok);
@@ -1106,11 +1126,11 @@ pindojj:Pwordarray;
 tmp1:Dword;
 tmp2,tmp2a:TD3dxvector3;
 tmp3:integer;
-lmaps:array of TBitmap;
-lmapsorrend:array of integer;
-lmapx:array of array [0..2] of integer; //X,Y,size
-lmapcells:array [0..31,0..31] of integer;
-lmapsize:integer; //cellákban (64x64)
+// lmaps:array of TBitmap;            NOPE
+// lmapsorrend:array of integer;      NOPE
+// lmapx:array of array [0..2] of integer; //X,Y,size  NOPE NOPE NOPE
+// lmapcells:array [0..31,0..31] of integer;    NOPE
+// lmapsize:integer; //cellákban (64x64)        NOPE
 cursize:integer;
 tryx,tryy:integer;
 bol:boolean;
@@ -1129,92 +1149,10 @@ begin
  write(logfile,'Ojjektum renderer:');flush(logfile);
 
  setlength(Drawtable,length(ojjektumnevek));
- setlength(lmaps,length(ojjektumnevek));
- setlength(lmapsorrend,length(ojjektumnevek));
- setlength(lmapx,length(ojjektumnevek));
+
 
  //DEVICE
  g_pd3ddevice:=ad3ddevice;
- //LIGHTMAPPEK MÁSOLÁSA
-
- for i:=0 to high(ojjektumnevek) do
- begin
-  lmaps[i]:=TBitmap.create;
-  lmaps[i].LoadFromFile(ojjektumarr[i].filenev+'lm.bmp');
-  lmapsorrend[i]:=i;
- end;
- zeromemory(@lmapx[0],sizeof(integer)*3*length(lmapx));
- zeromemory(@lmapcells[0],sizeof(lmapcells));
-
-  write(logfile,'lightmaps...');flush(logfile);
-
- lmapsize:=32 ;
- for i:=0 to high(ojjektumnevek) do
- begin
-  retry:
-  cursize:=lmaps[lmapsorrend[i]].Width div 64;
-  j:=0;
-  while j<lmapsize do
-  begin
-   k:=0;
-   while k<lmapsize do
-   begin
-    tryx:=j; tryy:=k;
-    bol:=true;
-    for ii:=tryx to tryx+cursize-1 do
-     for jj:=tryy to tryy+cursize-1 do
-      bol:=bol and (lmapcells[ii,jj]=0);
-    if bol then
-    begin
-     for ii:=tryx to tryx+cursize-1 do
-      for jj:=tryy to tryy+cursize-1 do
-       lmapcells[ii,jj]:=lmapsorrend[i]+1;
-     lmapx[lmapsorrend[i],0]:=tryx*64;
-     lmapx[lmapsorrend[i],1]:=tryy*64;
-     lmapx[lmapsorrend[i],2]:=cursize*64;
-     goto breakall;
-    end;
-    inc(k,cursize);
-   end;
-   inc(j,cursize)
-  end;
-  write(logfile,'out of lightmaps :''(\n');flush(logfile);
-  //exit;
-  breakall:
- end;
- Xbitmap:=TBitmap.Create;
- Xbitmap.PixelFormat:=pf24bit;
- Xbitmap.Height:=2048;
- Xbitmap.Width:=2048;
- Xbitmap.Canvas.brush.color:=clblack;
- Xbitmap.canvas.Rectangle(0,0,2047,2047);
- for i:=0 to high(ojjektumarr) do
- begin
-  XBitmap.Canvas.Draw(lmapx[i,0],lmapx[i,1],lmaps[i]);
-  lmaps[i].Destroy;
- end;
-
-  write(logfile,'more lightmaps...');flush(logfile);
- for i:=0 to XBitmap.Height-1 do
- begin
-  pbits:=Xbitmap.ScanLine[i];
-  for j:=0 to XBitmap.width-1 do
-  begin
-   lightmapbm[i,j,0]:=pbits[j*3+0];
-   lightmapbm[i,j,1]:=pbits[j*3+0];
-   lightmapbm[i,j,2]:=pbits[j*3+1];
-   lightmapbm[i,j,3]:=pbits[j*3+2];
-  end;
- end;
-
- XBitmap.SaveToFile('data\TMPlmap.bmp');
- XBitmap.destroy;
-
- write(logfile,'even more lightmaps...');flush(logfile);
-
- LTFF(G_pd3ddevice,'data\TMPlmap.bmp',lightmap);
- writeln(logfile,'lm texture...');flush(logfile);
- deletefile('data\TMPlmap.bmp');
 
 
  writeln(logfile,'imposters...');flush(logfile);
@@ -1369,8 +1307,8 @@ begin
       begin
        pvert[l].tu:=pvertojj[l+attrarr[j].vertexStart].tu;
        pvert[l].tv:=pvertojj[l+attrarr[j].vertexStart].tv;
-       pvert[l].lu:=pvertojj[l+attrarr[j].vertexStart].lu*lmapx[i,2]/2048+lmapx[i,0]/2048;
-       pvert[l].lv:=pvertojj[l+attrarr[j].vertexStart].lv*lmapx[i,2]/2048+lmapx[i,1]/2048;
+       pvert[l].lu:=pvertojj[l+attrarr[j].vertexStart].lu;
+       pvert[l].lv:=pvertojj[l+attrarr[j].vertexStart].lv;
        d3dxvec3add(tmp2,      pvertojj[l+attrarr[j].vertexStart].position,holvannak[k]);
 
        pvert[l].position:=tmp2;
@@ -1404,7 +1342,8 @@ begin
     with pvertojj[pindojj[3*j+2]] do
     begin lu2:=lu2+lu; lv2:=lv2+lv; end;
 
-    szin:=lightmapbm[round((lv2/3)*lmapx[i,2]+lmapx[i,1]),round((lu2/3)*lmapx[i,2]+lmapx[i,0]),1];
+    //TODO: vertex colort beállítani
+    szin:=64;//lightmapbm[round((lv2/3)*lmapx[i,2]+lmapx[i,1]),round((lu2/3)*lmapx[i,2]+lmapx[i,0]),1];
     trilght[j]:=min(szin,128);
    end;
 
@@ -1429,7 +1368,6 @@ destructor T3DORenderer.Destroy;
 begin
  g_pIB:=nil;
  g_pVB:=nil;
- lightmap:=nil;
  g_pd3ddevice:=nil;
  inherited;
 end;
@@ -1653,7 +1591,6 @@ begin
 
  g_pd3ddevice.SetStreamSource(0,g_pVB,0,sizeof(Tojjektumvertex2));
  g_pd3ddevice.SetIndices(g_pIB);
- g_pd3ddevice.SetTexture(1,lightmap);
 
  for k:=0 to OTnSzam do
  begin
@@ -1705,7 +1642,7 @@ begin
  g_pd3ddevice.SetIndices(g_pIB);
 
  g_pd3ddevice.SetTransform(D3DTS_WORLD,identmatr);
- g_pd3ddevice.SetTexture(1,lightmap);
+
 
  case FAKE_HDR of
   D3DTOP_MODULATE:hdrszorzo:=1;
@@ -1718,6 +1655,9 @@ begin
  for i:=0 to high(ojjektumarr) do
  with ojjektumarr[i] do
  begin
+
+  g_pd3ddevice.SetTexture(1,ojjektumarr[i].lightmap);
+
   for j:=0 to hvszam-1 do
   begin
    d3dxvec3add(aabb.min,vmi,holvannak[j]);
@@ -1789,7 +1729,6 @@ begin
     g_pEffect.SetTexture('g_MeshHeightmap', ojjektumtextures[k].heightmap);
     g_pEffect.SetTexture('g_MeshOcclusionmap', ojjektumtextures[k].occlusionmap);
     g_pEffect.SetTexture('g_MeshSpecularmap', ojjektumtextures[k].specularmap);
-    g_pEffect.SetTexture('g_MeshLightmap',lightmap);
     g_pEffect.SetFloat ('HDRszorzo',HDRszorzo);
     g_peffect.SetVector('g_CameraPosition',D3DXVector4(campos.x,campos.y,campos.z,0));
     g_pd3ddevice.SetVertexdeclaration(vertdecl);
@@ -1816,7 +1755,6 @@ begin
     if ojjektumtextures[k].normalmap then
       g_pEffect.SetTexture('g_MeshHeightmap', ojjektumtextures[k].heightmap);
     g_pEffect.SetBool('vanNormal',ojjektumtextures[k].normalmap);
-    g_pEffect.SetTexture('g_MeshLightmap',lightmap);
     g_pEffect.SetFloat ('HDRszorzo',HDRszorzo);
     if felho.coverage > 5 then begin //napos
     g_pEffect.SetFloat ('specHardness',ojjektumtextures[k].specHardness);
@@ -1863,12 +1801,19 @@ begin
   begin
 
    if ojjektumarr[i].hvszam>0 then
+   begin
+
+   if  (g_peffect<>nil) then
+      g_pEffect.SetTexture('g_MeshLightmap',ojjektumarr[i].lightmap);
+   g_pd3ddevice.SetTexture(1,ojjektumarr[i].lightmap);
+
    for j:=0 to drawtable[i].xasz-1 do
     if drawtable[i].DIPdata[j*ojjektumarr[i].hvszam].tex=k then
       for jj:=0 to ojjektumarr[i].hvszam-1 do
        if drawtable[i].visible[jj] then
         with drawtable[i].DIPdata[j*ojjektumarr[i].hvszam+jj] do
          g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,vertstart,0,vertcount,facestart,facecount);
+    end;
   end;
 
   if (g_peffect<>nil) then
