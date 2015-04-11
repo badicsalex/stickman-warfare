@@ -107,7 +107,7 @@ type
    procedure AddPasswordBox(aminx,aminy,amaxx,amaxy,scala:single;alap:integer;szoveghossz:integer;maxs:integer;amd5hex:string);
    procedure AddCsuszka(aminx,aminy,amaxx,amaxy,scale:single;alap:integer;szoveg:string;value:single);
    procedure Addteg(aminx,aminy,amaxx,amaxy:single;alap:integer);
-   procedure Draw(opacity:single);
+   procedure Draw;
    procedure DrawKerekitett(mit:Tmatteg);
    procedure DrawLoadScreen(szazalek:byte);
    procedure DrawMedal;
@@ -661,7 +661,7 @@ begin
 end;
 
 
-procedure T3DMenu.Draw(opacity:single);
+procedure T3DMenu.Draw;
 var
 a:single;
 i:integer;
@@ -669,23 +669,20 @@ mat:TD3DMatrix;
 apos:TD3DXvector3;
 AlphaValue:DWORD;
 begin
- //a:=SCwidth/1024;
- //mat._11:=a;mat._12:=0;mat._13:=0;mat._14:=0;
- //mat._21:=0;mat._22:=a;mat._23:=0;mat._24:=0;
- //mat._31:=0;mat._32:=0;mat._33:=a;mat._34:=0;
- //mat._41:=0;mat._42:=0;mat._43:=0;mat._44:=1;
- g_pd3dDevice.Clear(0, nil, D3DCLEAR_ZBUFFER, $FFFFFFFF, 1.0, 0);
+
+//g_pd3dDevice.Clear(0, nil, D3DCLEAR_TARGET or D3DCLEAR_ZBUFFER, $FFFFFFFF, 1.0, 0);
+
   // Begin the scene
   if SUCCEEDED(g_pd3dDevice.BeginScene) then
   begin
    g_pSprite._Begin(D3DXSPRITE_ALPHABLEND);
-   g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+   g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);    {
    AlphaValue := D3DCOLOR_ARGB(trunc(opacity*256),255,255,255);
 
    g_pd3dDevice.SetTextureStageState(0, D3DTSS_CONSTANT, AlphaValue);
-   g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_CONSTANT);
-   
-   //g_pSprite.SetTransform(mat);
+   g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_CONSTANT);  {}
+   g_pSprite.SetTransform(identmatr);
+
    apos:=D3DXVector3(SCwidth/2-trunc(256*vertScale),-trunc(45*vertScale),0);
    g_pSprite.Draw(logo0,nil,nil,@apos,$FFFFFFFF);
 
@@ -698,7 +695,7 @@ begin
    
    for i:=0 to high(items[lap]) do
    begin
-    //g_pSprite.SetTransform(mat);
+    g_pSprite.SetTransform(identmatr);
     if items[lap,i].scale>0.7 then
      items[lap,i].Draw(g_pFont,g_pSprite)
     else
@@ -707,15 +704,8 @@ begin
 
    g_pSprite.SetTransform(identmatr);
 
-//   Drawtext('Music: Unreal Superhero III Symphonic version by Jaakko Takalo',0.005,0.98,1,0.9,0,color_menu_info);
    Drawtext(lowermenutext,0.005,0.98,1,1,0,color_menu_info);
-
-   //stuffjson.GetString(['lower_menu_text'])
-
    Drawtext('v2.'+inttostr((PROG_VER div 1000) mod 100)+'.'+inttostr((PROG_VER div 10) mod 100)+'.',0.8,0.85,1,0.9,1,color_menu_info);
-
-   mat._22:=a;
-   //g_pSprite.SetTransform(mat);
 
 
    apos:=D3DXVector3(0.5*SCwidth+0.32*SCheight-vertScale*32,SCheight*0.62-vertScale*32,0);
@@ -729,7 +719,7 @@ begin
    g_pd3dDevice.EndScene;
   end;
   // Present the backbuffer contents to the display
- // g_pd3dDevice.Present(nil, nil, 0, nil);
+//  g_pd3dDevice.Present(nil, nil, 0, nil);
 end;
 
 procedure T3DMenu.DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean; isTyping:array of boolean);

@@ -135,12 +135,6 @@ var
 
 {$ENDIF}
 
-
-  tojasok : array [0..10] of TD3DXVector3; //husvet
-  tojasok2 : array [0..10] of boolean;             //husvet
-  megvanmind:boolean=false;                                //husvet
-
-
   g_pD3D: IDirect3D9 = nil; // Used to create the D3DDevice
   g_pd3dDevice: IDirect3DDevice9 = nil; // Our rendering device
   g_pVB:IDirect3DVertexBuffer9 = nil; // Buffer to hold vertices
@@ -213,8 +207,6 @@ var
 
   portalpos:TD3DXVector3;
   portalstarted:boolean = false;
-
-  menuopacity :single= 0;
 
   scripts:array of TScript;
   vecVars:array of TVecVar;
@@ -4161,16 +4153,16 @@ var
  col:cardinal;
 begin
 
-  t:=lawproj[mi].v3;
-
  for i:=0 to 100 do
  begin
+  t:=lawproj[mi].v3;
   randomplus(t,animstat+i,15);
   Particlesystem_add(Bulletcreate(lawproj[mi].v3,t,10,10,0.03,$00A0A050,0,true));
  end;
 
  for i:=0 to 100 do
  begin
+  t:=lawproj[mi].v3;
   randomplus(t,animstat*10+i,7.35);
   Particlesystem_add(SimpleparticleCreate(t,randomvec(animstat*10+i,0.05),2,0,$00FFFF00,$01FF0000,random(20)+20));
  end;
@@ -5184,77 +5176,6 @@ begin
 end;
 
 
-
-function maketojashash():string; //husvet
-var
-i:integer;
-begin
-result:='';
-
-for i:=low(tojasok2) to high(tojasok2) do
-begin
-if tojasok2[i] then
-  result:=result + '1'
-else
-  result:=result + goodchars2[1 + random(61)];  //SZIGSZALLAG POWEEEER
-end;
-
-
-//writeln(logfile,'hash be:');
-//writeln(logfile,result);
-
-result:=encodehash(result,11);
-//writeln(logfile,result);
-end;
-
-procedure settojas2(s:string); //husvet
-var
-i:integer;
-tmpBool:boolean;
-begin
-
-//writeln(logfile,'hash ki:');
-s:=decodehash(s,11);
-//writeln(logfile,s);
-
-for i:=low(tojasok2) to high(tojasok2) do
-begin
-if (s[i+1] = '1') then
-  tojasok2[i]:=true
-else
-  tojasok2[i]:=false;
-end;
-
-
-   tmpBool:=true;
-   for i:=low(tojasok2) to high(tojasok2) do
-   begin
-     if not tojasok2[i] then
-       tmpBool:=false;
-   end;
-
-   if tmpBool then
-   begin
-     megvanmind:=true;
-   end;
-
-
-end;
-
-function megtalalttosatok():integer; //husvet
-var
-i:integer;
-begin
-result:=0;
-
-for i:=low(tojasok2) to high(tojasok2) do
-begin
-if tojasok2[i] then
-  result:=result + 1;
-end;
-end;
-
-
 procedure handleHDR;
 var
 tmpmat:TD3DMatrix;
@@ -5286,37 +5207,7 @@ begin
     (cpz^>portalpos.z-9) and (cpz^<portalpos.z+8) and
     (cpy^>portalpos.y-1) and (cpy^<portalpos.y+4) then  nemlohet:=true;
 
-
- if not megvanmind then //husvet
- begin
-   holvagyok:=D3DXVector3(cpx^,cpy^,cpz^);
-   for i:=0 to 10 do
-   begin
-     if (tavpointpointsq(holvagyok, tojasok[i]) < 1) and not tojasok2[i] then
-     begin
-       tojasok2[i]:=true;
-       if not (megtalalttosatok() = length(tojasok2)) then
-         addHudMessage(lang[82] + inttostr(length(tojasok2)-megtalalttosatok()) + '.',color_menu_normal,650);
-       //marker
-     end;
-   end;
-
-   tmpBool:=true;
-   for i:=low(tojasok2) to high(tojasok2) do
-   begin
-     if not tojasok2[i] then
-       tmpBool:=false;
-   end;
-
-   if tmpBool then
-   begin
-     megvanmind:=true;
-     multisc.Medal('H','U');
-     addHudMessage(lang[83],color_menu_normal,1000);
-   end;
- end;
-
-  if disablekill then  nemlohet:=true;
+  if disablekill then  nemlohet:=true;
 
  if (nemlohet) and (kiszall_cooldown<1) then kiszall_cooldown:=kiszall_cooldown+0.01;
 
@@ -10895,7 +10786,6 @@ begin
   else
     writeln(fil,'-');
 
-  writeln(fil,maketojashash()); //husvet
   closefile(fil);
   exit
  end;
@@ -11018,7 +10908,6 @@ begin
   else
     writeln(fil,'-');
 
-  writeln(fil,maketojashash()); //husvet
   closefile(fil);
 
 
@@ -11309,11 +11198,7 @@ begin
    menu.g_pSprite._END;
   end;
 
-
-
-
- menu.Draw(menuopacity);
- if menuopacity<0.98 then menuopacity := menuopacity + 0.02;
+ menu.Draw;
 
  g_pd3dDevice.Present(nil, nil, 0, nil);
 end;
@@ -12482,7 +12367,7 @@ var
 i:integer;
 fil:textfile;
 fil2:file of single;
-str,password,tojashash:string;
+str,password:string;
 t1:single;
 balstart,jobbveg,balveg,jobbstart,korr,bigtext,fent,sor:single;
 begin
@@ -12497,8 +12382,6 @@ begin
   password:='';
   lasthash:='';
   readln(fil, lasthash);
-  readln(fil, tojashash); //husvet
-  settojas2(tojashash);   //husvet
 
   closefile(fil);
   if length(str)>15 then str:='Player';
@@ -12529,6 +12412,7 @@ begin
  //Menü lap 0;
 
  // Invisible GazMSG
+
  menu.Addteg(jobbstart,0.3,jobbveg,0.8,0);
  menu.tegs[0,1].visible:=false;
 
@@ -13144,23 +13028,6 @@ begin //                 BEGIIIN
 
     for i:=low(hudMessages) to high(hudMessages) do
       hudMessages[i]:=THUDMessage.create('',0,1); //init
-
-    for i:=0 to 10 do
-    begin
-      tojasok2[i]:=false;
-    end;
-
-    tojasok[0]:=D3DXVector3(-424.54, 28.99, -18.86);
-    tojasok[1]:=D3DXVector3(-215.43, 29.67, -32.48);
-    tojasok[2]:=D3DXVector3(-279.37, 20.47, -107.53);
-    tojasok[3]:=D3DXVector3(-336.22, 21.06, -163.35);
-    tojasok[4]:=D3DXVector3(-404.91, 50.23, 55.92);
-    tojasok[5]:=D3DXVector3(-126.66, 69.43, 75.95);
-    tojasok[6]:=D3DXVector3(-140.30, 19.44, 169.30);
-    tojasok[7]:=D3DXVector3(-264.42, 33.78, 157.57);
-    tojasok[8]:=D3DXVector3(-336.38, 22.98, 160.24);
-    tojasok[9]:=D3DXVector3(-427.12, 37.91, 111.23);
-    tojasok[10]:=D3DXVector3(-353.98, 12.77, -20.47);
 
     GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT,fsettings);
     fsettings.DecimalSeparator:='.';
