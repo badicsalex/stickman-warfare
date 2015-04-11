@@ -291,6 +291,7 @@ vagy
 
  STATUS_CHATOFF = 2; // már nem használt
 
+
 procedure TMMOServerClient.SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
 var          
  frame:TSocketFrame;

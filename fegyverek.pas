@@ -1360,9 +1360,7 @@ begin
  addfiletochecksum('data\models\x72.x');
  x72:=TF_x72.create(a_D3Ddevice,'data\models\x72');
  if not x72.betoltve then exit;
- addfiletochecksum('data\models\wand.x');
- H31:=TF_H31.create(a_D3Ddevice,'data\models\snowlauncher');
- if not H31.betoltve then exit;
+
 
  if not LTFF (g_pd3dDevice,'data\models\m4a1muzz.jpg',gunmuztex) then
    Exit;
