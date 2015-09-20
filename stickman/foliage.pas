@@ -1,371 +1,492 @@
 unit foliage;
 
 interface
-uses  Sysutils, Direct3D9, D3DX9, Windows, Typestuff, PerlinNoise;
+uses Sysutils,Direct3D9,D3DX9,Windows,Typestuff,
+//  stopwatch, //TODO vedd ki
+PerlinNoise;
 type
 
- PBokorVertex = ^TBokorVertex;
- TBokorVertex = record
-    position: TD3DVector; // The 3D position for the vertex
-    normal: TD3DVector;
+  PFoliageVertex=^TFoliageVertex;
+  TFoliageVertex=record
+    position:TD3DVector;// The 3D position for the vertex
+//    normal: TD3DVector; //über extra megbaszodanyád, x = terepszín  // kivéve
     u,v:single;
   end;
 
-  PBokorVertexArray = ^TBokorVertexArray;
-  TBokorVertexArray = array [0..100000] of TBokorVertex;
+  PFoliageVertexArray=^TFoliageVertexArray;
+  TFoliageVertexArray=array[0..100000] of TFoliageVertex;
+  // vicces, a mérete teljesen mindegy, mert soha nem lesz ilyen kreálva
 
+  TVertexGenerator=procedure(pVertices:PFoliageVertexArray);
+  TIndexGenerator=procedure(pIndices:PWordArray);
 
- TFoliage = class (TObject)
- protected
-   g_pD3Ddevice:IDirect3ddevice9;
-   g_pVB:IDirect3DVertexBuffer9;
-   g_pIB:IDirect3DIndexBuffer9;
-   g_ptexture:IDirect3DTexture9;
- public
-  bokrok:array [0..31,0..31,0..11] of Tbokorvertex;  //félrevezetõ név, pozíciók...
-  betoltve:boolean;
-  scalfac:single;
-  hscale,vscale,vpls:single;
-  constructor Create(dev:Idirect3ddevice9; texnam:string; ahscale,avscale,avpls:single);
-  procedure Init;
-  procedure Render;
-  procedure update(lvl:Plvl;yandnorm:Tyandnorm);
-  destructor Destroy;reintroduce;
- end;
+  TFoliageShapeData=record
+    vertexnum:integer;
+    indexnum:integer;
+    vertexgen:TVertexGenerator;
+    indexgen:TIndexGenerator;
+//    upsidedown:boolean;
+  end;
 
- Trockindvert = record
-  verts:array of Tposnormuv;
-  inds:array of word;
- end;
+  TFoliage=class(TObject)
+  protected
+    g_pD3Ddevice:IDirect3ddevice9;
+    g_pVB:IDirect3DVertexBuffer9;
+    g_pIB:IDirect3DIndexBuffer9;
+    g_ptexture:IDirect3DTexture9;
 
- {TRocks = class (TObject)
- protected
-   g_pD3Ddevice:IDirect3ddevice9;
-   g_pVB:IDirect3DVertexBuffer9;
-   g_pIB:IDirect3DIndexBuffer9;
-   g_ptexture:IDirect3DTexture9;
- public
-  kovek:array of Trockindvert;
-  betoltve:boolean;
-  scalfac:single;
-  hscale,vscale,vpls:single;
-  constructor Create(dev:Idirect3ddevice9; texnam:string; ahscale,avscale,avpls:single);
-  procedure Init;
-  procedure Render;
-  procedure update(lvl:Plvl;advwove:Tadvwove);
-  destructor Destroy;reintroduce;
- end; }
- 
-procedure generaterock(seed,size:single;var rock:Trockindvert);
+    vertexnum:integer;//ez szumma
+    indexnum:integer;
+
+    icache:array[0..4096] of single; //x és z koordináták felváltva
+    cache:array[0..100000] of TD3DXVector3; //vertexek //legalább icache*shape.vertexnum
+    lastc:integer;//last cached index
+
+  public
+    level:byte;
+    betoltve:boolean;
+    scalfac:single;
+    hscale,vscale,vpls:single;
+    shape:TFoliageShapeData;
+    constructor Create(dev:Idirect3ddevice9;texnam:string;ahscale,avscale,avpls:single;ashape:string);
+    procedure Init(g_peff:ID3DXEffect;shader:boolean);
+    procedure Render;
+    procedure update(lvl:Plvl;yandnorm:Tyandnorm);
+    destructor Destroy; reintroduce;
+  end;
+
+procedure defaultVertexGenerator(pVertices:PFoliageVertexArray);
+procedure defaultIndexGenerator(pIndices:PWordArray);
+procedure grassVertexGenerator(pVertices:PFoliageVertexArray);
+procedure grassIndexGenerator(pIndices:PWordArray);
+var
+
+  defaultShape:TFoliageShapeData=(
+    vertexnum:12;
+    indexnum:2*8*3;
+    vertexgen:defaultVertexGenerator;
+    indexgen:defaultIndexGenerator;
+//    upsidedown:true;
+    );
+
+  grassShape:TFoliageShapeData=(
+    vertexnum:16;
+    indexnum:16*3;
+    vertexgen:grassVertexGenerator;
+    indexgen:grassIndexGenerator;
+//    upsidedown:true;
+    );
+
+  //vertdecl:IDirect3DVertexDeclaration9;
 
 implementation
 
 const
- D3DFVF_BOKORVERTEX = (D3DFVF_XYZ or D3DFVF_NORMAL or D3DFVF_TEX1);
+// D3DFVF_BOKORVERTEX = (D3DFVF_XYZ or D3DFVF_NORMAL or D3DFVF_TEX1);
+ D3DFVF_BOKORVERTEX = (D3DFVF_XYZ or D3DFVF_TEX1);
 
-magicbushvertices:array [0..11] of Tbokorvertex =((position:(x: 0;y:1;z: 1);u:1;v:1),  //egyik /\ teteje
-                                                (position:(x: 0;y:1;z:-1);u:0;v:1),
-                                                (position:(x: 1;y:0;z: 1);u:1;v:0),  //alja
-                                                (position:(x: 1;y:0;z:-1);u:0;v:0),
-                                                (position:(x:-1;y:0;z: 1);u:1;v:0),
-                                                (position:(x:-1;y:0;z:-1);u:0;v:0),
-
-                                                (position:(x: 1;y:1;z: 0);u:1;v:1), //másik /\ teteje
-                                                (position:(x:-1;y:1;z: 0);u:0;v:1),
-                                                (position:(x: 1;y:0;z: 1);u:1;v:0), //alja
-                                                (position:(x:-1;y:0;z: 1);u:0;v:0),
-                                                (position:(x: 1;y:0;z:-1);u:1;v:0),
-                                                (position:(x:-1;y:0;z:-1);u:0;v:0));
+  //declarr:array [0..3] of D3DVERTEXELEMENT9 =
+  // ((Stream:0  ; Offset:0   ; _Type:D3DDECLTYPE_FLOAT3; Method:D3DDECLMETHOD_DEFAULT; Usage:D3DDECLUSAGE_POSITION; UsageIndex:0),
+  //  (Stream:0  ; Offset:3*4 ; _Type:D3DDECLTYPE_FLOAT2; Method:D3DDECLMETHOD_DEFAULT; Usage:D3DDECLUSAGE_TEXCOORD; UsageIndex:0),
+  //  (Stream:0  ; Offset:5*4 ; _Type:D3DDECLTYPE_FLOAT4; Method:D3DDECLMETHOD_DEFAULT; Usage:D3DDECLUSAGE_COLOR  ; UsageIndex:0),
+  //  (Stream:$FF; Offset:0   ; _Type:D3DDECLTYPE_UNUSED; Method:TD3DDeclMethod(0)    ; Usage:TD3DDeclUsage(0)     ; UsageIndex:0));
 
 
-constructor TFoliage.Create(dev:Idirect3ddevice9; texnam:string; ahscale,avscale,avpls:single);
+procedure defaultVertexGenerator(pVertices:PFoliageVertexArray);
+const
+  fixarray:array[0..11] of TFoliageVertex=
+    ((position:(x:0;y:1;z:1);u:1;v:0),
+    (position:(x:0;y:1;z:-1);u:0;v:0),
+    (position:(x:1;y:0;z:1);u:1;v:1),
+    (position:(x:1;y:0;z:-1);u:0;v:1),
+    (position:(x:-1;y:0;z:1);u:1;v:1),
+    (position:(x:-1;y:0;z:-1);u:0;v:1),
+    (position:(x:1;y:1;z:0);u:1;v:0),
+    (position:(x:-1;y:1;z:0);u:0;v:0),
+    (position:(x:1;y:0;z:1);u:1;v:1),
+    (position:(x:-1;y:0;z:1);u:0;v:1),
+    (position:(x:1;y:0;z:-1);u:1;v:1),
+    (position:(x:-1;y:0;z:-1);u:0;v:1));
 var
-pIndices:PWordArray;
-i:integer;
+  i,j,shift:integer;
 begin
- inherited Create;
- betoltve:=false;
- g_pD3Ddevice:=dev;
-  if FAILED(g_pd3dDevice.CreateVertexBuffer(sizeof(bokrok),
-                                            D3DUSAGE_WRITEONLY+D3DUSAGE_DYNAMIC, D3DFVF_bokorvertex,
-                                            D3DPOOL_DEFAULT, g_pVB, nil))
-  then Exit;
-  if FAILED(g_pd3dDevice.CreateIndexBuffer(32*32*24*2,
-                                            D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,
-                                            D3DPOOL_DEFAULT, g_pIB, nil))
+  for i:=0 to 32*32-1 do
+  begin
+    shift:=i*12;
+    for j:=0 to 11 do
+      pVertices[shift+j]:=fixarray[j];
+  end;
+end;
 
-  then Exit;
+procedure grassIndexGenerator(pIndices:PWordArray);
+type
+  TIntegerArray0to11=Array[0..11] of Integer;
+const
+  fixarray:TIntegerArray0to11=(
+    0,1,2,2,3,0,2,1,0,0,3,2);
+var
+  i,j:integer;
+begin
+  for i:=0 to 32*32*4-1 do
+  begin
+    for j:=0 to 11 do
+      pIndices[i*12+j]:=fixarray[j]+i*4;
+  end;
+end;
 
-  if FAILED(g_pIB.Lock(0, 32*32*12*2*2, Pointer(pindices), 0))
-  then Exit;
+
+procedure grassVertexGenerator(pVertices:PFoliageVertexArray);
+const
+  fixarray:array[0..15] of TFoliageVertex=
+    ((position:(x:-1;y:1;z:0.4);u:0;v:0),
+    (position:(x:1;y:1;z:0.6);u:1;v:0),
+    (position:(x:1;y:0;z:0.6);u:1;v:1),
+    (position:(x:-1;y:0;z:0.4);u:0;v:1),
+
+    (position:(x:-1;y:1;z:-0.4);u:0;v:0),
+    (position:(x:1;y:1;z:-0.6);u:-1;v:0),
+    (position:(x:1;y:0;z:-0.6);u:-1;v:1),
+    (position:(x:-1;y:0;z:-0.4);u:0;v:1),
+
+    (position:(x:-0.4;y:1;z:-1);u:0;v:0),
+    (position:(x:-0.6;y:1;z:1);u:1;v:0),
+    (position:(x:-0.6;y:0;z:1);u:1;v:1),
+    (position:(x:-0.4;y:0;z:-1);u:0;v:1),
+
+
+    (position:(x:0.4;y:1;z:-1);u:0;v:0),
+    (position:(x:0.6;y:1;z:1);u:-1;v:0),
+    (position:(x:0.6;y:0;z:1);u:-1;v:1),
+    (position:(x:0.4;y:0;z:-1);u:0;v:1));
+
+
+var
+  i,j,shift:integer;
+begin
+  for i:=0 to 32*32-1 do
+  begin
+    shift:=i*16;
+    for j:=0 to 15 do
+      pVertices[shift+j]:=fixarray[j];
+  end;
+end;
+
+
+procedure defaultIndexGenerator(pIndices:PWordArray);
+type
+  TIntegerArray0to11=Array[0..11] of Integer;
+const
+  fixarray:TIntegerArray0to11=(
+    0,1,2,2,3,1,4,5,1,0,1,4);
+var
+  i,j,shift:integer;
+begin
   for i:=0 to 32*32*2-1 do
   begin
-   pindices[i*12+ 0]:=i*6+0;  //V egyik szára
-   pindices[i*12+ 1]:=i*6+1;
-   pindices[i*12+ 2]:=i*6+2;
-
-   pindices[i*12+ 3]:=i*6+2;
-   pindices[i*12+ 4]:=i*6+3;
-   pindices[i*12+ 5]:=i*6+1;
-
-   pindices[i*12+ 6]:=i*6+4; //V másik szára
-   pindices[i*12+ 7]:=i*6+5;
-   pindices[i*12+ 8]:=i*6+1;
-
-   pindices[i*12+ 9]:=i*6+0;
-   pindices[i*12+10]:=i*6+1;
-   pindices[i*12+11]:=i*6+4;
+    for j:=0 to 11 do
+      pIndices[i*12+j]:=fixarray[j]+i*6;
   end;
+end;
+
+constructor TFoliage.Create(dev:Idirect3ddevice9;texnam:string;ahscale,avscale,avpls:single;ashape:string);
+var
+  pIndices:PWordArray;
+  i:integer;
+begin
+  inherited Create;
+  betoltve:=false;
+  g_pD3Ddevice:=dev;
+
+  if ashape='bush' then shape:=defaultShape
+  else if ashape='grass' then shape:=grassShape
+  else shape:=defaultShape;
+
+  vertexnum:=32*32*shape.vertexnum;
+  indexnum:=32*32*shape.indexnum;
+
+  //g_pd3ddevice.CreateVertexDeclaration(@(declarr[0]),vertdecl);
+
+
+  if FAILED(g_pd3dDevice.CreateVertexBuffer(sizeof(TFoliageVertex)*vertexnum,
+    D3DUSAGE_WRITEONLY+D3DUSAGE_DYNAMIC,D3DFVF_bokorvertex,
+    D3DPOOL_DEFAULT,g_pVB,nil))
+    then Exit;
+
+  if FAILED(g_pd3dDevice.CreateIndexBuffer(4*indexnum,
+    D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,
+    D3DPOOL_DEFAULT,g_pIB,nil))
+
+  then Exit;
+
+  if FAILED(g_pIB.Lock(0,4*indexnum,Pointer(pindices),0))
+    then Exit;
+
+  shape.indexgen(pindices);
 
   g_pIB.unlock;
 
-  if not LTFF(g_pd3dDevice, 'data\'+texnam,g_ptexture) then
-   Exit;
+  if not LTFF(g_pd3dDevice,'data\'+texnam,g_ptexture) then
+    Exit;
+  addfiletochecksum('data\'+texnam);
+
   hscale:=ahscale;
   vscale:=avscale;
   vpls:=avpls;
   betoltve:=true;
 end;
 
-procedure TFoliage.Init;
+procedure TFoliage.Init(g_peff:ID3DXEffect;shader:boolean);
+var
+  tmplw:longword;
 begin
+  g_peffect:=g_peff;
 
- g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $EF);
- g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTRUE);
- g_pd3ddevice.SetRenderState(D3DRS_Lighting, iTRUE);
- g_pd3ddevice.SetRenderState(D3DRS_ALPHAFUNC,  D3DCMP_GREATEREQUAL );
- g_pd3ddevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+  if csicsahdr then //bocccs
+  begin
+    g_peffect.SetTechnique('Foliage');
+    g_pEffect.SetTexture('g_MeshTexture',g_ptexture);
+    g_pEffect.SetTexture('g_Terrain', mt1);
+    g_pEffect.SetTexture('g_Building', mt2);
+    //g_pEffect.SetTexture('g_MeshHeightmap', g_pnormal);
+//    g_pEffect.SetFloat('specHardness',10);
+//    g_pEffect.SetFloat('specIntensity',0.6);
+//    g_pEffect.SetBool('upsidedown',shape.upsidedown);
+    g_peffect._Begin(@tmplw,0);
+    g_peffect.BeginPass(0);
+  end
+  else
+  begin
+    g_pD3Ddevice.SetTexture(0,g_ptexture);
 
- g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+  end;
 
- g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1,  D3DTA_TEXTURE);
- g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2,  D3DTA_DIFFUSE );
 
- g_pd3dDevice.SetRenderState(D3DRS_TEXTUREFACTOR,$FFFFFFFF);
- g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  FAKE_HDR);
- //g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_SELECTARG2);
+  g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF,$AF);
+  g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE,iTRUE);
+  g_pd3ddevice.SetRenderState(D3DRS_Lighting,iFALSE);
+  g_pd3ddevice.SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL);
+  g_pd3ddevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE);
+
+
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  FAKE_HDR);
+//  g_pd3dDevice.SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1);
+  g_pd3dDevice.SetTextureStageState(0,D3DTSS_ALPHAOP,D3DTOP_MODULATE);
+
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_CONSTANT, D3DCOLOR_ARGB(255,220,220,220));
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_CONSTANT);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);
+
+
+//  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+////
+//  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1,  D3DTA_TEXTURE);
+//  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2,  D3DTA_DIFFUSE );
+////
+//  g_pd3dDevice.SetRenderState(D3DRS_TEXTUREFACTOR,$FF0000FF);
+
+//  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_SELECTARG2);
 end;
 
 
 procedure TFoliage.Render;
 begin
- g_pd3dDevice.SetStreamSource(0, g_pVB, 0, SizeOf(Tbokorvertex));
- g_pd3dDevice.SetIndices(g_pIB);
- g_pd3dDevice.SetTexture(0,g_pTexture);
 
- g_pd3dDevice.SetFVF(D3DFVF_bokorvertex);
- g_pd3dDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,32*32*12,0,32*32*8);
-//  g_pd3dDevice.DrawPrimitive(D3DPT_TRIANGLELIST,0,32*32*4)
+  g_pd3dDevice.SetStreamSource(0,g_pVB,0,SizeOf(TFoliageVertex));
+  g_pd3dDevice.SetIndices(g_pIB);
+  g_pd3dDevice.SetFVF(D3DFVF_bokorvertex);
+
+  g_pd3dDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,32*32*shape.vertexnum,0,32*32*shape.indexnum);
+
+  if g_peffect<>nil then
+  begin
+    g_peffect.Endpass;
+    g_peffect._end;
+  end;
+
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_CONSTANT, $FFFFFFFF);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);
+
 end;
 
-                                //1,2,3,4, jobb,bal,fel,le
-{procedure Tfoliage.update(lvl:Tlvl;jbfl:byte);
-var
-i,j:integer;
-begin
-//jeah;
-case jbfl of
-1: for i:=31 downto 1 do
-    bokrok[i]:=bokrok[i-1];
-2: for i:=0 to 30 do
-    bokrok[i]:=bokrok[i+1];
-3: for i:=0 to 31 do
-    for j:=31 downto 1 do
-     bokrok[i,j]:=bokrok[i,j-1];
-4: for i:=0 to 31 do
-    for j:=0 to 30 do
-     bokrok[i,j]:=bokrok[i,j+1];
-end;
-end;  }
 
 procedure Tfoliage.update(lvl:Plvl;yandnorm:Tyandnorm);
 var
-i,j,k:integer;
-Vmost:Tbokorvertex;
-pVertices:PbokorvertexArray;
-vec:TD3DXVector3;
-pls:single;
-n:TD3DXVector3;
+  i,j,k:integer;
+  pVertices:PFoliageVertexArray;
+  vec:TD3DXVector3;
+  pls,rot,sinv,cosv,rescale:single;
+  n:TD3DXVector3;
+  cached:integer;
+  tmp:single;
+//  sw : TStopWatch;
+  tpos:TD3DXVector3;
 begin
-pls:=lvl[0].position.z-lvl[1].position.z;
-pls:=pls;
-//jeah;
-g_pVB.lock(0,sizeof(bokrok),pointer(pvertices),D3DLOCK_DISCARD);
-for i:=0 to 31 do
- for j:=0 to 31 do
- begin
+//  pls:=lvl[0].position.z-lvl[1].position.z; //meg a faszt
+//pls:=((Random(1000))/1000)*pow2i[level];
+pls:=pow2i[level];
+//  pls:=pls;
+  //jeah;
+  g_pVB.lock(0,sizeof(TFoliageVertex)*vertexnum,pointer(pvertices),D3DLOCK_DISCARD);
 
-  vec:=lvl[i*32+j].position;
-  d3dxvec3add(vec,vec,D3DXVector3(perlin.Noise(vec.x,0.5,vec.z)*pls,0, perlin.Noise(vec.x,1.5,vec.z)*pls));
-
-  n:=lvl[i*32+j].normal;
-
-  yandnorm(vec.x,vec.y,vec.z,n,1);
-
-  if  (n.y=-2) or (n.y<0.83) or (n.y>1) or (vec.y<16) then
-   vec:=D3DXVector3Zero;
+  shape.vertexgen(pvertices);// itt betesszük az alap pozíciókat meg UV-t
 
 
-  for k:=0 to 11 do
-  begin
-   Vmost:=magicbushvertices[k];
-   Vmost.normal:=n;
-   with Vmost.position do
-   begin
-    x:=x*hscale+vec.x;
-    z:=z*hscale+vec.z;
-    y:=vpls+y*vscale+vec.y;
-   end;
+//    sw := TStopWatch.Create() ;
+//    sw.Start;
 
-   pvertices[k+12*(j+32*i)]:=Vmost;
-  end;
- end;
-g_pVB.unlock;
+  for i:=0 to 31 do
+    for j:=0 to 31 do
+    begin
+      cached:=-1;
+      vec:=lvl[i*32+j].position;
+
+      for k:=0 to (high(icache) div 2) do
+        if vec.x=icache[2*k] then //ide akár mehetne egy nagyon egyszerû hash
+          if vec.z=icache[2*k+1] then
+          begin
+            cached:=2*k;
+            break;
+          end;
+
+//          cached:=-1; //TODO
+      if cached<0 then
+      begin
+        inc(lastc,2);
+        if lastc>high(icache) then //páros hossz
+          lastc:=low(icache);
+
+        icache[lastc]:=vec.x;
+        icache[lastc+1]:=vec.z;
+
+//        d3dxvec3add(vec,vec,D3DXVector3(perlin.Noise(vec.x,0.5,vec.z)*pls,0,perlin.Noise(vec.x,1.5,vec.z)*pls));
+        d3dxvec3add(vec,vec,D3DXVector3(perlin.Noise(vec.x,0.5,vec.z)*pls,0,perlin.Noise(vec.x,1.5,vec.z)*pls));
+
+        if level<=2 then // ha bokor akkor újraszámolódik
+        n:=lvl[i*32+j].normal;
+//        n:=d3dxvector3(0,1,0);
+
+        yandnorm(vec.x,vec.y,vec.z,n,1);
+
+//        if (n.y>1)or(vec.y<15.7) then
+//          vec:=D3DXVector3Zero;
+
+        rot:=perlin.Noise(vec.x,0.5,vec.z);
+        sinv:=sin(rot);
+        cosv:=cos(rot);
+
+        rescale:=1;
+        if (vec.y<(grasslevel)) then
+        begin
+          vec:=D3DXVector3Zero;
+          rescale:=0;
+        end;
+
+
+//        n.y:=1;
+        
+        if (n.y<0.86) then
+        begin
+          vec:=D3DXVector3Zero;
+          rescale:=0;
+        end;
+
+        if level >2 then
+        rescale:=rescale*(0.8+frac(abs(perlin.Noise(vec.x,1,vec.z))*456)*0.4); //0.8 +0.4 random
+        
+
+
+        for k:=0 to shape.vertexnum-1 do
+          with pvertices[k+shape.vertexnum*(j+32*i)] do
+          begin
+            tpos:=position;
+
+            tpos.x:=cosv*tpos.x-sinv*tpos.z;
+            tpos.z:=sinv*tpos.x+cosv*tpos.z;
+
+            if level >2 then
+            begin
+              if tpos.y<0.5 then
+                tpos.y:=tpos.y-((n.x)*tpos.x)-((n.z)*tpos.z)-0.2*(abs(n.x)+abs(n.z)) //ne ágaskodj
+              else
+              begin
+                tpos.x:=tpos.x+0.3*n.x;
+                tpos.z:=tpos.z+0.3*n.z;
+              end;
+
+            end
+            else
+              tpos.y:=tpos.y-(n.x*tpos.x)-(n.z*tpos.z); //terephez döntés
+
+            tpos.x:=tpos.x*rescale*hscale+vec.x;
+            tpos.z:=tpos.z*rescale*hscale+vec.z;
+            tpos.y:=tpos.y*rescale*vscale+vec.y+rescale*vpls;
+
+            position:=tpos;
+
+//            if level >2 then
+//            begin
+//            tmp:=D3DXVec3dot(n,sundir);
+//            if tmp<0 then tmp:=0;
+////            color:=tmp;
+////            color:=D3DXColor(1,1,1,1);
+//            normal.x:=tmp;
+//            end
+//            else
+//            normal.x:=0;
+
+//            if k=0 then
+//            cache[shape.vertexnum*lastc+k].x:=tmp;
+//
+//            cache[shape.vertexnum*lastc+k+1]:=tpos;
+            cache[shape.vertexnum*lastc+k]:=tpos;
+          end;
+
+      end
+      else
+      begin
+        for k:=0 to shape.vertexnum-1 do
+          with pvertices[k+shape.vertexnum*(j+32*i)] do
+          begin
+//            normal.x:=cache[shape.vertexnum*cached].x;
+//            position:=cache[shape.vertexnum*cached+k+1];
+            position:=cache[shape.vertexnum*cached+k];
+          end;
+      end;
+
+
+//              if useoldterrain then
+//              for k:=0 to shape.vertexnum-1 do
+//          with pvertices[k+shape.vertexnum*(j+32*i)] do
+//          begin
+//            normal:=d3dxvector3(0,1,0);
+//          end;
+
+    end;
+
+//    sw.Stop;
+//    if (sw.ElapsedMilliseconds)<>0 then
+//    writeln(logfile,  sw.ElapsedTicks div 100);
+//    writeln(logfile,  sw.elapsedmilliseconds);
+
+    
+  g_pVB.unlock;
 end;
+
 
 destructor TFoliage.Destroy;
 begin
- g_pIB:=nil;
- g_pVB:=nil;
- if g_pd3ddevice<> nil then
- g_pD3Ddevice:=nil;
- inherited Destroy;
+  g_pIB:=nil;
+  g_pVB:=nil;
+  if g_pd3ddevice<>nil then
+    g_pD3Ddevice:=nil;
+  inherited Destroy;
 end;
-
-
-procedure generaterock(seed,size:single;var rock:Trockindvert);
-var
-i,j,k,l:integer;
-hol:integer;
-edges:array of array [0..1] of word;
-vane:array of boolean;
-remap:array of word;
-pos,n,v1,v2,v3:TD3DXVector3;
-e1,e2,tmp:integer;
-begin
-with rock do
-begin
- setlength(verts,10);
- setlength(inds,6);
- for i:=0 to high(verts) do
-  verts[i].position:=randomvec(seed*107.8+i*37.73,size);
- inds[0]:=0;
- inds[1]:=1;
- inds[2]:=2;
-
- inds[3]:=1;
- inds[4]:=0;
- inds[5]:=2;
-
- for i:=3 to high(verts) do
- begin
-  j:=0;
-  setlength(edges,0);
-  pos:=verts[i].position;
-  while j<=high(inds) do
-  begin
-   v1:=verts[inds[j+0]].position;
-   v2:=verts[inds[j+1]].position;
-   v3:=verts[inds[j+2]].position;
-   d3dxvec3subtract(v2,v2,v1);
-   d3dxvec3subtract(v3,v3,v1);
-   d3dxvec3cross(n,v2,v3);
-   if d3dxvec3dot(n,v1)<d3dxvec3dot(n,pos) then
-   begin
-    for k:=0 to 2 do
-    begin
-     e1:=inds[j+k];
-     e2:=inds[j+(k+1) mod 3];
-    // if e1>e2 then begin tmp:=e1; e1:=e2; e2:=tmp end;
-     hol:=-1;
-     for l:=0 to high(edges) do
-      if ((edges[l,1]=e1) and (edges[l,0]=e2)) or
-         ((edges[l,1]=e2) and (edges[l,0]=e1)) then
-       hol:=l;
-     if hol>=0 then
-     begin
-      edges[hol]:=edges[high(edges)];
-      setlength(edges,high(edges));
-     end
-     else
-     begin
-      setlength(edges,length(edges)+1);
-      edges[high(edges),0]:=e1;
-      edges[high(edges),1]:=e2;
-     end;
-    end;
-    inds[j]  :=inds[high(inds)-2];
-    inds[j+1]:=inds[high(inds)-1];
-    inds[j+2]:=inds[high(inds)  ];
-    setlength(inds,length(inds)-3);
-   end
-   else
-   inc(j,3);
-  end;
-
-  tmp:=length(inds);
-  setlength(inds,length(inds)+length(edges)*3);
-  for j:=0 to high(edges) do
-  begin
-   inds[tmp+j*3+0]:=edges[j,0];
-   inds[tmp+j*3+1]:=edges[j,1];
-   inds[tmp+j*3+2]:=i;
-  end;
- end;
-
- setlength(vane,length(verts));
- setlength(remap,length(verts));
- for i:=0 to high(vane) do
- begin
-  vane[i]:=false;
-  remap[i]:=i;
- end;
-
- for i:=0 to high(inds) do
-  vane[inds[i]]:=true;
-
- i:=0;
- while i<=high(verts) do
-  if not vane[i] then
-  begin
-   vane[i] :=vane [high(verts)];
-   remap[high(verts)]:=remap[i];
-   verts[i]:=verts[high(verts)];
-   setlength(verts,high(verts));
-  end
-  else inc(i);
-
-  for i:=0 to high(inds) do
-   inds[i]:=remap[inds[i]];
-
-  for i:=0 to high(verts) do
-   verts[i].normal:=D3DXVector3zero;
-
-  for i:=0 to high(inds) div 3 do
-  begin
-   v1:=verts[inds[i*3+0]].position;
-   v2:=verts[inds[i*3+1]].position;
-   v3:=verts[inds[i*3+2]].position;
-   d3dxvec3subtract(v2,v2,v1);
-   d3dxvec3subtract(v3,v3,v1);
-   d3dxvec3cross(n,v2,v3);
-   fastvec3normalize(n);
-   d3dxvec3add(verts[inds[i*3+0]].normal,verts[inds[i*3+0]].normal,n);
-   d3dxvec3add(verts[inds[i*3+1]].normal,verts[inds[i*3+1]].normal,n);
-   d3dxvec3add(verts[inds[i*3+2]].normal,verts[inds[i*3+2]].normal,n);
-  end;
-
-  for i:=0 to high(verts) do
-  begin
-   fastvec3normalize(verts[i].normal);
-   verts[i].u:=random(100)/100;// verts[i].position.x;
-   verts[i].v:=random(100)/100;// verts[i].position.z;
-  end;
-end;
-
- 
-end;
-
 
 
 end.
+

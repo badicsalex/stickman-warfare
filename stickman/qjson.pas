@@ -256,17 +256,13 @@ begin
   end
   else
   begin
-   try
-    result.intval:=StrToInt(token);
-    result.typ:=QJSON_INT;
-   except
-    try
-     result.floatval:=StrToFloat(token);
-     result.typ:=QJSON_FLOAT;
-    except
-     raise EJSONParserError.Create(str,i,token+' is not a valid token');
-    end;
-   end;
+     if TryStrToInt(token,result.intval) then      //delphi 7 alatt try-olni kell
+       result.typ:=QJSON_INT
+     else
+     if TryStrToFloat(token,result.floatval) then
+       result.typ:=QJSON_FLOAT
+     else
+       raise EJSONParserError.Create(str,i,token+' is not a valid token');
   end
  end
 end;

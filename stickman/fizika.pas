@@ -5,6 +5,7 @@ uses
   Direct3D9,
   D3DX9,
   typestuff,
+  windows,
   muksoka;
 const
  koteshossz:array [0..9] of single = (0.4,0.4,0.4,0.4,0.6,0.3,0.3,0.3,0.3,0.1);
@@ -71,6 +72,10 @@ type
   shift:integer;
   agx:boolean;
   kerekfriction:single;
+  lastsebgtc:Cardinal;
+  sebcache:single;
+  function getseb:single;
+  function getmotionvec:TD3DXVector3;
   function kerektransformmatrix(mit:integer):TD3DMatrix;
   constructor create(axe1,axe2,axe3,apos,seb:TD3DXVector3;afriction,azsele:single;akerekhely:Tkerekarray;afelf,afelfero,afelfdamp,akereknagy,akerekvst,akerekfriction,amaxseb,anyomatek:single;aantigrav:boolean);
   procedure initkerekek;
@@ -686,6 +691,22 @@ begin
     end;
   fordulatszam:=(sqrt(pillspd*360)-fordulatok[shift]+1)*porgetes;//+porgetes;
  end;
+end;
+
+function Tauto.getseb:single;
+begin
+  if gettickcount=lastsebgtc then
+    result:=sebcache
+  else
+  begin
+    Result:=tavpointpoint(pos,vpos);
+    sebcache:=Result;
+  end;
+end;
+
+function Tauto.getmotionvec:TD3DXVector3;
+begin
+  Result:=D3DXVector3(pos.x - vpos.x,pos.y - vpos.y,pos.z - vpos.z);
 end;
 
 function Tauto.kerektransformmatrix(mit:integer):TD3DMatrix;

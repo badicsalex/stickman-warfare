@@ -6,7 +6,7 @@ unit multiplayer;
 
 interface
 
-uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1, winsock2;
+uses sysutils, socketstuff, typestuff, D3DX9, windows, sha1, winsock2,Direct3d9;
 const
  TOKEN_RATE=10; //ezredmásodpercenkénti tokenek száma
  TOKEN_LIMIT=2000; //bucket max mérete
@@ -66,9 +66,10 @@ type
   dailykills:integer;
   killscamping:integer; //readwrite
   killswithoutdeath:integer; // readwrite
-  weather:single;
+  weather:byte;
   opt_nochat:boolean;
   state1v1,atrak:boolean;
+  disablekill:boolean;
 
   warevent,warevent_dm:boolean;
   warevent_name:string;
@@ -157,6 +158,7 @@ type
 
  end;
 
+function decodeSharedKey(raw:SmallInt):byte;
 
 var
  servername:string = 'stickman.hu';
@@ -167,7 +169,9 @@ var
 implementation
 
 const
-shared_key:array [0..19] of byte=($00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00);
+// shared_key:array [0..19] of SmallInt=(24, 24, 534, 24, 24, 585, 24, 24, 636, 24, 24, 687, 24, 24, 738, 24, 24, 789, 24, 24);
+ shared_key:array [0..19] of byte=($00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00);
+// hex>int>+8>*3 shared_key:array [0..19] of byte=($10, $0E, $AA, $20, $00, $BB, $00, $00, $CC, $00, $00, $DD, $00, $00, $EE, $00, $00, $FF, $00, $00);
 
  CLIENT_VERSION=PROG_VER;
 
@@ -204,6 +208,10 @@ shared_key:array [0..19] of byte=($00, $00, $00, $00, $00, $00, $00, $00, $00, $
  {A kliens medált kér
 	int medál id
 	char [20] crypto
+ }
+
+ CLIENTMSG_TIME=6;
+ {A kliens idõt kér (szerver idõt) Válasz: TIME
  }
 
  SERVERMSG_LOGINOK=1;
@@ -272,6 +280,17 @@ vagy
   single-k hármasával, koordináták
  }
 
+ SERVERMSG_TELEPORT=11;
+ {
+  float x,
+  float y,
+  float z,
+ }
+
+ SERVERMSG_TIME=12;  //TODO
+
+
+
  P2PMSG_HANDSHAKE=1;
  {
   byte latlak 
@@ -290,6 +309,14 @@ vagy
  STATUS_CHATON = 1; // már nem használt
 
  STATUS_CHATOFF = 2; // már nem használt
+
+function decodeSharedKey(raw:SmallInt):byte;
+var
+ decoded:integer;
+begin
+ decoded:= raw;
+ Result:= decoded;
+end;
 
 
 procedure TMMOServerClient.SendLogin(nev,jelszo:string;fegyver,fejrevalo,port,checksum:integer);
@@ -352,7 +379,7 @@ i:integer;
  ujcrypto:TSHA1Digest;
 begin
  for i:=0 to 19 do
-  crypto[i]:=crypto[i] xor (shared_key[i]);
+  crypto[i]:=crypto[i] xor decodeSharedKey(shared_key[i]);
  ujcrypto:=SHA1Hash(@crypto[0],20);
  for i:=0 to 19 do
   crypto[i]:=ujcrypto[i];
@@ -728,7 +755,7 @@ begin
  end;
  frame.Free;
 
- if laststatus<GetTickCount-3000 then
+ if laststatus<GetTickCount-3000 then //TODO nem ettõl fagy a szerver?
  begin
   laststatus:=GetTickCount;
   SendStatus(random(1000),random(1000));
@@ -916,6 +943,8 @@ lovesbyte:byte;
 autobyte:byte;
 i:integer;
 volthgh:integer;
+mat2:TD3DMatrix;
+tmp:TD3DXVector3;
 begin
  gtc:=gettickcount;
  with ppl[kitol] do
@@ -930,7 +959,7 @@ begin
    pos.seb.y:=0;
 
    pos.irany:= unpackfloatheavy(frame.ReadChar,D3DX_PI);
-   //pos.irany2:=unpackfloatheavy(frame.ReadChar,D3DX_PI);
+   pos.irany2:=unpackfloatheavy(frame.ReadChar,D3DX_PI);
    pos.state:=frame.ReadChar;
    net.kapottprior:=frame.ReadPackedFloat(1);
 
@@ -954,8 +983,24 @@ begin
    for i:=0 to ((lovesbyte shr 3) and 15)-1 do
    begin
     pls.lo:=holindul(pls.fegyv);
-    d3dxvec3add(lovesek[volthgh+i].pos,pos.megjpos,
-                D3DXVector3(0.7*sin(pos.irany),1.5,0.7*cos(pos.irany)));
+    pls.muzzszog:=2*pi*random(10000)/10000;
+
+    lovesek[volthgh+i].pos:=D3DXVector3(0,-0.1,-0.7);
+    if pos.irany2 <> 0 then
+     if not (0<(pos.state and MSTAT_CSIPO)) then begin
+      D3DXMatrixRotationX(mat2,pos.irany2);
+      D3DXVec3TransformCoord(lovesek[volthgh+i].pos,lovesek[volthgh+i].pos,mat2);
+      end
+     else
+     begin
+      D3DXMatrixRotationX(mat2,pos.irany2);
+      D3DXVec3TransformCoord(lovesek[volthgh+i].pos,lovesek[volthgh+i].pos,mat2);
+     end;
+
+    lovesek[volthgh+i].pos:=D3DXVector3(-lovesek[volthgh+i].pos.z*sin(pos.irany),lovesek[volthgh+i].pos.y+1.5,-lovesek[volthgh+i].pos.z*cos(pos.irany));
+
+    d3dxvec3add(lovesek[volthgh+i].pos,pos.megjpos,lovesek[volthgh+i].pos);
+
     if 0<(pos.state and MSTAT_CSIPO) then
      lovesek[volthgh+i].pos.y:=lovesek[volthgh+i].pos.y-0.3;
     if 0<(pos.state and MSTAT_GUGGOL ) then
@@ -1230,7 +1275,7 @@ begin
    frame.WritePackedVector(D3DXVector3(posx-oposx,posy-oposy,posz-oposz),1);
 
    frame.WriteChar(packfloatheavy(iranyx,D3DX_PI));
-   //frame.WriteChar(packfloatheavy(iranyy,D3DX_PI)); most még nem
+   frame.WriteChar(packfloatheavy(iranyy,D3DX_PI));
    frame.WriteChar(state);
    frame.WritePackedFloat(ppl[i].net.nekemprior,1);
 

@@ -177,7 +177,6 @@ begin
  end;
 end;
 
-//             perlin.complexnoise(1,      xx+2000,zz,16,          4,              0.5)*3{+perlin.noise(xx/200,0.5,zz/200+100)*50};
 function TPerlinNoise.complexnoise(startsm,x,y:single;scale:single;octaves:integer;persistence:single):single;
 var
 i:integer;

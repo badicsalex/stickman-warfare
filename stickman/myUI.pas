@@ -4,7 +4,7 @@ interface
 uses  Windows, SysUtils, typestuff,Direct3D9,D3DX9,directinput,sha1,math;
 
 type
-  Tmatteg= record                                                                                                   
+  Tmatteg= record
    mats:array [0..8] of D3DMatrix;
    //Color:cardinal;
    visible:boolean;
@@ -68,7 +68,7 @@ type
   public
    g_pfont,g_pfontmini,g_pfontingame,g_pfontchat:ID3DXFont;
    fckep:IDirect3DTexture9;
-   chatbubble:IDirect3DTexture9;
+//   chatbubble:IDirect3DTexture9;
    glyphs,cglyphs:IDirect3DTexture9;
    chtalultex:IDirect3DTexture9;
    g_pSprite:ID3DXSprite;
@@ -111,7 +111,7 @@ type
    procedure DrawKerekitett(mit:Tmatteg);
    procedure DrawLoadScreen(szazalek:byte);
    procedure DrawMedal;
-   procedure DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean; isTyping:array of boolean);
+   procedure DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean);
    procedure DrawGlyphsInGame(glyphsarr:array of Tglyph);
    procedure DrawChatsInGame(texts:array of string;pos:array of TD3DXVector3; alpha:array of single);
    procedure DrawChatGlyph(hash:cardinal;posx,posy:single;alpha:byte);
@@ -128,14 +128,16 @@ type
 
 
 MFIEnumTyp=(MI_NEV,MI_TEAM,MI_FEGYV,MI_HEAD,MI_CONNECT,MI_REGISTERED,MI_PASS_LABEL,
-           MI_GRAPHICS,MI_SOUND,MI_CONTROLS,
+           MI_GRAPHICS,MI_SOUND,MI_CONTROLS,MI_MOREGRAPHICS,
            MI_DETAIL,MI_EFFECTS,MI_WATER,MI_PARTICLE,MI_MOTIONBLUR,MI_GLOW,MI_RAIN,MI_SCREENSHOT,MI_IMPOSTER,
            MI_VOL,MI_MP3_VOL,MI_TAUNTS,MI_R_ACTION,MI_R_AMBIENT,MI_R_CAR,
            MI_MOUSE_SENS,MI_MOUSE_SENS_LAB,MI_MOUSE_ACC,
            MI_GAZMSG,
            MI_HEADBAL,MI_HEADJOBB,
            MI_INTERFACE,MI_RADAR,MI_CHAT,MI_ZONES,MI_TIPS,
-           MI_SAVEPW);
+           MI_SAVEPW,
+           MI_TALLGRASS,MI_HDR,MI_BULLETHOLES,MI_MUZZLEFLASH,MI_GREYSCALE,MI_MINVX,MI_MINVY
+           );
 var
  menufi:array [MFIEnumTyp] of T3DMenuItem;
  menufipass:T3DMIPasswordBox;
@@ -529,7 +531,7 @@ begin
  case lap of
   0:lap:=3;
   1,2:lap:=0;
-  4,5,6,7:lap:=2;
+  4,5,6,7,8:lap:=2;     //TODO ezt frissíteni kell mindig
   3:items[3,4].clicked:=true; //exit gomb
  end
  else
@@ -617,7 +619,7 @@ const
 var
  i:integer;
 begin
- for i:=0 to 8 do
+ for i:=0 to MENULAP_MAX do
  begin
   g_pSprite.SetTransform(mit.mats[i]);
   g_psprite.draw(sarok,@(tegs[i]),nil,nil,$FFFFFFFF);
@@ -722,7 +724,7 @@ begin
 //  g_pd3dDevice.Present(nil, nil, 0, nil);
 end;
 
-procedure T3DMenu.DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean; isTyping:array of boolean);
+procedure T3DMenu.DrawTextsInGame(texts:array of string;pos,pos2:array of TD3DXVector3; alpha:array of single;micro:boolean);
 var
 i:integer;
 mat:TD3DMatrix;
@@ -754,12 +756,12 @@ begin
     rect.top:=-20;
     rect.bottom:=0;
 
-    if isTyping[i] then
-    begin
-    cent.x := -35;
-    cent.y := -70;
-    g_pSprite.Draw(chatbubble,nil,nil,@cent,$FFFFFFFF);
-    end;
+//    if isTyping[i] then
+//    begin
+//    cent.x := -35;
+//    cent.y := -70;
+//    g_pSprite.Draw(chatbubble,nil,nil,@cent,$FFFFFFFF);
+//    end;
 
     if micro then
      g_pfontchat.DrawTextA(g_psprite,Pchar(texts[i]),length(texts[i]),@rect,DT_VCENTER or DT_CENTER,round(alpha[i]*$FF)*$1000000+betuszin)
@@ -1078,6 +1080,7 @@ var
  i:integer;
 begin
 
+ if (alap<(MENULAP_MAX-1)) or (length(tegs[alap])=0) then //TAB vagy label és üres
  setlength(tegs[alap],length(tegs[alap])+1);
 
  with tegs[alap,high(tegs[alap])] do
