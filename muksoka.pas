@@ -467,6 +467,7 @@ dst:=tavpointpointsq(transgmbk[10],cam);
 if dst>sqr(20) then LOD:=10 else
 if dst>sqr(7)  then LOD:=9 else
                     LOD:=-1;
+
 if (LOD<10) and (not heavyLOD) then
 begin
 //SIMA POLIS MUKSÓKÁM
@@ -846,7 +847,7 @@ begin
    loadOBJ(stuffjson.GetString(['hats',i]));
   end;
    
-  LTFF(g_pd3ddevice,'data\hs\hstex.bmp',hstex);
+  LTFF(g_pd3ddevice,'data\hs\hstex.bmp',hstex,TEXFLAG_FIXRES);
   addfiletochecksum('data\hs\hstex.bmp');
   writeln(logfile,'Loaded head items...');
   system.flush(logfile);

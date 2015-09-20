@@ -3,8 +3,8 @@
  * All rights reserved                       *
  *                                           *
  * Almost everything in this file and the    *
- * units are written by Badics Alex          *
- *                           and Háda Ádám.  *
+ * units are written by Badics Alex,         *
+ * Háda Ádám and Göller Bertalan.            *
  *                                           *
  * Except: PerlinNoise (i got that from      *
  *                      a forum)             *
@@ -12,7 +12,7 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{.$DEFINE undebug}
+{$DEFINE undebug}
 {.$DEFINE panthihogomb}
 {.$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
@@ -20,20 +20,23 @@
 {.$DEFINE winter}
 {.$DEFINE godmode}
 {.$DEFINE admingun}
-{.$DEFINE palyszerk}
+{-$DEFINE palyszerk}
 {.$DEFINE ajandekok}
 {.$DEFINE alttabengedes}
 {.$DEFINE matieditor}
 {.$DEFINE profiler}
 {.$DEFINE propeditor}
 {.$DEFINE localhost}
-
+{.$DEFINE oldterrain}
+{.$DEFINE fegyverteszt}
+{.$DEFINE terraineditor}
 
 program Stickman;
 
 uses
   AntiFreeze,
   D3DX9,
+  DecalSystem,
   Direct3D9,
   DinputE,
   DirectSound,
@@ -63,7 +66,9 @@ uses
   //ShellApi,
   Typestuff,
   Windows,
-  Winsock2;
+  Winsock2
+//  StopWatch //todo kivenni
+  ;
 
 const
 lvlmin=0;  //ENNEK ÍGY KÉNE MARADNIA
@@ -79,23 +84,9 @@ lvma=lvmi*3-1;
 
 
 MAXszog=3.141592654/2-0.1;
-pow2:array [-10..20] of single=(1/1024,1/512,1/256,1/128,1/64,1/32,1/16,1/8,1/4,1/2,1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576);
-pow2i:array [0..15] of word=(1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768);
 
 RB_MAX_IDO=6000;
 
-DETAIL_POM=1;
-DETAIL_LIGHT=2;
-DETAIL_MAX=2;
-
-POSTPROC_DISTORTION=1;
-POSTPROC_GREYSCALE=2;
-POSTPROC_GLOW=3;
-POSTPROC_MAX=3;
-
-WATER_MAX=3;
-
-PARTICLE_MAX=3;
 
 PSYS_SIMPLE=1;
 PSYS_GRAVITY=2;
@@ -112,6 +103,13 @@ BALANCE_H31_RAD=1.0;
 
 T_CONST=0;
 T_OPERATOR=1;
+
+//CMAP_SIZE=1024; //lefelé betöltésnél kéne scalelni
+CMAP_SIZE=1024;
+CMAP1_PATH='data\cmap.png';  //régi terep
+CMAP2_PATH='data\cmap2.png'; //térkép
+CMAP3_PATH='data\cmap3.png'; //shader terep
+
 
 
 //-----------------------------------------------------------------------------
@@ -135,6 +133,13 @@ var
 
 {$ENDIF}
 
+
+{$IFDEF terraineditor}
+
+  closepr,closeojj,closeojjhv:integer;
+
+{$ENDIF}
+
   g_pD3D: IDirect3D9 = nil; // Used to create the D3DDevice
   g_pd3dDevice: IDirect3DDevice9 = nil; // Our rendering device
   g_pVB:IDirect3DVertexBuffer9 = nil; // Buffer to hold vertices
@@ -152,19 +157,19 @@ var
   futex:IDirect3DTexture9 = nil;
   futexa:IDirect3DTexture9 = nil;
   kotex:IDirect3DTexture9 = nil;
+//  kotex2:IDirect3DTexture9 = nil;
+//  kotex3:IDirect3DTexture9 = nil;
   noisetex:IDirect3DTexture9 = nil;
-  hnoise:IDirect3DTexture9 = nil;
   noise2tex:IDirect3DTexture9 = nil;
+  noise3:IDirect3DTexture9 = nil;
+  hnoise:IDirect3DTexture9 = nil;
   viztex:IDirect3DTexture9 = nil;
-  mt1:IDirect3DTexture9 = nil;
-  mt2:IDirect3DTexture9 = nil;
   cartex:IDirect3DTexture9 = nil;
   antigravtex:IDirect3DTexture9 = nil;
   kerektex:IDirect3DTexture9 = nil;
   g_pautomesh:ID3DXMesh=nil;
   g_pantigravmesh:ID3DXMesh=nil;
   g_pkerekmesh:ID3DXMesh=nil;
-  singtc,cosgtc,plsgtc:single; //hullámzás
   skytex:IDirect3DTexture9 = nil;
   skystrips: array [0..20] of array [0..31] of TSkyVertex;
 
@@ -172,7 +177,7 @@ var
   hogombmesh:ID3DXMesh = nil;
   {$ENDIF}
   foliages:array of Tfoliage; //Növényzet
-  foliagelevels:array of integer;
+//  foliagelevels:array of integer;
   ojjektumrenderer:T3DORenderer;
   propsystem:TPropsystem;
   fegyv:Tfegyv = nil;
@@ -189,7 +194,6 @@ var
   nofegyv:boolean=false;
 
   safemode:boolean=false;
-  disablekill:boolean;
 
   portalbaugras:boolean=false;
 
@@ -225,7 +229,6 @@ var
   ysb:single;
   volttim,kuldd,hanyszor:cardinal;
   eltim:single;
-  framespersecond:single=1;
 
   hWindow: HWND;
   wndpos:Tpoint=(x:0;y:0);
@@ -239,7 +242,7 @@ var
   rbszam:integer=-1;
   cpoz:Psingle; ///FRÖCCCS
   rbm:integer=0;
-  mat_world,mfm:TD3DMatrix;
+  mat_world,mat_bajusz,mfm:TD3DMatrix;
   mousesens:single;
   mouseacc:boolean;
   oopos:TD3DXVector3;
@@ -292,6 +295,7 @@ var
   epuletmost:integer;
   {$ENDIF}
   chatmost:string;
+  kurzor:integer;
   kitlottemle:string;
   meghaltam:boolean=false;
   latszonaKL:integer;
@@ -307,7 +311,7 @@ var
   HDRincit:single=8000;
   FelesHDRopt:boolean;
   FelesHDR:boolean;
-  fegylit:integer;
+  fegylit:byte;
 
   canbeadmin:boolean;
   invulntim:integer;
@@ -351,7 +355,6 @@ var
   enableeffects:boolean;
   
 
-  opt_detail,opt_postproc,opt_water,opt_particle:integer;
   pre_opt_water:integer;
   opt_motionblur:boolean;
   opt_rain:boolean;
@@ -359,6 +362,10 @@ var
   opt_imposters:boolean;
   png_screenshot:boolean;
   opt_radar,opt_nochat,opt_zonename,opt_tips:boolean;
+
+  tallgrass:boolean;
+  dobulletholes:boolean;
+
   explosionbubbles:array of TDBubble;
   explosionripples:array of TDRipple;
 //  g_pEffect:ID3DXEffect;
@@ -375,7 +382,7 @@ var
   teleports:array of TTeleport;
   particlesSyses:array of TParticleSys;
   particlesProtos:array of TParticleSys;
-  labels:array of TLabel;
+  labels:array of T3dLabel;
   triggers:array of TTrigger;
   binds:array of TBind;
   timedscripts:array of TTimedscript;
@@ -400,9 +407,18 @@ var
   portalevent:TStickmanevent;
   zeneintensity:integer;
 
-  grass_dust,sand_dust,color_mud,color_rainy,color_sunny,color_underwater,radius_rainy,radius_sunny:longword;
+  col_dust_grass,col_dust_mud,col_dust_sand:longword;
+  col_fog_sunny,col_fog_rainy,col_fog_water,radius_rainy,radius_sunny:longword;
+  col_grass,col_mud,col_sand,col_wetsand,col_water,col_stone:longword;
+
+
 
   nemviz:boolean;
+
+  //timing stats
+  frametime:cardinal;
+  framecount,fps:integer;
+  opt_drawfps:boolean=false;
 
 {$IFDEF profiler}
   profile_start:TLargeInteger;
@@ -424,6 +440,8 @@ var
 
 procedure evalscriptline(line:string); forward;
 procedure evalScript(name:string); forward;
+procedure writeChat(s:string); forward;
+procedure fillupmenu; forward;
 
 
 function collerp(c1,c2:cardinal):cardinal;
@@ -567,7 +585,6 @@ begin
 
   // Turn on culling
   g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
-  //Developer stuff
 
  // g_pd3dDevice.SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
   // Turn on the zbuffer
@@ -779,20 +796,55 @@ begin
  norm.y:=2*scalfac;
  norm.z:=v24y;
  lngt:=d3dxvec3lengthsq(norm);
- if lngt<0.00001 then lngt:=1;
+ if not (lngt<0.00001) then
  d3dxvec3scale(norm,norm,fastinvsqrt(lngt));
 end;
 
-procedure yandnormfu(var xx,yy,zz:single;var norm:Td3dvector;scalfac:single);
+//function norm(xx,zz:single;scalfac:single):Td3dvector; //ideiglenesen kivéve
+//var
+//lngt:single;
+//v24y,v13y:single;
+//begin
+// xx:=xx;
+// zz:=zz;
+// noNANInf(xx);noNANInf(zz);
+//
+// v24y:=advwove(xx,zz-(scalfac))- advwove(xx,zz+(scalfac));
+// v13y:=advwove(xx-(scalfac),zz)-advwove(xx+(scalfac),zz);
+//
+// norm.x:=v13y;
+// norm.y:=2*scalfac;
+// norm.z:=v24y;
+// lngt:=d3dxvec3lengthsq(result);
+// if not (lngt<0.00001) then
+// d3dxvec3scale(result,result,fastinvsqrt(lngt));
+//end;
+
+
+function terrainsidevec(xx,zz:single;scalfac:single):Td3dvector; //returns a vector which is perpendicular to the terrain normal
 var
 lngt:single;
+v24y,v13y:single;
 begin
- yy:=wove(xx,zz);
- vanottvalami(xx,yy,zz);
+ xx:=xx;
+ zz:=zz;
+ noNANInf(xx);noNANInf(zz);
 
- lngt:=d3dxvec3lengthsq(norm);
- if lngt<0.00001 then lngt:=1;
- d3dxvec3scale(norm,norm,fastinvsqrt(lngt));
+ v24y:=advwove(xx-scalfac,zz-scalfac);
+ v13y:=advwove(xx+scalfac,zz+scalfac);
+
+ result:=vec3add2(D3DXVector3(xx+scalfac,v13y,zz+scalfac),D3DXVector3(-xx+scalfac,-v24y,-zz+scalfac));
+
+
+ lngt:=d3dxvec3lengthsq(result);
+ if not (lngt<0.00001) then
+ d3dxvec3scale(result,result,fastinvsqrt(lngt));
+  writechat(formatfloat('0.##',result.x) + ' ' + formatfloat('0.##',result.y) + ' ' + formatfloat('0.##',result.z) + ' ' );
+end;
+
+procedure yandnormfu(var xx,yy,zz:single;var norm:Td3dvector;scalfac:single);
+begin
+ yy:=advwove(xx,zz);
 end;
 
 procedure yandnormbokor(var xx,yy,zz:single;var norm:Td3dvector;scalfac:single);
@@ -800,28 +852,43 @@ var
 lngt:single;
 k,l:integer;
 begin
- yy:=wove(xx,zz);
- vanottvalami(xx,yy,zz);
 
- lngt:=d3dxvec3lengthsq(norm);
- if lngt<0.00001 then lngt:=1;
- d3dxvec3scale(norm,norm,fastinvsqrt(lngt));
+ yy:=advwove(xx,zz);
 
-{    for k:=0 to high(ojjektumarr) do
-    for l:=0 to ojjektumarr[k].hvszam-1 do
-     if ojjektumarr[k].raytestbol(D3DXVector3(xx,yy+1,zz),D3DXVector3(xx,yy,zz),l,COLLISION_SOLID) then
-     begin
-      norm.y:=-2;
-      break;
-     end;{}
 
-    for k:=0 to high(ojjektumarr) do
-    for l:=0 to ojjektumarr[k].hvszam-1 do
-     if tavpointpoint(ojjektumarr[k].holvannak[l],D3DXVector3(xx,yy,zz))<ojjektumarr[k].rad then
-     begin
-      norm.y:=-2;
-      break;
-     end;
+  norm.x:= advwove(xx-(scalfac),zz)-advwove(xx+(scalfac),zz);
+  norm.y:=2*scalfac;
+  norm.z:=advwove(xx,zz-(scalfac))- advwove(xx,zz+(scalfac));
+  lngt:=d3dxvec3lengthsq(norm);
+  if not (lngt<0.00001) then
+  d3dxvec3scale(norm,norm,fastinvsqrt(lngt));
+
+
+// if tracefoliage then
+// begin
+//  for k:=0 to high(ojjektumarr) do
+//  for l:=0 to ojjektumarr[k].hvszam-1 do
+//   if tavpointpoint(ojjektumarr[k].holvannak[l],D3DXVector3(xx,yy,zz))<ojjektumarr[k].rad then
+//   if ojjektumarr[k].raytestbol(D3DXVector3(xx,yy+1,zz),D3DXVector3(xx,yy,zz),l,COLLISION_SOLID) then
+//   begin
+//    norm.y:=-2;
+//    break;
+//   end;
+// end
+// else
+ begin
+
+
+
+  for k:=0 to high(ojjektumarr) do
+  for l:=0 to ojjektumarr[k].hvszam-1 do
+   if tavpointpointsq(ojjektumarr[k].holvannak[l],D3DXVector3(xx,yy,zz))<Sqr(ojjektumarr[k].rad2*1.15) then
+   begin
+    norm.y:=-2;
+    break;
+   end;
+ end;
+
 end;
 
 function palyvert(xx,yy,zz,scalfac:single;lvl:integer):TCustomVertex;
@@ -835,7 +902,7 @@ begin
  //zz:=zz+(round(xx)mod 2)*scalfac/2;
 
  szin:=fuszin;
- if (norm.y)<0.83 then szin:=koszin;
+ if (norm.y<0.83) and (yy>17) then szin:=koszin;
 
  {$IFNDEF winter}
  if yy<15 then szin:=hoszin+$FF000000;
@@ -845,8 +912,8 @@ begin
 
 
  //if yy<0 then yy:=0;
- if yy<10 then szin:=colorlerp(vizszin,nhszin,abs(yy)/15)+$FF000000;
- if yy<0 then szin:=vizszin+$FF000000;
+ if yy<10 then szin:=colorlerp(vizszin,nhszin,abs(yy-5)/5)+$FF000000;
+ if yy<5 then szin:=vizszin+$FF000000;
 
 
  {$IF Defined(panthihogomb) and not Defined(winter)}
@@ -854,14 +921,14 @@ begin
    szin:=$FFFFFEFF;
  {$IFEND}
 
- for i:=0 to length(grounds)-1 do
+ for i:=0 to length(grounds)-1 do    //TODO CMAP
   with grounds[i] do
  begin
   if tavpointpointsq(D3DXVector3(posx,0,posz),D3DXVector3(xx,0,zz))<radius*radius then
    szin:=color;
   end;
 
- for i:=0 to length(bubbles)-1 do
+ for i:=0 to length(bubbles)-1 do    //TODO CMAP
   with bubbles[i] do
  begin
   if tavpointpointsq(D3DXVector3(posx,posy,posz),D3DXVector3(xx,yy,zz))<rad*rad then
@@ -869,26 +936,33 @@ begin
   end;
 
 
- if  scalfac<pow2[farlvl] then
- for j:=0 to high(ojjektumnevek) do
-  for i:=0 to ojjektumarr[j].hvszam-1 do
-  if ojjektumarr[j].raytestbol(D3DXVector3(xx,yy,zz),D3DXVector3(xx-ojjektumarr[j].rad*2,yy+ojjektumarr[j].rad*2,zz),i,COLLISION_SHADOW) then
-  begin
-   norm:=D3DXVector3(0.8,0.8,0);
-   break;
-  end;
+  if useoldterrain or (opt_detail<=DETAIL_MIN) then
+   if  scalfac<pow2[farlvl] then
+   for j:=0 to high(ojjektumnevek) do
+    for i:=0 to ojjektumarr[j].hvszam-1 do
+    if ojjektumarr[j].raytestbol(D3DXVector3(xx,yy,zz),D3DXVector3(xx-ojjektumarr[j].rad*2,yy+ojjektumarr[j].rad*2,zz),i,COLLISION_SHADOW) then
+    begin
+     norm:=D3DXVector3(0.8,0.8,0);
+     break;
+    end;    
 
 
- ux:=xx/1+sin(zz/2)/2+sin(zz/8)+perlin.complexnoise(1,xx+2000,zz,16,4,0.5)*3{+perlin.noise(xx/200,0.5,zz/200+100)*50};
- uz:=zz/1-cos(xx/2)/2+cos(xx/8)+perlin.complexnoise(1,xx,zz+2000,16,4,0.5)*3{+perlin.noise(xx/200+100,0.5,zz/200)*50};
-
- u2x:=xx/16;
- u2z:=zz/16;
- if scalfac>=pow2[farlvl] then
- begin
+ //if scalfac>=pow2[farlvl] then
+ //if (not useoldterrain and (opt_detail>0)) or (useoldterrain and (scalfac>=pow2[farlvl])) then
+ if (not useoldterrain) or (useoldterrain and (scalfac>=pow2[farlvl])) then
+ begin    //távoli vagy új
   ux:=xx/2048+0.5;
   uz:=zz/2048+0.5;
   szin:=$FFFFFF;
+  u2x:=xx/2+sin(zz/3)/6+sin(zz/10);//+perlin.complexnoise(1,xx+2000,zz,16,4,0.5)*1{+perlin.noise(xx/200,0.5,zz/200+100)*50};
+  u2z:=zz/2+cos(xx/3)/6+cos(xx/10);//+perlin.complexnoise(1,xx,zz+2000,16,4,0.5)*1{+perlin.noise(xx/200+100,0.5,zz/200)*50};
+ end
+ else
+ begin       //old közeli
+  ux:=xx/1+sin(zz/2)/2+sin(zz/8)+perlin.complexnoise(1,xx+2000,zz,16,4,0.5)*3{+perlin.noise(xx/200,0.5,zz/200+100)*50};
+  uz:=zz/1-cos(xx/2)/2+cos(xx/8)+perlin.complexnoise(1,xx,zz+2000,16,4,0.5)*3{+perlin.noise(xx/200+100,0.5,zz/200)*50};
+  u2x:=xx/16;
+  u2z:=zz/16;
  end;
 
  result:=CustomVertex(xx,yy,zz,norm.x,norm.y,norm.z,szin,ux,uz,u2x,u2z);
@@ -1022,8 +1096,7 @@ begin
  // zeromemory(pointer(pVertices),lvlsizp*lvlsizp*sizeof(Tcustomvertex));
   g_pVB.Unlock;
 
-  for i:=0 to Length(foliages)-1 do
-    if foliagelevels[i]=lvl then foliages[i].update(@(levels[lvl,0]),yandnormfu);
+ //elköltöztünk
 
   //if lvl=4 then bokrok.update(@(levels[lvl,0]),yandnormbokor);
   //if lvl=1 then fuvek.update(@(levels[lvl,0]),yandnormfu);
@@ -1063,6 +1136,42 @@ begin
   {$R-}
 end;
 
+procedure tryupdatefoliage(forced:boolean=false);
+var
+  i:integer;
+//  start:cardinal;
+// sw : TStopWatch;
+begin
+//  start:=GetTickCount;
+//  for j:=lvlmin to lvlmax do
+
+//    sw := TStopWatch.Create() ;
+//    sw.Start;
+
+    for i:=0 to Length(foliages)-1 do
+//    if foliagelevels[i]=j then
+    begin
+//      if ((hanyszor mod 50)=(i*10+1)) or forced then   
+      if ((hanyszor mod (50+foliages[i].level*40))=(0)) or forced then
+      begin
+        if (foliages[i].level>2) then
+          foliages[i].update(@(levels[foliages[i].level,0]),yandnormbokor)
+        else if tallgrass then
+          foliages[i].update(@(levels[foliages[i].level,0]),yandnormfu);
+
+//        writeln(logfile, '  i:  ' + inttostr(i));
+//        writeln(logfile,  GetTickCount);
+
+      end;
+    end;
+
+//    sw.Stop;
+//    if (sw.ElapsedMilliseconds)<>0 then
+//    writeln(logfile,  sw.ElapsedMilliseconds);
+//        if (GetTickCount-start)<>0 then
+//        writeln(logfile,  GetTickCount-start);
+end;
+
 procedure updateterrain;
 var
 volt:boolean;
@@ -1085,6 +1194,7 @@ begin
  for i:=lvlmax downto lvlmin do
   remakelvl(i);
  updateterrain;
+ tryupdatefoliage(true);
 end;
 
 procedure stepb;
@@ -1337,21 +1447,21 @@ end;
 procedure loadspecials;
 var
 i,j,n,m:integer;
-tmp:String;
+tmp,shape:String;
 height,width,offset:single;
 begin
 
  n:=stuffjson.GetNum(['foliages']);
  setlength(foliages,n);
- setlength(foliagelevels,n);
  for i:=0 to n-1 do
   begin
    height:=stuffjson.GetFloat(['foliages',i,'height']);
    width:=stuffjson.GetFloat(['foliages',i,'width']);
    offset:=stuffjson.GetFloat(['foliages',i,'offset']);
+   shape:=stuffjson.GetString(['foliages',i,'shape']);
    tmp:=stuffjson.GetString(['foliages',i,'texture']);
-   foliagelevels[i] := stuffjson.GetInt(['foliages',i,'level']);
-   foliages[i] := TFoliage.create(G_pd3ddevice,'textures/'+tmp,height,width,offset);
+   foliages[i] := TFoliage.create(G_pd3ddevice,'textures/'+tmp,width,height,offset,shape);
+   foliages[i].level := stuffjson.GetInt(['foliages',i,'level']);
   end;
 
  n:=stuffjson.GetNum(['sounds']);
@@ -1518,7 +1628,7 @@ begin
  setlength(ojjektumarr,length(ojjektumnevek));
  for i:=0 to high(ojjektumnevek) do
   begin
-   laststate:= 'Loading object '''+ojjektumnevek[i]+'''';
+   laststate:= lang[84]+ ''''+ojjektumnevek[i]+'''';
    menu.DrawLoadScreen((40*i) div length(ojjektumnevek));
    ojjektumarr[i]:=nil;
    ojjektumarr[i]:=T3dojjektum.Create('data/objects/'+ojjektumnevek[i],g_pd3ddevice,ojjektumscalek[i].x,ojjektumscalek[i].y,ojjektumhv[i],ojjektumflags[i]);
@@ -1534,7 +1644,16 @@ begin
      exit;
     end
     else
-     writeln(logfile,'Loaded object '''+ojjektumnevek[i]+'''');
+    begin
+      if i=0 then
+        write(logfile,'Loaded object ');
+      if i>0 then
+        write(logfile,', ');
+      write(logfile,''''+ojjektumnevek[i]+'''');
+      if i=high(ojjektumnevek) then
+        writeln(logfile,'');
+    end;
+
 
   end;
 
@@ -1554,7 +1673,7 @@ begin
     dnsrad:=ojjektumarr[panthepulet].rad*1.4;
   end
   else
-  begin //hogy legalább ne látszódjon a modokban
+  begin //hogy legalább ne látszódjon a modokban //így utólag nézve ez egy trágya megoldás
     dnsvec:=d3dxvector3(0,-100,0);
     pantheonPos:=d3dxvector3(0,-100,0);
     dnsrad:=1;
@@ -1612,33 +1731,51 @@ begin
 end;
 
 function initmaptex:HRESULT;
-type
- array4ofbyte = array [0..3] of byte;
 var
 i,j,k,l:integer;
 l1c,l2c,l3c:TD3DXColor;
 lr:TD3DLockedrect;
 pbits:pointer;
 xx,yy,zz:single;
-tmp:single;
+tmp,tmp2:single;
 n:TD3DXVector3;
 fucol,hocol,nhcol,wacol,kocol:TD3DXColor;
 cmap1:array of array4ofbyte;
-tmprow:array [0..1023] of array4ofbyte;
+tmprow:array [0..CMAP_SIZE-1] of array4ofbyte;
 col,lght1,lght2,ossz,veg:TD3DXColor;
 l1,l2:TD3DXVector3;
 tmptex:IDIrect3DTexture9;
+//indev
+//start,stop,elapsed :integer;
+tmp3:single;
+felpixel:single;
+
+red:single;
+
+waterstart:single;
+waterend:single;
+sandstart:single;
+sandpeak:single;
+sandend:single;
+grassstart:single;
+grasspeak:single;
+grassend:single;
+gravelstart:single;
+gravelpeak:single;
+gravelend:single;
+stonestart:single;
+stoneend:single;
 begin
 
- setlength(cmap1,1024*1024);
+ setlength(cmap1,CMAP_SIZE*CMAP_SIZE);
 
  Result:= E_FAIL;
  tmptex:=nil;
- if Failed(g_pd3dDevice.CreateTexture( 1024, 1024, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, tmptex , nil)) then Exit;
- if Failed(g_pd3dDevice.CreateTexture( 1024, 1024, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt1, nil)) then Exit;
- if Failed(g_pd3dDevice.CreateTexture( 1024, 1024, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt2, nil)) then Exit;
+ if Failed(g_pd3dDevice.CreateTexture( CMAP_SIZE, CMAP_SIZE, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, tmptex , nil)) then Exit;
+ if Failed(g_pd3dDevice.CreateTexture( CMAP_SIZE, CMAP_SIZE, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt1, nil)) then Exit; //régi vagy új terep
+ if Failed(g_pd3dDevice.CreateTexture( CMAP_SIZE, CMAP_SIZE, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, mt2, nil)) then Exit; //minimap
 
- ;
+ 
  fucol:=D3DXColorFromDWord(stuffjson.GetInt(['color_grass']));
  fucol.a:=1;   //0
  kocol:=D3DXColorFromDWord(stuffjson.GetInt(['color_rock']));
@@ -1649,149 +1786,262 @@ begin
  nhcol.a:=1;   //0
  wacol:=D3DXColorFromDWord(stuffjson.GetInt(['color_water']));
  wacol.a:=1;   //1
+                               //TODO ezekre már van változó
 
 
 
-
+ 
  l1c:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_sun']));
  l2c:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_shadow']));
  l3c:=D3DXColorFromDWORD(stuffjson.GetInt(['light','color_ambient']));
 
- //D3DXColor(116/255,178/255,67/255,0);
-// kocol:=D3DXColor(110/255,110/255,108/255,1);
-// hocol:= D3DXColor(250/255,200/255,200/255,0);
- if fileexists('data\cmap.png') then
- begin
-  LTFF(g_pd3dDevice, 'data\cmap.png', mt1);
- end
- else
- begin
+ 
+   if (useoldterrain or (g_pEffect<>nil)) and fileexists(CMAP1_PATH) then
+   begin
+    LTFF(g_pd3dDevice, CMAP1_PATH, mt1,TEXFLAG_FIXRES);
+   end
+   else if (not fileexists(CMAP2_PATH)) or (not fileexists(CMAP1_PATH)) then
+   begin
 
-  laststate:= 'Generating minimaps ';
+   laststate:= 'Generating terrain';
    menu.DrawLoadScreen(75);
 
- l1:= D3DXVector3(-1,1.0,0);
- D3DXVec3Normalize(l1, l1);
- l2:=l1; l2.x:=-l2.x;
+     //////
+   l1:= D3DXVector3(-1,1.0,0);
+   D3DXVec3Normalize(l1, l1);
+   l2:=l1; l2.x:=-l2.x;
 
- for i:=0 to 1023 do
-  for j:=0 to 1023 do
-  begin
-   xx:=(j-512);
-   zz:=(i-512);
-   yandnorm(xx,yy,zz,n,2);
+   for i:=0 to CMAP_SIZE-1 do
+   for j:=0 to CMAP_SIZE-1 do
+    begin
+     xx:=(j-CMAP_SIZE/2 +1/2);
+     zz:=(i-CMAP_SIZE/2 +1/2);
+     yandnorm(xx,yy,zz,n,2048/CMAP_SIZE);
 
-   for k:=0 to high(ojjektumarr) do
-    for l:=0 to ojjektumarr[k].hvszam-1 do
-     if ojjektumarr[k].raytestbol(D3DXVector3(xx,yy,zz),D3DXVector3(xx-ojjektumarr[k].rad*2,yy+ojjektumarr[k].rad*2,zz),l,COLLISION_SHADOW) then
+     for k:=0 to high(ojjektumarr) do
+      for l:=0 to ojjektumarr[k].hvszam-1 do
+       if ojjektumarr[k].raytestbol(D3DXVector3(xx,yy,zz),D3DXVector3(xx-ojjektumarr[k].rad*2,yy+ojjektumarr[k].rad*2,zz),l,COLLISION_SHADOW) then
+       begin
+        n:=D3DXVector3(sqrt(2),min(n.y,sqrt(2)),0);
+        break;
+       end;
+   //zz:=zz+(round(xx)mod 2)*scalfac/2;
+     col:=fucol;
+     if yy<0 then yy:=0;
+     if yy<15 then col:=hocol;
+     if (n.y)<0.83 then
      begin
-      n:=D3DXVector3(sqrt(2),min(n.y,sqrt(2)),0);
-      break;
+      D3DXColorScale(col,kocol,random(10)/100+0.9);
      end;
- //zz:=zz+(round(xx)mod 2)*scalfac/2;
-   col:=fucol;
-   if yy<0 then yy:=0;
-   if yy<15 then col:=hocol;
-   if (n.y)<0.83 then
-   begin
-    D3DXColorScale(col,kocol,random(10)/100+0.9);
+     if yy<10.5 then col:=nhcol;
+     if yy<10 then D3DXColorLerp(col,wacol,nhcol,yy/15);
+     tmp:=D3DXVec3dot(n,l1);
+     if tmp<0 then tmp:=0;
+     D3DXColorscale(lght1,l1c,tmp);
+
+     tmp:=D3DXVec3dot(n,l2);
+     if tmp<0 then tmp:=0;
+     D3DXColorscale(lght2,l2c,tmp);
+
+     D3DXColoradD(ossz,lght1,lght2);
+     D3DXColorAdd(ossz,ossz,l3c);
+     D3DXColorModulate(veg,ossz,col);
+
+     cmap1[j*CMAP_SIZE+i,0]:=min(round(veg.b*255),255);
+     cmap1[j*CMAP_SIZE+i,1]:=min(round(veg.g*255),255);
+     cmap1[j*CMAP_SIZE+i,2]:=min(round(veg.r*255),255);
+     cmap1[j*CMAP_SIZE+i,3]:=min(round(col.a*255),255);
+    end;
+
+     if not fileexists(CMAP1_PATH) then
+     begin
+       result:=tmptex.LockRect(0, lr, nil, 0);
+       if Failed(result) then Exit;
+       for i:= 0 to CMAP_SIZE-1 do
+        begin
+          pBits := PDWORD(Integer(lr.pBits)+i*lr.Pitch);
+          for j:=0 to CMAP_SIZE-1 do
+            tmprow[j] := cmap1[j*CMAP_SIZE+i];
+          copymemory(pbits,addr(tmprow),CMAP_SIZE*4);
+        end;
+       tmptex.UnlockRect(0);
+
+       D3DXSaveTextureToFile( PChar(CMAP1_PATH),D3DXIFF_PNG,tmptex,nil);
+
+       g_pd3ddevice.UpdateTexture(tmptex,mt1);
+     end;
    end;
-   if yy<10.5 then col:=nhcol;
-   if yy<10 then D3DXColorLerp(col,wacol,nhcol,yy/15);
-   tmp:=D3DXVec3dot(n,l1);
-   if tmp<0 then tmp:=0;
-   D3DXColorscale(lght1,l1c,tmp);
 
-   tmp:=D3DXVec3dot(n,l2);
-   if tmp<0 then tmp:=0;
-   D3DXColorscale(lght2,l2c,tmp);
+   //////////
 
-   D3DXColoradD(ossz,lght1,lght2);
-   D3DXColorAdd(ossz,ossz,l3c);
-   D3DXColorModulate(veg,ossz,col);
-
-   cmap1[j*1024+i,0]:=min(round(veg.b*255),255);
-   cmap1[j*1024+i,1]:=min(round(veg.g*255),255);
-   cmap1[j*1024+i,2]:=min(round(veg.r*255),255);
-   cmap1[j*1024+i,3]:=min(round(col.a*255),255);
-  end;
-
-
- result:=tmptex.LockRect(0, lr, nil, 0);
- if Failed(result) then Exit;
- for i:= 0 to 1023 do
-  begin
-    pBits := PDWORD(Integer(lr.pBits)+i*lr.Pitch);
-    for j:=0 to 1023 do
-      tmprow[j] := cmap1[j*1024+i];
-    copymemory(pbits,addr(tmprow),1024*4);
-  end;
- tmptex.UnlockRect(0);
-
- if not fileexists('data\cmap.png') then
+ if fileexists(CMAP2_PATH) then
  begin
-   D3DXSaveTextureToFile( PChar('data\cmap.png'),D3DXIFF_PNG,tmptex,nil);
- end;
-
- g_pd3ddevice.UpdateTexture(tmptex,mt1);
-
- end;
-
-
-
- // MT2/////////////////////////////////////////////////
-
- if fileexists('data\cmap2.png') then
- begin
-  LTFF(g_pd3dDevice, 'data\cmap2.png', mt2);
+  LTFF(g_pd3dDevice, CMAP2_PATH, mt2);
 
  end
  else
  begin
 
-    menu.DrawLoadScreen(78);
+   laststate:= 'Generating minimap';
+   menu.DrawLoadScreen(78);
 
- for i:=0 to 1023 do
-  for j:=0 to 1023 do
-  begin
-   xx:=j-512;
-   zz:=i-512;
-   yandnorm(xx,yy,zz,n,2);
+   for i:=0 to CMAP_SIZE-1 do
+   for j:=0 to CMAP_SIZE-1 do
+   begin
+   xx:=(j-CMAP_SIZE/2 +1/2);
+   zz:=(i-CMAP_SIZE/2 +1/2);
+   yandnorm(xx,yy,zz,n,2048/CMAP_SIZE);
    for k:=0 to high(ojjektumnevek) do
     for l:=0 to ojjektumarr[k].hvszam-1 do
      if ojjektumarr[k].raytestbol(D3DXVector3(xx,yy,zz),D3DXVector3(xx,yy+ojjektumarr[k].rad*2,zz),l,COLLISION_SOLID) then
      begin
      // n:=ojjektumarr[k].raytest(D3DXVector3(xx,yy+ojjektumarr[k].rad*2,zz),D3DXVector3(xx,yy,zz),l);
      //  yy:=(n.y-yy)/3;
-      cmap1[j*1024+i,1]:=255;//round(yy*255);
-      cmap1[j*1024+i,0]:=255;//-$FF and round(yy*255);
-      cmap1[j*1024+i,2]:=255;
-      cmap1[j*1024+i,3]:=255;
+      cmap1[j*CMAP_SIZE+i,1]:=255;//round(yy*255);
+      cmap1[j*CMAP_SIZE+i,0]:=255;//-$FF and round(yy*255);
+      cmap1[j*CMAP_SIZE+i,2]:=255;
+      cmap1[j*CMAP_SIZE+i,3]:=255;
       break;
      end;
    end;
 
 
-
-
  result:=tmptex.LockRect(0, lr, nil, 0);
  if Failed(result) then Exit;
- for i:= 0 to 1023 do
+ for i:= 0 to CMAP_SIZE-1 do
   begin
     pBits := PDWORD(Integer(lr.pBits)+i*lr.Pitch);
-    for j:=0 to 1023 do
-      tmprow[j] := cmap1[j*1024+i];
-    copymemory(pbits,addr(tmprow),1024*4);
+    for j:=0 to CMAP_SIZE-1 do
+      tmprow[j] := cmap1[j*CMAP_SIZE+i];
+    copymemory(pbits,addr(tmprow),CMAP_SIZE*4);
   end;
  tmptex.UnlockRect(0);
 
- if not fileexists('data\cmap2.png') then
- begin
-   D3DXSaveTextureToFile( PChar('data\cmap2.png'),D3DXIFF_PNG,tmptex,nil);
- end;
+ D3DXSaveTextureToFile( PChar(CMAP2_PATH),D3DXIFF_PNG,tmptex,nil);
 
  g_pd3ddevice.UpdateTexture(tmptex,mt2);
   end;
+///////////////////
+
+ if not useoldterrain then
+   if fileexists(CMAP3_PATH) then
+   begin
+    LTFF(g_pd3dDevice, CMAP3_PATH, mt1,TEXFLAG_FIXRES);
+   end
+   else
+   begin
+
+    waterstart:=0;
+    waterend:=0.1;
+    sandstart:=0.2;
+    sandpeak:=0.25;
+    sandend:=0.3;
+    grassstart:=0.4;
+    grasspeak:=0.45;
+    grassend:=0.5;
+    gravelstart:=0.6;
+    gravelpeak:=0.65;
+    gravelend:=0.7;
+    stonestart:=0.8;
+    stoneend:=0.9;
+
+  // start := GetTickCount; //indev
+   laststate:= 'Generating shader terrain';
+   menu.DrawLoadScreen(75);
+
+   l1:= D3DXVector3(-1,1.0,0);
+   D3DXVec3Normalize(l1, l1);
+   l2:=l1; l2.x:=-l2.x;
+
+   for i:=0 to CMAP_SIZE-1 do
+    for j:=0 to CMAP_SIZE-1 do
+    begin
+     xx:=(j-CMAP_SIZE/2 +1/2); //pixel offset
+     zz:=(i-CMAP_SIZE/2 +1/2);
+     yandnorm(xx,yy,zz,n,2048/CMAP_SIZE);
+
+
+   //zz:=zz+(round(xx)mod 2)*scalfac/2;
+
+     //alap színek
+     red:=grasspeak;
+  //   if yy<0 then yy:=0;
+    if (yy>18) then
+    begin
+     if ((n.y)<0.83) and ((n.y)>0.80) then //kicsit meredek
+     begin
+//      red:=stonestart*(random(10)/100+0.5);
+       red:=Lerp(stonestart,stoneend,(n.y-0.8)*100/3);
+     end;
+     if (n.y)<0.80 then red:=stonestart;
+     if (n.y)<0.75 then red:=stoneend; //nagyon meredek
+    end;
+//     if (yy<17) and (yy>=13) then red:=Lerp(sandpeak,grasspeak,clip(0,1,(yy-13)/4 +0.5*(-0.5 -0.182 + perlin.complexnoise(1,xx+2000,zz,4,1,0.5)/1.65)));
+     if (yy<16.2) and (yy>=14.62) then red:=Lerp(sandpeak,grasspeak,clip(0,1,(yy-15)/1.58 + 0.5*(-0.5 + Frac(perlin.complexnoise(1,xx+2000,zz,4,1,0.5)*300))));
+     if yy<14.62 then red:=sandpeak;                                                            //16.2 14.62
+     if (yy<11.5) and (yy>=10) then red:=Lerp(waterend,sandpeak,(yy-10)/1.5); //waterend = vizes homok peak
+     if yy<10 then red:=Lerp(waterstart,waterend,(yy-5)/5); //y=10-nél 1 legyen
+     if yy<5 then red:=waterstart;
+
+
+     //fények
+     tmp:=D3DXVec3dot(n,l1);
+     if tmp<0 then tmp:=0;
+//     D3DXColorscale(lght1,l1c,tmp);
+     tmp2 := tmp;
+
+     felpixel:=(512/CMAP_SIZE);
+
+        for k:=0 to high(ojjektumarr) do
+      for l:=0 to ojjektumarr[k].hvszam-1 do
+       if tavPointPointsq(ojjektumarr[k].holvannak[l],D3DXVector3(xx,ojjektumarr[k].holvannak[l].y,zz))<sqr(ojjektumarr[k].rad*1.6) then
+       begin
+          tmp3:=0;
+          if ojjektumarr[k].raytestbol(D3DXVector3(xx-felpixel,yy,zz-felpixel),D3DXVector3(xx-felpixel-ojjektumarr[k].rad*2,yy-felpixel+ojjektumarr[k].rad*2,zz),l,COLLISION_SHADOW) then
+          begin
+            tmp3:=tmp3+1;
+          end;
+          if ojjektumarr[k].raytestbol(D3DXVector3(xx+felpixel,yy,zz-felpixel),D3DXVector3(xx+felpixel-ojjektumarr[k].rad*2,yy-felpixel+ojjektumarr[k].rad*2,zz),l,COLLISION_SHADOW) then
+          begin
+            tmp3:=tmp3+1;
+          end;
+          if ojjektumarr[k].raytestbol(D3DXVector3(xx-felpixel,yy,zz+felpixel),D3DXVector3(xx-felpixel-ojjektumarr[k].rad*2,yy+felpixel+ojjektumarr[k].rad*2,zz),l,COLLISION_SHADOW) then
+          begin
+            tmp3:=tmp3+1;
+          end;
+          if ojjektumarr[k].raytestbol(D3DXVector3(xx+felpixel,yy,zz+felpixel),D3DXVector3(xx+felpixel-ojjektumarr[k].rad*2,yy+felpixel+ojjektumarr[k].rad*2,zz),l,COLLISION_SHADOW) then
+          begin
+            tmp3:=tmp3+1;
+          end;
+
+          tmp2:=tmp2*(1-(tmp3/4));
+          if tmp2 < 0 then tmp2:=0;
+        break;
+       end;
+
+
+     cmap1[j*CMAP_SIZE+i,0]:=0;
+     cmap1[j*CMAP_SIZE+i,1]:=min(round(tmp2*255),255);
+     cmap1[j*CMAP_SIZE+i,2]:=min(round(red*255),255);
+     cmap1[j*CMAP_SIZE+i,3]:=255;
+    end;
+
+
+   result:=tmptex.LockRect(0, lr, nil, 0);
+   if Failed(result) then Exit;
+   for i:= 0 to CMAP_SIZE-1 do
+    begin
+      pBits := PDWORD(Integer(lr.pBits)+i*lr.Pitch);
+      for j:=0 to CMAP_SIZE-1 do
+        tmprow[j] := cmap1[j*CMAP_SIZE+i];
+      copymemory(pbits,addr(tmprow),CMAP_SIZE*4);
+    end;
+   tmptex.UnlockRect(0);
+
+   D3DXSaveTextureToFile( PChar(CMAP3_PATH),D3DXIFF_PNG,tmptex,nil);
+
+   g_pd3ddevice.UpdateTexture(tmptex,mt1);
+   end;
 
  tmptex:=nil;
  Result:= S_OK;
@@ -1955,33 +2205,202 @@ end;
 
 function fegyvernev(mi:byte):string;
 begin
-case mi of
-  FEGYV_M4A1:result:='M4';
-  FEGYV_M82A1:result:='M82';
-  FEGYV_LAW:result:='LAW';
-  FEGYV_MPG:result:='MPG';
-  FEGYV_QUAD:result:='QUAD';
-  FEGYV_NOOB:result:='NOOB';
-  FEGYV_X72:result:='X72';
-  FEGYV_MP5A3:result:='MP5';
+  case mi of
+    FEGYV_M4A1:result:='M4A1';
+    FEGYV_M82A1:result:='M82A1';
+    FEGYV_LAW:result:='LAW';
+    FEGYV_MPG:result:='MPG';
+    FEGYV_QUAD:result:='QUAD';
+    FEGYV_NOOB:result:='NOOB';
+    FEGYV_X72:result:='X72';
+    FEGYV_MP5A3:result:='MP5';
+    FEGYV_BM3:result:='BM3';
+    FEGYV_HPL:result:='HPL';
   
-  FEGYV_H31_G:result:='SW1';
-  FEGYV_H31_T:result:='SW1';
-else
-result:='WTF';
+    FEGYV_H31_G:result:='SW1';
+    FEGYV_H31_T:result:='SW1';
+  else
+  result:='WTF';
+  end;
 end;
 
+
+procedure setDefaults;
+begin
+  menufi[MI_DETAIL].elx:=DETAIL_MAX/DETAIL_MAX;
+  menufi[MI_EFFECTS].elx:=POSTPROC_SNIPER/POSTPROC_MAX;
+  menufi[MI_WATER].elx:=WATER_MAX/WATER_MAX;
+  opt_detail:=DETAIL_MAX;
+  opt_postproc:=POSTPROC_SNIPER;
+  opt_water:=2;
+  opt_particle:=2;
+  opt_rain:=true;
+  opt_motionblur:=false;
+  png_screenshot:=false;
+  opt_taunts:=true;
+  opt_radar:=true;
+  opt_nochat:=false;
+  opt_zonename:=false;
+  opt_tips:=true;
+  savepw:=false;
+  mouseacc:=true;
+  mp3ambient:=false;
+  mp3action:=false;
+  mp3car:=true;
+  myfejcucc:=random(stuffjson.GetNum(['hats']));
+  tallgrass:=true;
+  opt_imposters:=false;
+  menufi[MI_HDR].elx:=0.5; // hdrpref 0-1
+  dobulletholes:=true;
+  domuzzleflash:=true;
+  opt_greyscale:=true;
+  mouseInvX:=1;
+  mouseInvY:=1;
 end;
 
-//-----------------------------------------------------------------------------
-// Name: InitGeometry()
-// Desc: Creates the scene geometry
-//-----------------------------------------------------------------------------
+
+procedure crunchSettings;
+var
+  fil2:file of single;
+  t1:single;
+begin
+
+ if fileexists('data\cfg\misc.cfg') then
+ begin
+ try
+  assignfile(fil2,'data\cfg\misc.cfg');
+  reset(fil2);
+  read(fil2,menufi[MI_MOUSE_SENS].elx);
+  read(fil2,menufi[MI_VOL].elx);
+  read(fil2,menufi[MI_MP3_VOL].elx);
+
+  read(fil2,t1);
+  
+  myfejcucc:=round(t1);
+  if (myfejcucc>stuffjson.GetNum(['hats'])-1) or (myfejcucc<0) then myfejcucc:=0;
+
+  read(fil2,t1);
+  opt_detail:=round(t1);
+  read(fil2,t1);
+  opt_postproc:=round(t1);
+  read(fil2,t1);
+  opt_water:=round(t1);
+  read(fil2,t1);
+  opt_particle:=round(t1);
+  
+  menufi[MI_DETAIL].elx:=opt_detail/DETAIL_MAX;
+  menufi[MI_EFFECTS].elx:=opt_postproc/POSTPROC_MAX;
+  menufi[MI_WATER].elx:=opt_water/WATER_MAX;
+  menufi[MI_PARTICLE].elx:=opt_particle/PARTICLE_MAX;
+
+
+  read(fil2,t1);
+  opt_rain:=t1>0.5;
+
+  read(fil2,t1);
+  opt_motionblur:=t1>0.5;
+
+  read(fil2,t1);
+  opt_taunts:=t1>0.5;
+
+  read(fil2,t1);
+  mouseacc:=t1>0.5;
+
+  read(fil2,t1);
+  mp3ambient:=t1>0.5;
+  read(fil2,t1);
+  mp3action:=t1>0.5;
+  read(fil2,t1);
+  mp3car:=t1>0.5;
+
+
+  read(fil2,t1);
+  png_screenshot:=t1>0.5;
+
+  read(fil2,t1);
+  opt_radar:=t1>0.5;
+
+  read(fil2,t1);
+  opt_nochat:=t1>0.5;
+
+  read(fil2,t1);
+  opt_zonename:=t1>0.5;
+
+  read(fil2,t1);
+  opt_tips:=t1>0.5;
+
+  read(fil2,t1);
+  savepw:=t1>0.5;
+  if savepw then
+  begin
+    menufi[MI_REGISTERED].clicked:=true;
+    lasthash:=decodehash(lasthash);
+  end;
+
+  read(fil2,t1);
+  tallgrass:=t1>0.5;
+
+  read(fil2,t1);
+  opt_imposters:=t1>0.5;
+
+  read(fil2,t1);
+  hdrpref:=t1;
+  hdrpref:=clip(0,1,hdrpref);
+  menufi[MI_HDR].elx:=hdrpref;
+
+  read(fil2,t1);
+  dobulletholes:=t1>0.5;
+
+  read(fil2,t1);
+  domuzzleflash:=t1>0.5;
+
+  read(fil2,t1);
+  opt_greyscale:=t1>0.5;
+
+  read(fil2,t1);
+  mouseInvX:=round(t1);
+
+  read(fil2,t1);
+  mouseInvY:=round(t1);
+
+  closefile(fil2);
+
+   except
+     logerror('misc.cfg was broken, ignoring');
+     setDefaults;
+   end
+ end
+ else
+ begin
+   setDefaults;
+ end;
+
+  if (g_peffect<>nil) then
+  begin
+    if FAILED(g_peffect.SetTechnique('Shine')) then
+      g_peffect:=nil;
+  end;
+
+ if g_pEffect=nil then
+ begin
+  opt_detail:=0;
+  if opt_postproc>POSTPROC_LASTNONSHADER then
+   opt_postproc:=POSTPROC_LASTNONSHADER;
+ end;
+
+ if not enableeffects then
+ begin
+  opt_postproc:=0;
+ end;
+end;
+
+
+
 function InitializeAll: HRESULT;
 var
   pIndices:PWordArray;
   indmost:integer;
-  i,j,x,y:integer;
+  i,j,k,x,y:integer;
   tempmesh:ID3DXMesh;
   tempd3dbuf:ID3DXBuffer;
   vmi:string;
@@ -1991,11 +2410,8 @@ var
   cloud_speed:single;
   cloud_color:longword;
   mati:TMaterial;
-const
-  Effect_offset:array [0..11] of TD3DXVector2 =
-    ((x:-0.015;y:-0.015),(x:-0.01;y:-0.01),(x:-0.005;y:-0.005),(x: 0.015;y:-0.015),(x: 0.01;y:-0.01),(x: 0.005;y:-0.005),
-     (x:-0.015;y: 0.015),(x:-0.01;y: 0.01),(x:-0.005;y: 0.005),(x: 0.015;y: 0.015),(x:-0.01;y: 0.01),(x: 0.005;y: 0.005));
-  Effect_Szorzo:array [0..11] of single =(0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5);
+  tmpbol:boolean;
+  tmpint:integer;
 label
 visszobj,visszfegyv;
 begin
@@ -2003,6 +2419,10 @@ begin
   Result:= E_FAIL;
   enableeffects:=true;
   laststate:='Initializing';
+
+  sundir:=D3DXVector3(-1,1.0,0);
+
+  vanLM:=(texture_res>=TEXTURE_MED);
 
   hoszin:=stuffjson.GetInt(['color_sand']) and $FFFFFF;
   nhszin:=stuffjson.GetInt(['color_wet_sand']) and $FFFFFF;
@@ -2014,54 +2434,57 @@ begin
   gunszin:=stuffjson.GetInt(['color_gun']);
   techszin:=stuffjson.GetInt(['color_tech']);
 
-  setlength(weapons,7);   //minden 0 indexnél üres, mert idióta vagyok
-  for i := 1 to 4 do
+  setlength(weapons,6);   //minden 0 indexnél üres, mert idióta vagyok
+  for i := 1 to 5 do
   begin
-    setlength(weapons[i].col,10);
+    setlength(weapons[i].col,10);      //getnum meg faszom...
     for j := 1 to 9 do
     begin
       weapons[i].col[j]:=stuffjson.GetInt(['weapon',fegyvernev(i+127),'color',IntToStr(j)]);
     end;
   end;
-  //4 lol
-  setlength(weapons[i].col,2);
-  weapons[i].col[0]:=stuffjson.GetInt(['weapon','WATER','1']); //vízbe lövünk
-  weapons[i].col[1]:=stuffjson.GetInt(['weapon','WATER','2']);
-  inc(i);
-  setlength(weapons[i].col,1);
-  weapons[i].col[0]:=stuffjson.GetInt(['weapon','DUST']);
+
+  water1col:=stuffjson.GetInt(['weapon','WATER','1']); //vízbe lövünk
+  water2col:=stuffjson.GetInt(['weapon','WATER','2']);
+  dustcol:=stuffjson.GetInt(['weapon','DUST']);
 
 
-  grass_dust:=stuffjson.GetInt(['color_grass_dust']);
-  sand_dust:=stuffjson.GetInt(['color_sand_dust']);
-  color_mud:=stuffjson.GetInt(['color_mud']);
-  color_rainy:=stuffjson.GetInt(['fog','color_rainy']);
-  color_sunny:=stuffjson.GetInt(['fog','color_sunny']);
-  color_underwater:=stuffjson.GetInt(['fog','color_underwater']);
+  col_dust_grass:=stuffjson.GetInt(['color_grass_dust']);
+  col_dust_mud:=stuffjson.GetInt(['color_mud_dust']);
+  col_dust_sand:=stuffjson.GetInt(['color_sand_dust']);
+  col_mud:=stuffjson.GetInt(['color_mud']);
+  col_fog_rainy:=stuffjson.GetInt(['fog','color_rainy']);
+  col_fog_sunny:=stuffjson.GetInt(['fog','color_sunny']);
+  col_fog_water:=stuffjson.GetInt(['fog','color_underwater']);
   radius_rainy:=stuffjson.GetInt(['fog','radius_rainy']);
   radius_sunny:=stuffjson.GetInt(['fog','radius_sunny']);
 
-  if grass_dust=0 then grass_dust:=$FF55772D;
-  if sand_dust=0 then sand_dust:=$FFDCB9B2;
-  if color_mud=0 then color_mud:=$FF514024;
-  if color_rainy=0 then color_rainy:=$FF909090;
-  if color_sunny=0 then color_sunny:=$FFC8EBFA;
-  if color_underwater=0 then color_underwater:=$FF4CA3FF;
-  if radius_rainy=0 then color_rainy:=600;
-  if radius_sunny=0 then color_sunny:=900;
+  col_grass:=stuffjson.GetInt(['color_grass']);
+  col_sand:=stuffjson.GetInt(['color_sand']);
+  col_wetsand:=stuffjson.GetInt(['color_wet_sand']);
+  col_water:=stuffjson.GetInt(['color_water']);
+  col_stone:=stuffjson.GetInt(['color_rock']);
 
-  setlength(posrads,stuffjson.GetNum(['terrain_modifiers']));
-  for i:=0 to stuffjson.GetNum(['terrain_modifiers'])-1 do
-  with posrads[i] do
-  begin
-   posx:=stuffjson.GetFloat(['terrain_modifiers',i,'x']);
-   posy:=stuffjson.GetFloat(['terrain_modifiers',i,'y']);
-   posz:=stuffjson.GetFloat(['terrain_modifiers',i,'z']);
-   radd:=stuffjson.GetFloat(['terrain_modifiers',i,'radius']);
-   raddn:=radd+stuffjson.GetFloat(['terrain_modifiers',i,'offset']);
+  grasslevel:=stuffjson.GetFloat(['terrain','grass_level']);
+  wetsandlevel:=stuffjson.GetFloat(['terrain','wetsand_level']);
+  waterbaselevel:=stuffjson.GetFloat(['terrain','water_baselevel']);
 
-   if (raddn<=radd) then raddn := 1.5* radd;
-  end;
+  if col_dust_grass=0 then col_dust_grass:=$FF55772D;
+  if col_dust_mud=0 then col_dust_mud:=$FF514024;
+  if col_dust_sand=0 then col_dust_sand:=$FFDCB9B2;
+  if col_mud=0 then col_mud:=$FF514024;
+  if col_fog_rainy=0 then col_fog_rainy:=$FF909090;
+  if col_fog_sunny=0 then col_fog_sunny:=$FFC8EBFA;
+  if col_fog_water=0 then col_fog_water:=$FF4CA3FF;
+  if radius_rainy=0 then radius_rainy:=600;
+  if radius_sunny=0 then radius_sunny:=900;
+
+  if col_grass=0 then col_grass:=$FF7ba843;
+  if col_sand=0 then col_sand:=$FFF2CDC2;
+  if col_wetsand=0 then col_wetsand:=$FFCCA295;
+  if col_water=0 then col_water:=$FF0064FA;
+  if col_stone=0 then col_stone:=$FF6E6E6C;
+
 
   setlength(bubbles,stuffjson.GetNum(['bubbles']));
   for i:=0 to stuffjson.GetNum(['bubbles'])-1 do
@@ -2123,9 +2546,63 @@ begin
   end;
   writeln(logfile,'Loaded stickmen');flush(logfile);
 
+  setlength(posrads,0);
+  tmpint:=0;
+  for i:=0 to stuffjson.GetNum(['terrain_modifiers'])-1 do //normális modifierek
+  begin
+    tmpbol:=stuffjson.GetBool(['terrain_modifiers',i,'agressive']);
+
+    if not tmpbol then
+    begin
+      setlength(posrads,length(posrads)+1);
+      with posrads[tmpint] do
+      begin
+       posx:=stuffjson.GetFloat(['terrain_modifiers',i,'x']);
+       posy:=stuffjson.GetFloat(['terrain_modifiers',i,'y']);
+       posz:=stuffjson.GetFloat(['terrain_modifiers',i,'z']);
+       radd:=stuffjson.GetFloat(['terrain_modifiers',i,'radius']);
+       raddn:=radd+stuffjson.GetFloat(['terrain_modifiers',i,'offset']);
+       {$IFDEF terraineditor}
+       individual := true;
+       name := stuffjson.GetString(['terrain_modifiers',i,'name']);
+       {$ENDIF}
+       if (raddn<=radd) then raddn := 1.5* radd;
+      end;
+      inc(tmpint);
+    end;
+  end;
+
   if not loadfegyv then exit;
-  if not loadojjektumok then exit;
+  if not loadojjektumok then exit;  //épületek alatti modifierek
   tempmesh:=nil;
+
+
+  j:=high(posrads);
+  tmpint:=1;
+  for i:=0 to stuffjson.GetNum(['terrain_modifiers'])-1 do //agresszív modifierek
+  begin
+    tmpbol:=stuffjson.GetBool(['terrain_modifiers',i,'agressive']);
+
+    if tmpbol then
+    begin
+      setlength(posrads,length(posrads)+1);
+      with posrads[j+tmpint] do
+      begin
+       posx:=stuffjson.GetFloat(['terrain_modifiers',i,'x']);
+       posy:=stuffjson.GetFloat(['terrain_modifiers',i,'y']);
+       posz:=stuffjson.GetFloat(['terrain_modifiers',i,'z']);
+       radd:=stuffjson.GetFloat(['terrain_modifiers',i,'radius']);
+       raddn:=radd+stuffjson.GetFloat(['terrain_modifiers',i,'offset']);
+       {$IFDEF terraineditor}
+       individual := true;
+       name := stuffjson.GetString(['terrain_modifiers',i,'name']);
+       {$ENDIF}
+       if (raddn<=radd) then raddn := 1.5* radd;
+      end;
+      inc(tmpint);
+    end;
+  end;
+
 
   //props
   laststate:='Loading the props';
@@ -2191,7 +2668,7 @@ begin
   writeln(logfile,'');
   writeln(logfile,'Loaded props');
 
-  laststate:='Loading the island';
+  laststate:=lang[86];
   loadspecials;
     menu.DrawLoadScreen(50);
   {$IFDEF panthihogomb}
@@ -2204,12 +2681,55 @@ begin
 
   bubbleeffect;
 
-  if not LTFF(g_pd3dDevice, 'data\textures\grass.jpg',futex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\textures\gnoise.jpg',noise2tex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\textures\hnoise.jpg',hnoise) then exit;
-  if not LTFF(g_pd3dDevice, 'data\textures\rock_01.jpg',kotex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\textures\rnoise.jpg',noisetex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\textures\sand.jpg',homtex) then exit;
+  addfiletoChecksum('data/effects.fx');
+  if  devicecaps.PixelShaderVersion>=D3DPS_VERSION(2,0) then
+  begin
+
+   result:=D3DXCreateEffectFromFile(g_pd3dDevice, 'data/effects.fx', nil, nil, 0, nil, g_pEffect, @tempd3dbuf);
+   if Failed(result)
+   then
+   begin
+    vmi:=string(Pchar(tempd3dbuf.GetBufferPointer));
+    writeln(logfile,'Not using shaders ('+vmi+')');
+    useoldterrain := true;
+   end
+   else
+   begin
+    //g_pEffect.SetValue('g_Offset', @Effect_offset, sizeof(Effect_offset));
+    writeln(logfile,'Shaders initialized');
+   end;
+  end
+  else
+  begin
+    writeln(logfile,'No shader 2.0 on device');
+    useoldterrain := true;
+  end;
+
+  Result:= E_FAIL;
+
+  if useoldterrain then
+  begin
+    if not LTFF(g_pd3dDevice, 'data\textures\grass_02.jpg',futex,TEXFLAG_COLOR) then exit;
+    if not LTFF(g_pd3dDevice, 'data\textures\gnoise.jpg',noise2tex) then exit;
+    if not LTFF(g_pd3dDevice, 'data\textures\hnoise.jpg',hnoise) then exit;
+    if not LTFF(g_pd3dDevice, 'data\textures\sand.jpg',homtex,TEXFLAG_COLOR) then exit;
+    if not LTFF(g_pd3dDevice, 'data\textures\rock_01.jpg',kotex,TEXFLAG_COLOR) then exit;
+    if not LTFF(g_pd3dDevice, 'data\textures\rnoise.jpg',noisetex) then exit;
+    if not LTFF(g_pd3dDevice, 'data\textures\gnoise_02.jpg',noise3) then exit;
+
+  end
+  else
+  begin
+    if not LTFF(g_pd3dDevice, 'data\textures\grass.jpg',futex,TEXFLAG_COLOR) then exit;
+    if not LTFF(g_pd3dDevice, 'data\textures\shadernoise.jpg',hnoise) then exit; //shaderes terepen fûre és homokra
+    if not LTFF(g_pd3dDevice, 'data\textures\sand_02.jpg',homtex,TEXFLAG_COLOR) then exit;
+    if not LTFF(g_pd3dDevice, 'data\textures\rock_12.jpg',kotex,TEXFLAG_COLOR) then exit;
+  end;
+
+//  if not LTFF(g_pd3dDevice, 'data\textures\rock_13.jpg',kotex2,TEXFLAG_COLOR) then exit;
+//  if not LTFF(g_pd3dDevice, 'data\textures\rock_detail.jpg',kotex3,TEXFLAG_COLOR) then exit;
+
+
     menu.DrawLoadScreen(55);
   writeln(logfile,'Loaded ground textures');flush(logfile);
   if not LTFF(g_pd3dDevice, 'data\textures\water.jpg', viztex) then exit;
@@ -2233,7 +2753,7 @@ begin
   if tempmesh=nil then exit;if FAILED(tempmesh.CloneMeshFVF(0,D3DFVF_XYZ or D3DFVF_NORMAL or D3DFVF_TEX1,g_pd3ddevice,g_pkerekmesh)) then exit;
   if tempmesh<>nil then tempmesh:=nil;
   normalizemesh(G_pkerekmesh);
-  normalizemesh(g_pautomesh);
+  normalizemesh(g_pautomesh,false);
   normalizemesh(g_pantigravmesh);
 
   if FAILED(D3DXLoadMeshFromX('data\models\rocket003.x',0,g_pd3ddevice,nil,nil, nil,nil,tempmesh)) then Exit;
@@ -2249,9 +2769,9 @@ begin
 
   tegla:=Tauto.create(d3dxvector3(1,0,0),d3dxvector3(0,1,0),d3dxvector3(0,0,1),d3dxvector3zero,d3dxvector3zero,0.9,0.99,hummkerekarr,1,0.1,0.03,0.2,0.3,0.2,0,0,false);
   tegla.disabled:=true;
-  if not LTFF(g_pd3dDevice, 'data\textures\hummer.jpg', cartex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\textures\antigrav.jpg', antigravtex) then exit;
-  if not LTFF(g_pd3dDevice, 'data\textures\kerektex.jpg', kerektex) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\hummer.jpg', cartex,TEXFLAG_COLOR) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\antigrav.jpg', antigravtex,TEXFLAG_COLOR) then exit;
+  if not LTFF(g_pd3dDevice, 'data\textures\kerektex.jpg', kerektex,TEXFLAG_COLOR) then exit;
   writeln(logfile,'Loaded vehicles');
 
   result:=D3DXCreateTexture(g_pd3ddevice,SCWidth,SCheight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,effecttexture);
@@ -2282,32 +2802,17 @@ begin
   g_pd3ddevice.CreateRenderTarget(SCwidth,SCheight,D3DFMT_X8R8G8B8,D3DMULTISAMPLE_NONE,0,false,downsamplesurf,nil);
 
 
+  FillupMenu;
+  crunchSettings; //tyúklife
 
-    addfiletoChecksum('data/effects.fx');
-  if  devicecaps.PixelShaderVersion>=D3DPS_VERSION(2,0) then
-  begin
-
-   result:=D3DXCreateEffectFromFile(g_pd3dDevice, 'data/effects.fx', nil, nil, 0, nil, g_pEffect, @tempd3dbuf);
-   if Failed(result)
-   then
-   begin
-    vmi:=string(Pchar(tempd3dbuf.GetBufferPointer));
-    writeln(logfile,'Not using shaders ('+vmi+')');
-   end
-   else
-   begin
-    g_pEffect.SetValue('g_Offset', @Effect_offset, sizeof(Effect_offset));
-    writeln(logfile,'Shaders initialized');
-   end;
-  end
-  else
-    writeln(logfile,'No shader 2.0 on device');
-
-
-  Result:= E_FAIL;
 
   ParticleSystem_Init(g_pd3ddevice);
+
+  if dobulletholes then
+    DecalSystem_Init(g_pd3ddevice);
   // Create the buffers.
+
+  //specialis selymes fu LEGACY
  { if legyenfu then
    if FAILED(g_pd3dDevice.CreateVertexBuffer((lvlsizp*lvlsizp*(4)+100)*SizeOf(TCustomVertex),
                                             D3DUSAGE_WRITEONLY+D3DUSAGE_DYNAMIC, D3DFVF_CUSTOMVERTEX,
@@ -2318,7 +2823,7 @@ begin
 
   if FAILED(g_pd3dDevice.CreateVertexBuffer((lvlsizp*lvlsizp*(lvlmax-lvlmin+1)+8*200)*SizeOf(TCustomVertex),
                                             D3DUSAGE_WRITEONLY, D3DFVF_CUSTOMVERTEX,
-                                            D3DPOOL_MANAGED, g_pVB, nil))
+                                            D3DPOOL_MANAGED, g_pVB, nil))            //D3DPOOL_MANAGED
   then Exit;
 //  g_pd3ddevice.EvictManagedResources;
   //use32bitindices:=false;
@@ -2418,7 +2923,7 @@ begin
     menu.lowermenutext:='Music: Unreal Superhero III Symphonic version by Jaakko Takalo';
  
   writeln(logfile,'Initialized buffers');flush(logfile);
-  addfiletochecksum('data/textures/bush256.png');
+//  addfiletochecksum('data/textures/bush256.png');
  //{$IFDEF winter}
  // bokrok:=TFoliage.create(G_pd3ddevice,'textures/bush256.png',1,-1.2,1.2);
  //{$ELSE}
@@ -2534,7 +3039,7 @@ end;
 
 procedure SetupMuksmatr(mi:integer);
 var
-  matWorld,matWorld2: TD3DMatrix;
+  matWorld,matWorld2,matb:TD3DMatrix;
   pos:TD3DVector;
 begin
 
@@ -2546,19 +3051,29 @@ begin
     pos:=ppl[mi].pos.pos;
    //pos:=pplpos[mi].pos;
    D3DXMatrixRotationY(matWorld2,ppl[mi].pos.irany+d3dx_pi);
+   D3DXMatrixRotationX(matb,clipszogybajusz(ppl[mi].pos.irany2));
+
   end
   else
     MessageBox(0,'Benthagyott AI kód','Hiba',0);
+
+   D3DXMatrixMultiply(matb,matb,matWorld2);
+
    D3DXMatrixTranslation(matWorld,pos.x,pos.y,pos.z);
-   D3DXMatrixMultiply(matWorld,matWorld2,matWorld);
-   mat_World:=matworld;
+   D3DXMatrixMultiply(matWorld2,matWorld2,matWorld);
+
+   D3DXMatrixTranslation(matWorld,pos.x,pos.y,pos.z);
+   D3DXMatrixMultiply(matb,matb,matWorld);
+
+   mat_World:=matWorld2;
+   mat_bajusz:=matb;
   // g_pd3dDevice.SetTransform(D3DTS_WORLD, matWorld);
 end;
 
 
 procedure SetupFegyvmatr(mi:integer;iscsip:boolean);
 var
-  matWorld,matWorld2: TD3DMatrix;
+  matWorld,matWorld2,mat2: TD3DMatrix;
   pos:TD3DVector;
 begin
 
@@ -2569,12 +3084,25 @@ begin
         pos:=ppl[mi].pos.megjpos
    else
     pos:=ppl[mi].pos.pos;
+
    if (ppl[mi].pos.state and MSTAT_GUGGOL)>0 then
     pos.y:=pos.y-0.5;
    D3DXMatrixRotationY(matWorld2,ppl[mi].pos.irany+d3dx_pi);
 
+  D3DXMatrixRotationX(mat2,clipszogy(ppl[mi].pos.irany2));
+  D3DXMatrixMultiply(matWorld2,mat2,matWorld2);
+
+   if (ppl[mi].pls.fegyv=FEGYV_HPL) and not iscsip then
+    D3DXMatrixTranslation(matWorld,-0.05,0.02,-0.11)
+   else
    if (ppl[mi].pls.fegyv=FEGYV_M82A1) and iscsip then
     D3DXMatrixTranslation(matWorld,-0.05,-0.05,0.15)
+   else
+   if (ppl[mi].pls.fegyv=FEGYV_BM3) and iscsip then
+    D3DXMatrixTranslation(matWorld,-0.05,-0.05,0.06)
+   else
+   if (ppl[mi].pls.fegyv=FEGYV_BM3) and not iscsip then
+    D3DXMatrixTranslation(matWorld,-0.05,0.01,-0.08)
    else
    if (ppl[mi].pls.fegyv=FEGYV_LAW)then
     D3DXMatrixTranslation(matWorld,0.05,0,0)
@@ -2592,6 +3120,8 @@ begin
 
   D3DXMatrixMultiply(matWorld2,matWorld,matWorld2);
  // pos.x:=pos.x+0.05;
+
+
   if iscsip then
     D3DXMatrixTranslation(matWorld,pos.x,pos.y+1.2,pos.z)
   else
@@ -2635,12 +3165,13 @@ begin
   if gugg then
    D3DXMatrixTranslation(matWorld,acpx, acpy+1,acpz)
   else
-   D3DXMatrixTranslation(matWorld,acpx, acpy+1.5,acpz);
+   D3DXMatrixTranslation(matWorld,acpx, acpy+1.5,acpz); //sajt
 
   D3DXMatrixRotationY(mat,mszogx+d3dx_pi);
 
   D3DXMatrixRotationX(mat2,mszogy);
   D3DXMatrixMultiply(mat,mat2,mat);
+
   if csipo then
    D3DXMatrixTranslation(mat2,-0.1,-0.1,0.0+hatralok)
   else
@@ -2650,6 +3181,9 @@ begin
   mat2._42:=mat2._42-sin(mszogy-szogy)*0.3;
   if (myfegyv=FEGYV_MP5A3) and (not csipo) then mat2._43:=mat2._43+0.05;
   if (myfegyv=FEGYV_M4A1) and (not csipo) then mat2._43:=mat2._43+0.06;
+  if (myfegyv=FEGYV_BM3) and (not csipo) then mat2._43:=mat2._43+0.07;
+  if (myfegyv=FEGYV_BM3) and (not csipo) then mat2._43:=mat2._43+0.01;
+//  if (myfegyv=FEGYV_BM3) and (not csipo) then mat2._42:=mat2._42-(gettickcount mod 10000)/10000*0.004;
 
 
 
@@ -2756,6 +3290,7 @@ procedure SetupFegyvlights(lit:integer);
   vecDir: TD3DXVector3;
   light: TD3DLight9;
   v:single;
+  c:TD3DXColor;
 begin
   v:=lit/5;
   ZeroMemory(@light, SizeOf(TD3DLight9));
@@ -2763,13 +3298,17 @@ begin
   D3DXColorLerp(light.Diffuse,
                 D3DXColorFromDWORD(stuffjson.GetInt(['light','color_shadow'])),
                 D3DXColorFromDWORD(stuffjson.GetInt(['light','color_sun'])),v);
+
+  c:=D3DXColor(0.4,0.4,0.4,1);
+//  D3DXColorAdd(c,c,D3DXColorFromDWORD(ambientszin));
   light.Diffuse.a := 1;
+  g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, D3DXColorToDWord(c));
 
   vecDir:= D3DXVector3(1,-1.0,0);
   D3DXVec3Normalize(light.Direction, vecDir);
   light.Range := 1000.0;
   g_pd3dDevice.SetLight(0, light);
-  g_pd3dDevice.LightEnable(0, true);
+  g_pd3dDevice.LightEnable(0, true)
 end;
 
 
@@ -2807,6 +3346,27 @@ begin
   mapmode:=0;
   mapbol:=false;
   halal:=0;
+
+{$IFDEF fegyverteszt}
+
+    cpz^:=64;
+    cpx^:=130;
+    if myfegyv > 127 then
+    cpx^:=132 + random(100);
+//    cpy^:=advwove(cpx^,cpz^);
+    cpy^:=120;
+    cpox^:=cpx^;cpoy^:=cpy^;cpoz^:=cpz^;
+    invulntim:=0;
+
+    szogx:=pi/2;
+
+    if myfegyv > 127 then
+    szogx:=-(pi/2);
+
+    mszogx:=szogx;
+
+    exit;
+{$ENDIF}
 
   if multisc.state1v1 then
   begin
@@ -2904,7 +3464,9 @@ begin
       kuldd:=timegettime;
     end;
   end;
+
   updateterrain;
+  tryupdatefoliage(true);
 
   Dine.Reset;
 
@@ -3043,11 +3605,47 @@ begin
     v3:=v2; result:=false; exit;
    end;
   end;
+
+//  if result then
+//    if dobulletholes then repeat //extra precision for bullet hole decals
+//      ....
+//      if tavpointpointsq(v3,v4) < sqr(0.005) then closeenough:=true;
+//    until closeenough;
+
  result:=false;
 end;
 
 
-procedure lojjegyet(aimbot:single=-1.0; aimbot_pontatlan:single=1.0);
+
+{$IFDEF palyszerk}
+procedure saveojjektumini(hova:string);
+var
+ i,j:integer;
+ fil:Textfile;
+begin
+  DecimalSeparator:='.';
+ assignfile(fil,hova);
+ rewrite(fil);
+ for i:=0 to high(ojjektumnevek) do
+ begin
+  //ojjektumnevek:array [0..20] of string
+  //ojjektumscalek:array [0..20] of TD3DXVector2
+  //ojjektumzone:array [0..20] of string
+  //ojjektumhv:array [0..20] of array of Td3dxvector3;
+  writeln(fil,'[',ojjektumnevek[i],']');
+  writeln(fil,'scalex=',FloatToStrF(-ojjektumscalek[i].x,ffFixed,7,2));
+  writeln(fil,'scaley=',FloatToStrF( ojjektumscalek[i].y,ffFixed,7,2));
+  writeln(fil,'zone=',ojjektumzone[i]);
+  for j:=0 to ojjektumarr[i].hvszam-1 do
+  with ojjektumarr[i].holvannak[j] do
+   writeln(fil,'pos=',FloatToStrF(x,ffFixed,7,2),' ',FloatToStrF(y,ffFixed,7,2),' ',FloatToStrF(z,ffFixed,7,2));
+ end;
+
+ closefile(fil);
+end;
+{$ENDIF}
+
+procedure lojjegyet(aimbot:single=-1.0; aimbot_pontatlan:single=1.0; shoti:byte=0);
 var
 tmp:TD3DXVector3;
 hollo,v2,v1:TD3DXVector3;
@@ -3063,6 +3661,10 @@ begin
    //hollo:=D3DXVector3(0,3,0); ///BVÁÁÁÁÁÁ
 
     hollo:=D3DXVector3(0,-0.10,0);
+
+    if myfegyv=FEGYV_BM3 then
+      hollo:=D3DXVector3(0,-0.045,0);
+
     if myfegyv=FEGYV_QUAD then
      hollo.y:=0
   {  else
@@ -3071,7 +3673,21 @@ begin
 
     v1:=D3DXvector3zero;
 
-    D3DXVec3add(v2   ,hollo,D3DxVector3(0,0,-300));
+    if shoti=1 then
+      D3DXVec3add(v2   ,hollo,D3DxVector3(0,0,-300))
+    else
+    if shoti=2 then
+      D3DXVec3add(v2   ,hollo,D3DxVector3(0,0,-100))
+    else
+    if shoti=3 then
+      D3DXVec3add(v2   ,hollo,D3DxVector3(0,0,-50))
+    else
+      D3DXVec3add(v2   ,hollo,D3DxVector3(0,0,-300));
+
+    if shoti>0 then
+      v2:=vec3add2(v2,randomvec2(random(10000),shoti*1.6,shoti*1.6,0)); //3 golyó, ami messzire megy az pontosabb
+
+
     D3DXVec3add(hollo,hollo,D3DxVector3(0,0,-0.7));
 
 
@@ -3171,7 +3787,6 @@ begin
    FastVec3Normalize(tmp);
    D3DXVec3Add(v2,v2,tmp);
    randomplus(v2,random(10000),3.0);
-//   randomplus2(v2,Single((@v2)^),10.0);
   end;
 
   multip2p.Loves(hollo,v2);
@@ -3179,7 +3794,36 @@ begin
   multip2p.lovesek[high(multip2p.lovesek)].pos:=hollo;
   multip2p.lovesek[high(multip2p.lovesek)].v2:=v2;
   multip2p.lovesek[high(multip2p.lovesek)].kilotte:=-1;
+
+  mymuzzszog:=2*pi*random(10000)/10000;
+
+  if shoti=2 then
+    multip2p.lovesek[high(multip2p.lovesek)].fegyv:=FEGYV_BM3_2
+  else if shoti=3 then
+    multip2p.lovesek[high(multip2p.lovesek)].fegyv:=FEGYV_BM3_3
+  else
   multip2p.lovesek[high(multip2p.lovesek)].fegyv:=myfegyv;
+
+
+{$IFDEF admingun}
+  for j:=0 to 50 do
+  begin
+    D3DXVec3Add(v2,v2,D3DxVector3(0.1,0,0));
+    D3DXVec3Add(v2,v2,D3DxVector3(0,0,-0.1*50));
+    for i:=0 to 50 do
+    begin
+      D3DXVec3Add(v2,v2,D3DxVector3(0,0,0.1));
+
+      multip2p.Loves(hollo,v2);
+      setlength(multip2p.lovesek,length(multip2p.lovesek)+1);
+      multip2p.lovesek[high(multip2p.lovesek)].pos:=hollo;
+      multip2p.lovesek[high(multip2p.lovesek)].v2:=v2;
+      multip2p.lovesek[high(multip2p.lovesek)].kilotte:=-1;
+      multip2p.lovesek[high(multip2p.lovesek)].fegyv:=myfegyv;
+    end;
+  end;
+{$ENDIF}
+
 end;
 
 procedure lojjranged;
@@ -3378,6 +4022,8 @@ var
 begin
   for i:=high(hudMessages) downto low(hudMessages)+1 do
     hudMessages[i]:=hudMessages[i-1];
+    
+  i:=low(hudMessages);
 
   hudMessages[i]:=THUDMessage.create(input,col,f);
 end;
@@ -3407,6 +4053,10 @@ i:integer;
 label
 atugor;
 begin
+
+
+  D3DXVec3Subtract(mysebVec,d3dxvector3(cpx^,cpy^,cpz^),d3dxvector3(cpox^,cpoy^,cpoz^));
+  myseb:=D3DXVec3Length(mysebVec);
 
   if unfocused then dine.Reset
   else
@@ -3489,7 +4139,9 @@ begin
     begin
      px:=px*0.02;
      py:=py*0.02;
-      mstat:=0;
+
+     mstat:=mstat and (MSTAT_GUGGOL+MSTAT_CSIPO); //animáció kikapcs
+
      undebug_debugobject;
     end;
   cpx^:=cpx^+px;
@@ -3724,6 +4376,27 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
   if tabgorg<0 then tabgorg:=0;
   end;
 
+
+{$IFDEF fegyverteszt}
+  if random(20)=0 then
+  begin
+      dine.mouss.rgbButtons[0]:=$80;
+
+          if myfegyv < 127 then
+    szogx:=lerp(szogx + random(1000)/1000/10 - random(1000)/1000/10,pi/2,0.5);
+
+    if myfegyv > 127 then
+      szogx:=lerp(szogx + random(1000)/1000/10 - random(1000)/1000/10,-pi/2,0.5);
+      
+    mszogx:=szogx;
+    szogy:=0;
+
+//    szogx:=szogx+0.1;
+//    log(floattostr(szogx));
+  end;
+{$ENDIF}
+
+
   if not (currevent is TReactorEvent) then
   if myfegyv=FEGYV_NOOB then
   begin
@@ -3805,6 +4478,13 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
         if myfegyv=FEGYV_X72 then
           lojjegyet(5.0)
         else
+        if myfegyv=FEGYV_BM3 then
+        begin
+           lojjegyet(-1,0,1);
+           lojjegyet(-1,0,2);
+           lojjegyet(-1,0,3);
+        end
+        else
           lojjegyet;
       end;
 
@@ -3815,8 +4495,11 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
       if (myfegyv=FEGYV_QUAD)then
       lightIntensity := lightIntensity + (1.5-lightIntensity)/4;
 
-      if (myfegyv=FEGYV_M82A1) or (myfegyv=FEGYV_MPG) or (myfegyv=FEGYV_X72) then
+      if (myfegyv=FEGYV_M82A1) or (myfegyv=FEGYV_HPL)then     //TODO HPL
       lightIntensity := 0.6;
+
+      if (myfegyv=FEGYV_MPG) or (myfegyv=FEGYV_X72) then
+      lightIntensity := 0.3;
 
       if (myfegyv=FEGYV_MP5A3) or (myfegyv=FEGYV_M4A1) then
       lightIntensity := 0.17;
@@ -3824,7 +4507,20 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
 
 
       case myfegyv of
+
         FEGYV_M4A1: begin lovok:=holindul(FEGYV_M4A1); cooldown:=1/7.44; hatralok:=0.05; end;
+
+        FEGYV_BM3: begin lovok:=holindul(FEGYV_BM3); cooldown:=1/1.2; hatralok:=0.07; end;
+
+        FEGYV_HPL:
+        begin
+          lovok:=holindul(FEGYV_HPL);
+          cooldown:=1;
+          hatralok:=0.15;
+          if multip2p.medal_prof_active=1 then multip2p.medal_prof_count:=0;
+          multip2p.medal_prof_active:=1;
+        end;
+
         FEGYV_M82A1:
         begin
           lovok:=holindul(FEGYV_M82A1);
@@ -3838,7 +4534,8 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
        {$ELSE}
         FEGYV_MPG: begin lovok:=holindul(FEGYV_MPG); cooldown:=1/1.5; hatralok:=0.10; end;
        {$ENDIF}
-        FEGYV_quad: begin lovok:=holindul(FEGYV_quad); cooldown:=1/5.5; hatralok:=0.04; end;
+//        FEGYV_quad: begin lovok:=holindul(FEGYV_quad); cooldown:=1/5.5; hatralok:=0.04; end;
+        FEGYV_quad: begin lovok:=holindul(FEGYV_quad); cooldown:=1/7.93; hatralok:=0.04; end;
         FEGYV_LAW:
         begin
           LAWkesleltetes:=75;
@@ -3848,7 +4545,7 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
           playsound(26,false,1,true,D3DXVector3(campos.x+cos(szogx),campos.y,campos.z-sin(szogx)));
           setsoundproperties(26,1,1,1,true,D3DXVector3(campos.x+cos(szogx),campos.y,campos.z-sin(szogx)));
         end;
-        FEGYV_X72: begin lovok:=holindul(FEGYV_X72); cooldown:=max(x72gyrs-0.6,1/6.25); hatralok:=0.1; end;
+        FEGYV_X72: begin lovok:=holindul(FEGYV_X72); cooldown:=max(x72gyrs-0.6,1/6.25); hatralok:=0.1; end; //ha a proj. x72
         FEGYV_Mp5a3: begin lovok:=holindul(FEGYV_Mp5a3); cooldown:=1/8.32; hatralok:=0.05; end;
       end;
 
@@ -3858,15 +4555,15 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
       if myfegyv=FEGYV_QUAD then
       if gugg then
       begin
-        szogX:=szogx+(100-random(200))/20000;
-        szogY:=szogy+(100-random(200))/20000;
+        szogX:=szogx+(100-random(200))/50000;
+        szogY:=szogy+(100-random(200))/50000;
       end
       else
       begin
-        szogX:=szogx+(100-random(200))/10000;
-        szogY:=szogy+(100-random(200))/10000;
-        mszogX:=mszogx+(100-random(200))/2000;
-        mszogY:=mszogy+(100-random(200))/2000;
+        szogX:=szogx+(100-random(200))/40000;
+        szogY:=szogy+(100-random(200))/40000;
+        mszogX:=mszogx+(100-random(200))/10000;
+        mszogY:=mszogy+(100-random(200))/10000;
       end;
       {$IFNDEF Armageddon}
       if myfegyv<>FEGYV_LAW then
@@ -3885,6 +4582,21 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
           szogY:=szogy+(100-random(200))/5000;
         end;
 
+        if myfegyv=FEGYV_HPL then
+        if csipo then
+        begin
+          szogX:=szogx+(100-random(200))/500;
+          szogY:=szogy+(100-random(200))/500;
+        end
+        else
+        begin
+          mszogX:=mszogx+(100-random(200))/500;
+          mszogY:=mszogy+(100-random(200))/500;
+          szogX:=szogx+(100-random(200))/5000;
+          szogY:=szogy+(100-random(200))/5000;
+        end;
+                                                //szog:=i*p
+                                                //mszog:=i*(1-p)
         if myfegyv=FEGYV_MP5A3 then
         if csipo then
         begin
@@ -3895,11 +4607,23 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
         end
         else
         begin
-          mszogX:=mszogx+(100-random(200))*mp5ptl*mp5ptl/50000;
+          mszogX:=mszogx+(100-random(200))*mp5ptl*mp5ptl/50000;   //cubic
           mszogY:=mszogy+(100-random(200))*mp5ptl*mp5ptl/50000;
           szogX:=szogx+(100-random(200))*mp5ptl*mp5ptl/100000;
           szogY:=szogy+(100-random(200))*mp5ptl*mp5ptl/100000;
         end;
+
+      {$IFDEF admingun}
+        if myfegyv=FEGYV_M4A1 then
+        if csipo then
+        begin
+          szogX:=szogx+(1)/50;
+        end
+        else
+        begin
+          szogY:=szogy+(1)/50;
+        end;
+      {$ELSE}
 
         if myfegyv=FEGYV_M4A1 then
         if csipo then
@@ -3918,7 +4642,7 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
           szogX:=szogx+(100-random(200))/7000;
           szogY:=szogy+(100-random(200))/7000;
         end;
-
+      {$ENDIF}  
 
         if myfegyv=FEGYV_X72 then
         if csipo then
@@ -3932,6 +4656,23 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
           szogY:=szogy+(100-random(200))/10000;
          //szogX:=szogx+(100-random(200))/5000;
          //szogY:=szogy+(100-random(200))/5000;
+        end;
+
+
+        if myfegyv=FEGYV_BM3 then
+        if csipo then
+        begin
+          mszogX:=mszogx+(100-random(200))/800;
+          mszogY:=mszogy+(100-random(200))/800;
+          szogX:=szogx+(100-random(200))/1200;
+          szogY:=szogy+(100-random(200))/1200;
+        end
+        else
+        begin
+          mszogX:=mszogx+(100-random(200))/800;
+          mszogY:=mszogy+(100-random(200))/800;
+          szogX:=szogx+(100-random(200))/2000;
+          szogY:=szogy+(100-random(200))/2000;
         end;
 
       end;
@@ -3965,7 +4706,7 @@ if (iranyithato) and (length(chatmost)=0) and (halal=0) then
   dine.MouseAcceleration:=mouseacc;
   if (not csipo) and (halal=0) then
   begin
-    if myfegyv=FEGYV_M82A1 then
+    if (myfegyv=FEGYV_M82A1) or (myfegyv=FEGYV_HPL) then
     begin
      szogx:=szogx+dine.MousMovX/3000;
      szogy:=szogy-dine.MousMovy/3000;
@@ -4084,7 +4825,6 @@ begin
 
 end;
 
-
 procedure handlerobbanas(hol:TD3DXVector3;kilotte:integer;lovesfegyv:byte;x72eletkor:single);
 var
 love:integer;
@@ -4127,7 +4867,31 @@ begin
 
 end;
 
+procedure saveterrainmodel;
+var
+i,j:integer;
+objfile:Textfile;
+begin
 
+  assignfile(objfile,'terrain.obj');
+  rewrite(objfile);
+
+  writeln(objfile,'o Modell');
+ for i:=-256 to 255 do
+  for j:=-256 to 255 do
+    begin
+      writeln(objfile,'v ',i*4,' ',formatfloat('0.####',advwove(i*4,j*4)),' ',j*4);
+    end;
+
+ for i:=0 to 510 do
+  for j:=0 to 510 do
+  begin
+    writeln(objfile,'f ',i*512+j+1,' ',(i+1)*512+j+1,' ',i*512+j+2);
+    writeln(objfile,'f ',i*512+j+2,' ',(i+1)*512+j+1,' ',(i+1)*512+j+2);
+  end;
+
+  closefile(objfile);
+end;
 
 procedure undebug_registers;
 {$IFDEF undebug}
@@ -4344,10 +5108,9 @@ end;
 
 procedure DoH31_TRobbanas(mi:integer;rippl:boolean;hol:TD3DXVector3);
 var
- t,v1:TD3DXVector3;
+ t:TD3DXVector3;
  i:integer;
  alngt,tmp:single;
- avec:TD3DXVector3;
 begin
 // rad:=(h31_tproj[mi].eletkor/300+0.5);
  if not D3DXVector3Equal(hol,D3DXVector3Zero) then
@@ -4388,10 +5151,9 @@ end;
 
 procedure DoH31_GRobbanas(mi:integer;rippl:boolean;hol:TD3DXVector3);
 var
- t,v1:TD3DXVector3;
+ t:TD3DXVector3;
  i:integer;
  alngt,tmp:single;
- avec:TD3DXVector3;
 begin
 // rad:=(h31_gproj[mi].eletkor/300+0.5);
  if not D3DXVector3Equal(hol,D3DXVector3Zero) then
@@ -5182,11 +5944,11 @@ tmpmat:TD3DMatrix;
 tmpvec,tmpvec2:array [0..7] of TD3DVector;
 i,j,k,a,tmpint:integer;
 vec0,vec1:TD3DVector;
-holvagyok:TD3DVector;
 tmp:integer;
-mennyit:single;
+mennyit,wide,lightness:single;
 bol:boolean;
-tmpBool:boolean;
+label
+ brekk;
 begin
 
  d3dxmatrixinverse(tmpmat,nil,matView);
@@ -5195,27 +5957,21 @@ begin
  constraintvec(vec0);
  vec1:=vec0; vec1.y:=vec1.y+100;
 
- //TODO: ezeket elrakni innen a picsába egy másik procedureba
- mennyit:=3;
- nemlohet:=false;
+ mennyit:=3;        //ennyit bök elõre
+ wide:=1.5;
 
- if (sqr(dnsvec.x-cpx^)+sqr(dnsvec.z-cpz^))<sqr(dnsrad) then
-  nemlohet:=true;
+ if ((myfegyv = FEGYV_M82A1) or (myfegyv = FEGYV_HPL)) and not csipo then
+ begin
+ wide :=wide*0.18;
+ mennyit:=mennyit*5;
+ end;
 
-// vecx:=ojjektumarr[portalepulet].holvannak[0];
- if (cpx^>portalpos.x-13) and (cpx^<portalpos.x+9) and
-    (cpz^>portalpos.z-9) and (cpz^<portalpos.z+8) and
-    (cpy^>portalpos.y-1) and (cpy^<portalpos.y+4) then  nemlohet:=true;
-
-  if disablekill then  nemlohet:=true;
-
- if (nemlohet) and (kiszall_cooldown<1) then kiszall_cooldown:=kiszall_cooldown+0.01;
 
  for i:=0 to 1 do
  if FelesHDR then
-  tmpvec[i]:=D3DXVector3((i-1.5)*1*mennyit,(HDRscanline-3.5)*0.75*mennyit,10*mennyit)
+  tmpvec[i]:=D3DXVector3((i-1.5)*3*mennyit*wide,(HDRscanline-3.5)*0.75*mennyit*wide,10*mennyit)
  else
-  tmpvec[i]:=D3DXVector3((i+0.5)*1*mennyit,(HDRscanline-3.5)*0.75*mennyit,10*mennyit);
+  tmpvec[i]:=D3DXVector3((i+0.5)*3*mennyit*wide,(HDRscanline-3.5)*0.75*mennyit*wide,10*mennyit);
  d3dxvec3transformcoordarray(pointer(@tmpvec2),sizeof(TD3DVector),pointer(@tmpvec),sizeof(TD3DVector),tmpmat,2);
 
 
@@ -5223,18 +5979,15 @@ begin
  begin
   if felesHDR then i:=a else i:=a+2;
 
-
-
-  HDRarr[i,HDRScanline]:=128;
+  HDRarr[i,HDRScanline]:=round(255*0.6); //a 0.4 lentebbrõl a vágási határ
   for k:=0 to high(ojjektumnevek) do
    for j:=0 to ojjektumarr[k].hvszam-1 do
    begin
-   constraintvec(vec0);
-   constraintvec(tmpvec2[a]);
-    tmpint:=ojjektumarr[k].raytestlght(vec0,tmpvec2[a],j,COLLISION_SHADOW);
-    if tmpint>0 then
+     constraintvec(vec0);
+     constraintvec(tmpvec2[a]);
+     tmpint:=ojjektumarr[k].raytestlght(vec0,tmpvec2[a],j,COLLISION_SHADOW);
+      if tmpint>0 then
      HDRarr[i,HDRScanline]:=tmpint;
-
    end;
   d3dxvec3lerp(vec1,vec0,tmpvec2[a],0.5);
 //  Particlesystem_add(simpleparticlecreate(tmpvec2[a],d3dxvector3zero,0.2,0.2,HDRarr[i,HDRScanline]*2,HDRarr[i,HDRScanline],10))
@@ -5250,18 +6003,50 @@ begin
   for i:=0 to 3 do
    for j:=0 to 7 do
     tmp:=tmp+HDRarr[i,j];
-  HDRincit:=(HDRincit*5+tmp)/6;
-  {$IFDEF depthcomplexity}         
+//  HDRincit:=(HDRincit*5+tmp)/6;
+  HDRincit:=lerp(HDRincit,tmp,0.2);
+  //  4*8*255 = 8160 max
+
+  if tavpointpointsq(pantheonPos,campos)<sqr(15) then HDRincit:=8160;
+
+  {$IFDEF depthcomplexity}
   HDRincit:=5000;
   {$ENDIF}
-  if HDRincit>2000 then FAKE_HDR:=D3DTOP_MODULATE else
-  if HDRincit>1000 then FAKE_HDR:=D3DTOP_MODULATE2X else
-                        FAKE_HDR:=D3DTOP_MODULATE4X;
+
+//  lightness:=clip(0,0.4,HDRincit/8160)/0.4; // a világosakat eldobjuk
+  lightness:=clip(0.01,1,HDRincit/8160/0.5); // a világosakat eldobjuk
+
+//  hdrgoal:=1+(1-lightness)*1.8;
+//  hdrpref:=0.8; //todo csúszka izébe
+  hdrgoal:=clip(1,4,(1/lightness)*hdrpref);
+//  writechat(formatfloat('0.####',hdrgoal));
+
+  if hdrgoal>2.5 then FAKE_HDR:=D3DTOP_MODULATE4X else
+  if hdrgoal>1.25 then FAKE_HDR:=D3DTOP_MODULATE2X else
+                        FAKE_HDR:=D3DTOP_MODULATE;
+
+  if csicsahdr then FAKE_HDR:=D3DTOP_MODULATE;
+
+//  shaderhdr:=1+max(0,(2000-HDRincit)/500);
+
   HDRscanline:=0;
  end
  else
   inc(HDRscanline);
  felesHDR:=not felesHDR;
+
+
+ if csicsahdr then
+ begin
+   shaderhdr:=lerp(shaderhdr,hdrgoal,0.10);
+ end
+ else
+   case FAKE_HDR of
+     D3DTOP_MODULATE:shaderhdr:=1;
+     D3DTOP_MODULATE2X:shaderhdr:=2;
+     D3DTOP_MODULATE4X:shaderhdr:=4;
+   end;
+ 
 
  if (hanyszor and 3)=0 then
  begin
@@ -5273,7 +6058,15 @@ begin
   vec1.y:=vec1.y+50;
   for k:=0 to high(ojjektumnevek) do
    for j:=0 to ojjektumarr[k].hvszam-1 do
-    bol:=bol or ojjektumarr[k].raytestbol(vec0,vec1,j,COLLISION_SHADOW);
+   begin
+    if ojjektumarr[k].raytestbol(vec0,vec1,j,COLLISION_SHADOW) then
+    begin
+      bol:=true;
+      goto brekk;
+    end;
+   end;
+   
+  brekk:
   if bol then
   begin
    if fegylit>0 then dec(fegylit);
@@ -5283,6 +6076,7 @@ begin
 
  end;
 end;
+
 
 
 procedure pantheoneffect;
@@ -5307,7 +6101,6 @@ begin
 
  vec1:=pantheonPos;
  if tavpointpointsq(vec1,campos)>sqr(dnsrad) then exit;
- if tavpointpointsq(vec1,campos)<sqr(15) then HDRincit:=1000;
  d3dxvec3subtract(vec3,vec1,campos);
  vec3.y:=0;
  fastvec3normalize(vec3);
@@ -5413,8 +6206,9 @@ end;
 
 procedure handleparticlesystems;
 var
-n,a,b,lt,modifier:integer;
+n,a,b,lt:integer;
 atav:single;
+chance:single;
 tmp:TD3DXVector3;
 now:cardinal;
 begin
@@ -5435,34 +6229,33 @@ begin
   if (atav<sqr(vis*opt_particle)) and ((hanyszor and period)=period) and (not disabled) then
   begin
       //jöhet a rajzolás
-      if opt_particle=1 then
-      modifier:=round(random(5)/5)-1;
-      if opt_particle=2 then
-      modifier:=random(1);
-      if opt_particle=PARTICLE_MAX then
-      modifier:=1;
+      chance:=opt_particle/PARTICLE_MAX;
 
       lt := lifetime + random(rndlt);
+      if felho.coverage <= 5 then lt := lt div 2;
       case tipus of                                                                                             //todo random color
-      PSYS_SIMPLE:for b:=0 to modifier*amount do
-      begin
-      D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
-      D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
-      Particlesystem_add(Simpleparticlecreate(from,tmp,ssize,esize,scolor+rcolor*random(10),ecolor,lt,texture));
-      end;
-      PSYS_GRAVITY:for b:=0 to modifier*amount do
-      begin
-      D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
-      D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
-      Particlesystem_add(Gravityparticlecreate(from,tmp,ssize,esize,szorzo,scolor+rcolor*random(10),ecolor,lt,texture));
-      end;
-      PSYS_COOLING:for b:=0 to modifier*amount do
-      begin
-      D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
-      D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
-      Particlesystem_add(Coolingparticlecreate(from,tmp,ssize,esize,szorzo,scolor+rcolor*random(10),ecolor,lt,texture));
-      end;
-      PSYS_LIGHTNING:Particlesystem_Add_Villam(from,tmp,ssize,szorzo,amount,esize,scolor+rcolor*random(10),lifetime);
+        PSYS_SIMPLE:for b:=0 to amount do
+        begin
+          if trunc(((Random(1000)+1)/1000) + chance)=0 then Continue;
+          D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
+          D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
+          Particlesystem_add(Simpleparticlecreate(from,tmp,ssize,esize,scolor+rcolor*random(10),ecolor,lt,texture));
+        end;
+        PSYS_GRAVITY:for b:=0 to amount do
+        begin
+          if trunc(((Random(1000)+1)/1000) + chance)=0 then Continue;
+          D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
+          D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
+          Particlesystem_add(Gravityparticlecreate(from,tmp,ssize,esize,szorzo,scolor+rcolor*random(10),ecolor,lt,texture));
+        end;
+        PSYS_COOLING:for b:=0 to amount do
+        begin
+          if trunc(((Random(1000)+1)/1000) + chance)=0 then Continue;
+          D3DXVec3Scale(tmp,spd,lerp(1.0,spdrnd,random(10)/10));
+          D3DXVec3Add(tmp,tmp,d3dxvector3(-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20,-rnd/2+random(20)*rnd/20));
+          Particlesystem_add(Coolingparticlecreate(from,tmp,ssize,esize,szorzo,scolor+rcolor*random(10),ecolor,lt,texture));
+        end;
+        PSYS_LIGHTNING:Particlesystem_Add_Villam(from,tmp,ssize,szorzo,amount,esize,scolor+rcolor*random(10),lifetime);
       end;
   end;
 
@@ -5497,8 +6290,8 @@ end;
 
 procedure drawLabel;
 begin
- menu.Addteg(0.3,0.3,0.7,0.7,8);
- menu.DrawKerekitett(menu.tegs[8,1]);
+ menu.Addteg(0.3,0.3,0.7,0.7,MENULAP_MAX);
+ menu.DrawKerekitett(menu.tegs[MENULAP_MAX,0]);
  menu.g_psprite.Flush;
  menu.DrawMultilineText(labeltext,0.3,0.3,0.7,0.7,1,$FFFFFFFF);
 end;
@@ -5740,11 +6533,29 @@ begin
 end;
 
 
+{$IFDEF terraineditor}
+
+procedure addPosRad(pos:Td3DXvector3);
+begin
+  setLength(posrads,length(posrads)+1);
+  with posrads[length(posrads)-1] do
+  begin
+    posx := pos.x;
+    posy := pos.y;
+    posz := pos.z;
+    radd := 3;
+    raddn := 4.5;
+    individual := true;
+  end;
+end;
+
+{$ENDIF}
+
 procedure handlefizik;
 var
 i,j,k:integer;
 ox,oy,oz,amag,tx,tz:single;
-norm,hova,opos,tmp,tmps:TD3DXVector3;
+norm,hova,opos,tmp,tmp3,tmp4,tmp5,tmps:TD3DXVector3;
 korlat:integer;
 rbid:integer;
 h1,h2,h3:integer;
@@ -5753,13 +6564,16 @@ eses,nagyeses:boolean;
 rnd:integer;
 cnt:integer;
 mxh:integer;
-mx,tmp2:single;
+mx,tmp2,tmpfloat1,tmpfloat2:single;
+n:Td3dvector;
 col:cardinal;
 v1,v2,v3,vecx,ppos:TD3DXVector3;
 
 gtc:cardinal;
 aauto:Tauto;
 tuleli:boolean;
+
+start, stop: cardinal;
 begin
 
  gtc:=gettickcount;
@@ -5841,31 +6655,150 @@ begin
     tmp2:=ppl[i].pls.fegyv;
    end;
 
-  if opt_particle > 1 then
+  if opt_particle >= 1 then
   if (not aauto.disabled) and (tavpointpointsq(campos,aauto.pos)<sqr(100)) then
   if tmp2<128 then
   begin
    tmp:=aauto.kerekek[hanyszor mod 4];
    if tavpointpointsq(aauto.pos,aauto.vpos)>sqr(0.05) then
-   if tmp.y-0.3<advwove(tmp.x,tmp.z) then
    begin
-    tmps:=randomvec(animstat*100+hanyszor,0.1);
-    tmps.x:=    tmps.x +(aauto.pos.x-aauto.vpos.x)*0.8;
-    tmps.y:=abs(tmps.y)+(aauto.pos.y-aauto.vpos.y)*0.8;
-    tmps.z:=    tmps.z +(aauto.pos.z-aauto.vpos.z)*0.8;
-    if (tmp.y>9) and gunautoeffekt then
-     if tmp.y<15 then
-      if tmp.y<11 then
-        Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.2),0.5,2,$FFEEEEFF,$0,100))
-      else
-        Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,sand_dust,$0,100))
-     else
-     {$IFDEF panthihogomb}
-     if tavpointpointsq(DNSVec,tmp)<DNSrad*DNSRad then
-      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FFFFFFFF,$0,100))
-     else
-     {$ENDIF}
-      Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,grass_dust,$0,100))
+     yandnorm(tmp.x,tmpfloat2,tmp.z,n,1);
+     
+     if tmp.y-0.3<tmpfloat2 then
+     begin
+      tmps:=randomvec(animstat*100+hanyszor,0.1);
+      tmps.x:=    tmps.x +(aauto.pos.x-aauto.vpos.x)*0.8;
+      tmps.y:=abs(tmps.y)+(aauto.pos.y-aauto.vpos.y)*0.8;
+      tmps.z:=    tmps.z +(aauto.pos.z-aauto.vpos.z)*0.8;
+
+
+
+  //    if (tmp.y>8) and gunautoeffekt then
+      if gunautoeffekt then
+      begin
+       if (n.y)>=0.83 then
+       if tmp.y>grasslevel then //grass
+       begin
+          if felho.coverage<=5 then //0,1,2,3,4,5, rain
+          begin
+            for j:=0 to round((((Random(1000)+1)/1000) + opt_particle/PARTICLE_MAX)*opt_particle*(aauto.getseb*20)*(5-felho.coverage)*0.15) do         //sajt
+            begin
+              tmp4:=randomvec2(animstat*2+j*3,0.3*aauto.getseb,aauto.getseb+0.04,0.3*aauto.getseb);
+              d3dxvec3add(tmp3,aauto.getmotionvec,tmp4);
+              D3DXVec3Lerp(tmp3,tmp3,tmp4,Random(101)/100); //random vs random + mozgás vektor //tmp4 vége
+              tmp4:=D3DXVector3(0,0,2*aauto.kerekvst*((hanyszor mod 2)-0.5)); //ne a kerék szélén legyen, hanem a közepén
+              D3DXVec3TransformCoord(tmp4,tmp4,aauto.kerektransformmatrix(hanyszor mod 4));
+              d3dxvec3add(tmp4,tmp4,randomvec2(animstat*2+j*3,0.5*aauto.kerekvst,2*aauto.kereknagy,0.5*aauto.kerekvst)); //egyéb random hely
+              tmpfloat1:=random(1001)/1000; //méret és súly
+              Particlesystem_add(GravityparticleCreate(tmp4,tmp3,tmpfloat1*0.25+0.012,tmpfloat1*0.10+0.005,0.2+tmpfloat1*0.1,colorlerp(col_mud,col_grass,Random(3)/2),0,random(100)+170,TX_HOMALY));
+            end;
+            for j:=0 to round((((Random(1000)+1)/1000) + opt_particle/PARTICLE_MAX)*10) do
+            begin
+              tmp4:=D3DXVector3(0,0,2*aauto.kerekvst*((hanyszor mod 2)-0.5));
+              D3DXVec3TransformCoord(tmp4,tmp4,aauto.kerektransformmatrix(hanyszor mod 4));
+              d3dxvec3add(tmp4,tmp4,randomvec2(animstat*2+j*3,3*aauto.kerekvst,0,3*aauto.kerekvst));
+
+              d3dxvec3add(tmp4,D3DXVec3Scale(tmp3,aauto.getmotionvec,-j/2)^,tmp4);
+              tmp4.y:=tmpfloat2 + 0.1;
+
+              tmpfloat1:=random(1001)/1000;
+              Particlesystem_add(GravityparticleCreate(tmp4,D3DXVector3Zero,tmpfloat1*0.1+0.1,tmpfloat1*0.1+0.1,0,col_mud,0,190));
+            end;
+          end
+          else //no rain
+          begin
+            tmpfloat1:=random(1001)/1000+0.3;
+
+            if flipcoin(0.5*opt_particle/PARTICLE_MAX) then
+            Particlesystem_add(ExpSebparticlecreate(D3DXVec3TransformCoord(tmp4,D3DXVector3Zero,aauto.kerektransformmatrix(hanyszor mod 4))^,
+            D3DXVec3Add(tmp3,randomvec2(animstat*100+hanyszor,0.01,0.05,0.01),D3DXVec3Scale(tmp5,aauto.getmotionvec,0.5)^)^
+            ,0.5*tmpfloat1,2*tmpfloat1,0.985,colorlerp(col_dust_grass,col_dust_mud,0.5),$0,150+round(100*opt_particle/PARTICLE_MAX),TX_SMOKE));
+
+            for j:=0 to round((((Random(1000)+1)/1000) + opt_particle/PARTICLE_MAX)*10) do
+            begin
+              tmp4:=D3DXVector3(0,0,2*aauto.kerekvst*((hanyszor mod 2)-0.5));
+              D3DXVec3TransformCoord(tmp4,tmp4,aauto.kerektransformmatrix(hanyszor mod 4));
+              d3dxvec3add(tmp4,tmp4,randomvec2(animstat*2+j*3,3*aauto.kerekvst,0,3*aauto.kerekvst));
+
+              d3dxvec3add(tmp4,D3DXVec3Scale(tmp3,aauto.getmotionvec,-j/2)^,tmp4);
+              tmp4.y:=tmpfloat2 + 0.1;
+
+              tmpfloat1:=random(1001)/1000;
+              Particlesystem_add(GravityparticleCreate(tmp4,D3DXVector3Zero,tmpfloat1*0.1+0.1,tmpfloat1*0.1+0.1,0,colorlerp(col_mud,col_grass,0.5),0,190));
+            end;
+          end;
+       end;
+       if (tmp.y<=grasslevel) and (tmp.y>waterlevel) then //sand
+       begin
+          if felho.coverage<=5 then
+          begin
+            for j:=0 to round((((Random(1000)+1)/1000) + opt_particle/PARTICLE_MAX)*opt_particle*(aauto.getseb*20)*(5-felho.coverage)*0.15) do
+            begin
+              tmp4:=randomvec2(animstat*2+j*3,0.3*aauto.getseb,aauto.getseb+0.04,0.3*aauto.getseb);
+              d3dxvec3add(tmp3,aauto.getmotionvec,tmp4);
+              D3DXVec3Lerp(tmp3,tmp3,tmp4,Random(101)/100);
+              tmp4:=D3DXVector3(0,0,2*aauto.kerekvst*((hanyszor mod 2)-0.5));
+              D3DXVec3TransformCoord(tmp4,tmp4,aauto.kerektransformmatrix(hanyszor mod 4));
+              d3dxvec3add(tmp4,tmp4,randomvec2(animstat*2+j*3,0.5*aauto.kerekvst,2*aauto.kereknagy,0.5*aauto.kerekvst));
+              tmpfloat1:=random(1001)/1000;
+              Particlesystem_add(GravityparticleCreate(tmp4,tmp3,tmpfloat1*0.10+0.012,0.01,0.2+tmpfloat1*0.1,colorlerp(col_wetsand,col_sand,Random(3)/2),0,random(100)+170,TX_HOMALY));
+            end;
+            for j:=0 to round((((Random(1000)+1)/1000) + opt_particle/PARTICLE_MAX)*10) do
+            begin
+              tmp4:=D3DXVector3(0,0,2*aauto.kerekvst*((hanyszor mod 2)-0.5));
+              D3DXVec3TransformCoord(tmp4,tmp4,aauto.kerektransformmatrix(hanyszor mod 4));
+              d3dxvec3add(tmp4,tmp4,randomvec2(animstat*2+j*3,3*aauto.kerekvst,0,3*aauto.kerekvst));
+
+              d3dxvec3add(tmp4,D3DXVec3Scale(tmp3,aauto.getmotionvec,-j/2)^,tmp4);
+              tmp4.y:=tmpfloat2 + 0.1;
+
+              tmpfloat1:=random(1001)/1000;
+              Particlesystem_add(GravityparticleCreate(tmp4,D3DXVector3Zero,tmpfloat1*0.1+0.1,tmpfloat1*0.1+0.1,0,col_wetsand,0,190));
+            end;
+          end;
+       end;
+       if (tmp.y<=grasslevel) and (tmp.y>wetsandlevel) then //dry sand
+       begin
+          if felho.coverage<=5 then
+          begin
+
+          end
+          else
+          begin
+            tmpfloat1:=random(1001)/1000+0.5;
+            if flipcoin(opt_particle/PARTICLE_MAX) then
+            Particlesystem_add(ExpSebparticlecreate(D3DXVec3TransformCoord(tmp4,D3DXVector3Zero,aauto.kerektransformmatrix(hanyszor mod 4))^,
+            D3DXVec3Add(tmp3,randomvec2(animstat*100+hanyszor,0.05,0.07,0.05),D3DXVec3Scale(tmp5,aauto.getmotionvec,0.5)^)^
+            ,0.5*tmpfloat1,2*tmpfloat1,0.985,col_dust_sand,$0,200+round(150*opt_particle/PARTICLE_MAX),TX_SMOKE));
+          end;
+       end;
+       if (tmp.y<=waterlevel) then //water
+       begin
+         for j:=0 to round(opt_particle/PARTICLE_MAX*aauto.getseb*40) do
+         begin
+           tmp4:=randomvec2(animstat*2+j*3,0.3*aauto.getseb,aauto.getseb+0.04,0.3*aauto.getseb);
+           d3dxvec3add(tmp3,aauto.getmotionvec,tmp4);
+           D3DXVec3Lerp(tmp3,tmp3,tmp4,Random(101)/100);
+           tmp4:=D3DXVector3(0,0,2*aauto.kerekvst*((hanyszor mod 2)-0.5));
+           D3DXVec3TransformCoord(tmp4,tmp4,aauto.kerektransformmatrix(hanyszor mod 4));
+           d3dxvec3add(tmp4,tmp4,randomvec2(animstat*2+j*3,0.5*aauto.kerekvst,2*aauto.kereknagy,0.5*aauto.kerekvst));
+           tmpfloat1:=random(1001)/1000;
+           Particlesystem_add(GravityparticleCreate(tmp4,tmp3,tmpfloat1*0.2+0.02,tmpfloat1*0.15+0.02,0.075+tmpfloat1*0.05,water2col,0,random(100)+170,TX_HOMALY));
+         end;
+          tmpfloat1:=random(1001)/1000+0.5;
+          if flipcoin((aauto.getseb-0.1)*opt_particle/PARTICLE_MAX) then
+          Particlesystem_add(ExpSebparticlecreate(D3DXVec3TransformCoord(tmp4,D3DXVector3Zero,aauto.kerektransformmatrix(hanyszor mod 4))^,
+          D3DXVec3Add(tmp3,randomvec2(animstat*100+hanyszor,0.01,0.05,0.01),D3DXVec3Scale(tmp5,aauto.getmotionvec,0.5)^)^
+          ,0.5*tmpfloat1,2*tmpfloat1,0.985,water2col,$0,50+round(50*opt_particle/PARTICLE_MAX),TX_HOMALY));
+        end;
+       {$IFDEF panthihogomb}
+       if tavpointpointsq(DNSVec,tmp)<DNSrad*DNSRad then
+        Particlesystem_add(SimpleparticleCreate(tmp,randomvec(animstat*100+hanyszor,0.1),0.5,2,$FFFFFFFF,$0,100))
+       else
+       {$ENDIF}
+       end;
+
+      end;
 
    end;
   end
@@ -5934,22 +6867,22 @@ begin
 
      walkmaterial := MAT_DEFAULT;
 
-     if nagyeses then rezg := 3;
+     if nagyeses then rezg := 3;              //sajt
      if eses and (opt_particle>0) then
       begin
         ppos :=  D3DXVector3(cpx^,cpy^,cpz^);
-        if (multisc.weather>5) and (ppos.y<15) and (ppos.y>10.35) then //parton + nincs esõ
+        if (felho.coverage>5) and (ppos.y<15) and (ppos.y>10.35) then //parton + nincs esõ
         begin
-          col := sand_dust;
+          col := col_dust_sand;
           for i:=0 to 20*opt_particle do
           begin
             tmp:=randomvec(animstat*2+i*3,0.12);
             Particlesystem_add(GravityparticleCreate(ppos,tmp,random(10)/60+0.03,0.1,0.08,col,0,random(100)+170));
           end;
         end
-        else if (multisc.weather<=5) and (ppos.y>=15) then //földön + esõ
+        else if (felho.coverage<=5) and (ppos.y>=15) then //földön + esõ
         begin
-          col := color_mud;
+          col := col_mud;
           for i:=0 to 20*opt_particle do
           begin
             tmp:=randomvec(animstat*2+i*3,0.12);
@@ -5958,7 +6891,7 @@ begin
         end
         else if (ppos.y<(10.1+singtc/10)) then //vízben
         begin
-          col := weapons[5].col[0]; //logic
+          col := water1col; //logic
           for i:=0 to 30*opt_particle do
           begin
             tmp:=randomvec(animstat*2+i*3,0.12);
@@ -6104,7 +7037,7 @@ begin
    //if not hvolt then delrongybaba(-1);
   end;
   laststate:='After Ragdoll Physics';
-  inc(korlat);
+
 
   for i:=0 to high(ppl) do
   begin
@@ -6272,6 +7205,8 @@ begin
  {$ENDIF}
 
  ParticleSystem_Update;
+ if dobulletholes then
+   DecalSystem_Update;
 
  if myfegyv<128 then
   if not voltspeeder then
@@ -6608,6 +7543,20 @@ begin
 
      pantheoneffect;
 
+   nemlohet:=false;
+
+   if (sqr(dnsvec.x-cpx^)+sqr(dnsvec.z-cpz^))<sqr(dnsrad) then
+    nemlohet:=true;
+
+   if (cpx^>portalpos.x-13) and (cpx^<portalpos.x+9) and
+      (cpz^>portalpos.z-9) and (cpz^<portalpos.z+8) and
+      (cpy^>portalpos.y-1) and (cpy^<portalpos.y+4) then  nemlohet:=true;
+
+   if multisc<>nil then
+     if multisc.disablekill then  nemlohet:=true;
+
+   if (nemlohet) and (kiszall_cooldown<1) then kiszall_cooldown:=kiszall_cooldown+0.01;
+
 
   sky_voros:=false;
   if currevent<>nil then
@@ -6657,7 +7606,7 @@ begin
     robhely:=D3DXVector3(0.01,-3,0.01);
   end;
 
-  szogx:=szogx+(D3DX_PI/2-szogx)*mapmode;
+//  szogx:=szogx+(D3DX_PI/2-szogx)*mapmode;
   //if mapmode=1 then szogx:=D3DX_PI/2;
 
   if halal>0 then mapbol:=false;
@@ -6789,13 +7738,19 @@ begin
   if zeneintensity>10000 then zeneintensity:=10000;
 
   if (hanyszor mod 50)=0 then updateterrain;
- // sleep(10);
 
-  //if opt_imposters then
+  tryupdatefoliage;
+
+
+//  sleep(10); //TODO
+
+if opt_imposters then
   ojjektumRenderer.RefreshImposters(D3DXVector3(cpx^,cpy^,cpz^));
 
- 
 
+
+// until (hanyszor*10>timegettime) or (korlat>20);
+ inc(korlat);
  until (hanyszor*10>timegettime) or (korlat>20);
 //////////
 
@@ -6817,10 +7772,12 @@ begin
  csinaljfaszapointereket;
 end;
 
+{$IFDEF hazudsz}
 procedure handlefizikVEGE;
 begin
  // üres, csak könyvjelzõ;
 end;
+{$ENDIF}
 
 
 procedure handlefizikLite;
@@ -6844,8 +7801,9 @@ korlat:=0;
 
 
  ParticleSystem_Update;
+ if dobulletholes then
+   DecalSystem_Update;
 
- //if (opt_detail>=DETAIL_RAIN) then
  if felho.coverage<2 then
  begin
   if villam=200 then felho.villamolj;
@@ -6873,8 +7831,8 @@ korlat:=0;
   inc(korlat);
   inc(hanyszor);
 
-   //if opt_imposters then
-   ojjektumRenderer.RefreshImposters(D3DXVector3(cpx^,cpy^,cpz^));
+  if opt_imposters then
+    ojjektumRenderer.RefreshImposters(D3DXVector3(cpx^,cpy^,cpz^));
 
  until (hanyszor*10>timegettime) or (korlat>4);
  if (korlat>4) then hanyszor:=timegettime div 10;
@@ -7036,7 +7994,7 @@ begin
  begin
   if multisc.doevent='spaceship' then
   begin
-  //addHudmessage('spaceshipppp',500);      //sajt
+  //addHudmessage('spaceshipppp',500);      
    if currevent<>nil then
     if not (currevent is TSpaceshipEvent) then
     begin
@@ -7055,12 +8013,10 @@ begin
 
 
   if multisc.doevent='disablekill' then
-  disablekill := true;
+  multisc.disablekill := true;
 
   if multisc.doevent='enablekill' then
-  disablekill := false;
-
-
+  multisc.disablekill := false;
 
   multisc.doevent:='';
  end;
@@ -7463,23 +8419,31 @@ end;
 
 procedure setupmyfegyvprojmat;
 begin
-{ if (not csipo) and (myfegyv=FEGYV_MP5A3) and (halal=0) then
-  D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/4, 4/3, 0.1, 2000.0)
- else  }
+ {if (not csipo) and (myfegyv=FEGYV_MP5A3) and (halal=0) then
+  D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/16, ASPECT_RATIO, 0.1, 2000.0)
+ else}
   D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/3, ASPECT_RATIO, 0.05, 2000.0);
   g_pd3dDevice.SetTransform(D3DTS_PROJECTION, matProj);
 end;
 
 procedure setupprojmat;
 begin
+ if ((myfegyv=FEGYV_M82A1) or (myfegyv=FEGYV_HPL)) and (not csipo) then
+ begin
+    D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/16, ASPECT_RATIO, 0.1, 1100.0);
+   frust:=frustum(matview,0.1,1100,D3DX_PI/16, ASPECT_RATIO);
+ end
+ else
+ begin
  D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/3, ASPECT_RATIO, 0.05, 1100.0);
  g_pd3dDevice.SetTransform(D3DTS_PROJECTION, matProj);
+ end
 end;
 
 procedure SetupMatrices(nvm:boolean);
 var
   matWorld,mat: TD3DMatrix;
-  vEyePt, vLookatPt, vUpVec2,v2: TD3DVector;
+  vUpVec2,v2: TD3DVector;
   rbid:integer;
   i,j:integer;
   acpx,acpy,acpz:single;
@@ -7496,7 +8460,7 @@ begin
   // Set up our view matrix. A view matrix can be defined given an eye point,
   // a point to lookat, and a direction for which way is up. Here, we set the
   // eye five units back along the z-axis and up three units, look at the
-  // origin, and define "up" to be in the y-direction.
+  // origin, and define "up" to be in the y-direction.    //campos camvec camcamcam
   vEyePt:=    D3DXVector3(acpx+halal, acpy+1.5+halal/3,acpz+halal);
   if kulsonezet then
    vEyePt:=    D3DXVector3(acpx-sin(szogx)*cos(szogy)*15, acpy+1.5-sin(szogy)*15,acpz-cos(szogx)*cos(szogy)*15);
@@ -7587,7 +8551,7 @@ begin
   // the aspect ratio, and the near and far clipping planes (which define at
   // what distances geometry should be no longer be rendered).
 
-  if (not csipo) and (myfegyv=FEGYV_M82A1) and (halal=0) then
+  if (not csipo) and ((myfegyv=FEGYV_M82A1) or (myfegyv = FEGYV_HPL)) and (halal=0) then
   begin
    D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/16, ASPECT_RATIO, 0.1, 1100.0);
    frust:=frustum(matview,0.1,1100,D3DX_PI/16, ASPECT_RATIO);
@@ -7621,21 +8585,41 @@ end;
 procedure rendersky;
 var
 i:integer;
+tmplw:cardinal;
 begin
+
+g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_MODULATE );
+    g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,FAKE_HDR   );
+
+    g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    g_pd3dDevice.SetTextureStageState(2, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    g_pd3dDevice.SetTextureStageState(2, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+
+    g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_SRCALPHA);
+    g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,D3DBLEND_INVSRCALPHA );
+    g_pd3ddevice.SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD);
+
+    g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+    g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+    g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+    
  g_pd3dDevice.SetRenderState(D3DRS_LIGHTING,ifalse);
-  fogc:=felho.coverage/13;
+  fogc:=felho.coverage/WEATHER_MAX;
   if fogc>1 then fogc:=1;
- if (cpy^>8) then
+ if (vEyePt.y>waterlevel) then
  g_pd3dDevice.SetRenderState(D3DRS_FOGCOLOR,
-               colorlerp(color_rainy,color_sunny,fogc))
+               colorlerp(col_fog_rainy,col_fog_sunny,fogc))
                else
- g_pd3dDevice.SetRenderState(D3DRS_FOGCOLOR, color_underwater) ;
+ g_pd3dDevice.SetRenderState(D3DRS_FOGCOLOR, col_fog_water) ;
 
   g_pd3dDevice.SetRenderState(D3DRS_RANGEFOGENABLE,itrue);
   g_pd3dDevice.SetRenderState(D3DRS_FOGVERTEXMODE,D3DFOG_LINEAR);
 
- fogstart:=0;
- fogend:=900;
+// fogstart:=0;
+// fogend:=900;
 
   g_pd3dDevice.SetRenderState(D3DRS_FOGSTART,singletodword(FogStart));
   g_pd3dDevice.SetRenderState(D3DRS_FOGEND,singletodword(FogEnd));
@@ -7651,16 +8635,41 @@ begin
 
  g_pd3dDevice.SetTexture(0,skytex);
  //g_pd3dDevice.SetTexture(0,felho.tex1);
-
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   FAKE_HDR);
+
  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,   D3DTOP_DISABLE);
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
  g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
   g_pd3dDevice.SetRenderState(D3DRS_FOGENABLE,ifalse);
   g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSU,  D3DTADDRESS_CLAMP);
   g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSV,  D3DTADDRESS_CLAMP);
- for i:=0 to high(skystrips) do
-  g_pd3ddevice.drawprimitiveUP(D3DPT_TRIANGLESTRIP,high(skystrips[i]) div 2+1,skystrips[i][0],sizeof(TSkyvertex));
+
+
+    if csicsahdr  then
+     begin
+      g_peffect.SetTechnique('HDR');
+
+      g_pEffect.SetTexture('g_MeshTexture', skytex);
+      g_peffect.SetFloat('HDRszorzo',shaderhdr);
+
+      g_peffect._Begin(@tmplw,0);
+      g_peffect.BeginPass(0);
+
+      for i:=0 to high(skystrips) do
+        g_pd3ddevice.drawprimitiveUP(D3DPT_TRIANGLESTRIP,high(skystrips[i]) div 2+1,skystrips[i][0],sizeof(TSkyvertex));
+      g_peffect.Endpass;
+      g_peffect._end;
+     end
+    else
+    begin
+     for i:=0 to high(skystrips) do
+      g_pd3ddevice.drawprimitiveUP(D3DPT_TRIANGLESTRIP,high(skystrips[i]) div 2+1,skystrips[i][0],sizeof(TSkyvertex));
+    end;
+
+
+
+
+//TODO  sajt
     g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSU,  D3DTADDRESS_WRAP);
   g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSV,  D3DTADDRESS_WRAP);
 
@@ -7678,7 +8687,8 @@ begin
   g_pd3dDevice.SetRenderState(D3DRS_FOGENABLE,itrue);
   fogstart:=0;
   fogend:=lerp(radius_rainy,radius_sunny,fogc);
-  if (cpy^<8.95+singtc/10) then fogend:=90;
+
+  if (vEyePt.y<=waterlevel) then fogend:=90;
 
  if mapmode>0 then
  begin
@@ -7697,7 +8707,7 @@ var
 arany:single;
 begin
 if (min(honnan.y,hova.y)>magassag) or ((max(honnan.y,hova.y)<magassag) or (honnan.y = hova.y)) then
-result:=d3dxvector3(0,0,0)
+result:=D3DXVector3Zero
 else
 begin
 arany:=abs(magassag-honnan.y);
@@ -7706,13 +8716,67 @@ result:= d3dxvector3(arany*(hova.x)+(1-arany)*honnan.x,magassag,arany*(hova.z)+(
 end;
 end;
 
+procedure handleBulletholes(aloves:Tloves);
+var
+  i,j,k:integer;
+  size,y:single;
+  tmp,tmp2,tmp3,tmp4:Td3dxvector3;
+  material:byte;
+  tmpcol:cardinal;
+  megmarad,ground:boolean;
+begin
+  size:=0.1; //gun bullethole size
+  D3DXVec3Subtract(tmp2,aloves.v2,aloves.pos);
+  D3DXVec3Scale(tmp2,tmp2,1.2);
+  D3DXVec3Add(tmp,aloves.pos,tmp2);
+
+  tmp2:=D3DXVector3Zero;
+//  if (opt_particle=PARTICLE_MAX) then
+    for k:=0 to high(ojjektumnevek) do
+      for j:=0 to ojjektumarr[k].hvszam-1 do
+        begin
+          ojjektumarr[k].mitlo(aloves.pos,tmp,j,COLLISION_BULLET,tmp2,tmp3,material,@tmpcol,@megmarad,@size);
+        end;
+
+  y:=advwove(aloves.v2.x,aloves.v2.z);
+  ground:=y > (aloves.v2.y -0.1);
+
+  raytestlvl(aloves.pos,tmp,500,tmp4);
+
+  if not D3DXVector3Equal(tmp2,D3DXVector3Zero) and not ground then
+  begin
+    if material = MAT_METAL then size:=size*1.5;
+
+    if megmarad then
+    DecalSystem_Add(Bulletholecreate(aloves.v2,D3DXVector3Zero,size,size,tmpcol,tmpcol,15000,tmp2,tmp3,material));
+    
+    case material of
+      MAT_DEFAULT: playsound(46+RandomRange(0,2),false,gettickcount,true,aloves.v2);
+      MAT_METAL:  playsound(49+RandomRange(0,2),false,gettickcount,true,aloves.v2);
+      MAT_WOOD:  playsound(52+RandomRange(0,2),false,gettickcount,true,aloves.v2);
+    end;
+  end
+
+  else if ground then
+  begin
+   playsound(43+RandomRange(0,2),false,gettickcount,true,aloves.v2); //MAT_DIRT
+
+//   tmp3:=terrainsidevec(aloves.v2.x,aloves.v2.z,size); HECTOOOOOR
+//   tmpcol:=$FFFFFFFF;
+//   DecalSystem_Add(Bulletholecreate(aloves.v2,D3DXVector3Zero,size,size,tmpcol,tmpcol,15000,norm(aloves.v2.x,aloves.v2.z,size),tmp3,material));
+  end;
+
+
+
+
+end;
 
 
 procedure Handlelovesek;
 var
-i,j,love:integer;
+i,j,k,love:integer;
 aloves:Tloves;
-tmp,tmp2:TD3DXVector3;
+tmp,tmp2,tmp3:TD3DXVector3;
 dst:single;
 atc:cardinal;
 gtc:cardinal;
@@ -7740,31 +8804,46 @@ begin
   }
 
   case aloves.fegyv of                                                         //////
-   FEGYV_M4A1,FEGYV_M82A1,FEGYV_MP5A3: begin
-   Particlesystem_add(Bulletcreate(aloves.pos,aloves.v2,3,20,0.01,$00A0A050,1,false));
-     tmp := sikmetsz(aloves.pos,aloves.v2,10);
-  if tmp.y<>0 then
+  FEGYV_M4A1,FEGYV_M82A1,FEGYV_MP5A3,FEGYV_BM3,FEGYV_BM3_2,FEGYV_BM3_3:
   begin
-  for j:=0 to 6*opt_particle do
-    ParticleSystem_Add(Gravityparticlecreate(tmp,d3dxvector3(-0.0167+random(10)/300,0.06+random(10)/270,-0.0167+random(10)/300),0.3,0.05,0.09,weapons[5].col[0],weapons[5].col[1],100));
+    Particlesystem_add(Bulletcreate(aloves.pos,aloves.v2,3,20,0.01,$00A0A050,1,false));
+    tmp := sikmetsz(aloves.pos,aloves.v2,10);
+    if tmp.y<>0 then
+    begin
+    for j:=0 to 6*opt_particle do
+      ParticleSystem_Add(Gravityparticlecreate(tmp,d3dxvector3(-0.0167+random(10)/300,0.06+random(10)/270,-0.0167+random(10)/300),0.3,0.05,0.09,water1col,water2col,100));
+    end;
+
+    if (opt_particle>=1) then
+    begin
+      d3dxvec3subtract(tmp2,aloves.pos,aloves.v2);
+      D3DXVec3Normalize(tmp2,tmp2);
+      D3DXVec3Scale(tmp2,tmp2,0.10);
+      ParticleSystem_Add(Coolingparticlecreate(aloves.v2,tmp2,0.03,0.24,0.05,dustcol+random(32)*$010101,$00000000,20));
+//      ParticleSystem_Add(Simpleparticlecreate(aloves.v2,D3DXVector3Zero,0.03,0.24,dustcol+random(32)*$010101,$00000000,2000));
+    end;
+
+    if dobulletholes then
+      handleBulletholes(aloves);
   end;
 
-  if (opt_particle>=1) then
-  begin
-  d3dxvec3subtract(tmp2,aloves.pos,aloves.v2);
-  D3DXVec3Normalize(tmp2,tmp2);
-  D3DXVec3Scale(tmp2,tmp2,0.10);
-  ParticleSystem_Add(Coolingparticlecreate(aloves.v2,tmp2,0.03,0.24,0.05,weapons[6].col[0]+random(32)*$010101,$00000000,20));
-  end;
-
-  end;
+  
    FEGYV_MPG:begin
    particle_special_mpg(aloves.pos,aloves.v2);
-   ParticleSystem_Add(Simpleparticlecreate(aloves.v2,d3dxvector3(0,0,0),0.14,0.01,weapons[1].col[1],$00000000,125));
+   ParticleSystem_Add(Simpleparticlecreate(aloves.v2,D3DXVector3Zero,0.14,0.01,weapons[1].col[1],$00000000,125));
+   end;
+   FEGYV_HPL:begin
+     if tavpointpointsq(aloves.pos,aloves.v2)>400 then
+     begin
+       particle_special_hpl(aloves.pos,aloves.v2);
+       ParticleSystem_Add(Simpleparticlecreate(aloves.v2,D3DXVector3Zero,0.14,0.01,weapons[5].col[1],0,500));
+     end
+     else
+       ParticleSystem_Add(Simpleparticlecreate(aloves.v2,D3DXVector3Zero,0.14,0.01,weapons[5].col[1],0,125));
    end;
    FEGYV_QUAD:begin
    particle_special_quad(aloves.pos,aloves.v2);
-   ParticleSystem_Add(Simpleparticlecreate(aloves.v2,d3dxvector3(0,0,0),0.14,0,weapons[2].col[6],weapons[2].col[6],125));
+   ParticleSystem_Add(Simpleparticlecreate(aloves.v2,D3DXVector3Zero,0.14,0,weapons[2].col[6],weapons[2].col[6],125));
    end;
    FEGYV_LAW:AddLAW(aloves.pos,aloves.v2,aloves.kilotte);
    FEGYV_NOOB:AddNOOB(aloves.pos,aloves.v2,aloves.kilotte);
@@ -7772,8 +8851,6 @@ begin
 
    FEGYV_H31_T:AddH31_T(aloves.pos,aloves.v2,aloves.kilotte);
    FEGYV_H31_G:AddH31_G(aloves.pos,aloves.v2,aloves.kilotte);
-
-   //Particlesystem_add(MPGcreate(aloves.pos,aloves.v2,1.5,$0000A0FF));
   end;
 
   if coordsniper then
@@ -7795,6 +8872,11 @@ begin
    addchatindex := addchatindex+3;
   end;
   
+ {$IFDEF terraineditor}
+
+      addPosRad(aloves.v2);
+ {$ENDIF}
+
  {$IFDEF propeditor}
   if propsniper then
   begin
@@ -7825,6 +8907,10 @@ begin
 
    FEGYV_H31_T:playsound(39,false,gtc,true,aloves.pos);
    FEGYV_H31_G:playsound(39,false,gtc,true,aloves.pos);
+
+   FEGYV_HPL:playsound(41,false,gtc,true,aloves.pos);
+   FEGYV_BM3:playsound(42,false,gtc,true,aloves.pos);
+   FEGYV_BM3_2,FEGYV_BM3_3:;
    else
     playsound(0,false,gtc,true,aloves.pos);
   end;
@@ -7866,6 +8952,10 @@ begin
    FEGYV_MPG: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.15);
    FEGYV_QUAD: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.2);
    FEGYV_MP5A3: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.02);
+   FEGYV_BM3: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.085);
+   FEGYV_BM3_2: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.10);
+   FEGYV_BM3_3: love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.13);
+   FEGYV_HPL:love:=meglove(muks.gmbk,muks.kapcsk,aloves.pos,aloves.v2,0.065);
   end;
 
   {if  ((aloves.fegyv=FEGYV_QUAD) or (aloves.fegyv=FEGYV_MPG)) then
@@ -7893,7 +8983,7 @@ begin
    halal:=1;
   // setupmymuksmatr;
    d3dxvec3subtract(tmp,aloves.v2,aloves.pos);
-   if (aloves.fegyv=FEGYV_M82A1) or (aloves.fegyv=FEGYV_QUAD) then
+   if (aloves.fegyv=FEGYV_M82A1) or (aloves.fegyv=FEGYV_QUAD) or (myfegyv = FEGYV_HPL) then
     d3dxvec3scale(tmp,tmp,0.6/d3dxvec3length(tmp))
    else
     d3dxvec3scale(tmp,tmp,0.3/d3dxvec3length(tmp));
@@ -7956,12 +9046,12 @@ end;
 
 function vizvertex(xp,zp:single):TCustomvertex;
 begin
- result:=CustomVertex(cpx^+xp*1500,10.1+singtc/10,cpz^+zp*1500,0,1,0,$7F7F7F7F,(cpx^+xp*1500)/3+singtc,(cpz^+zp*1500)/3+cosgtc+plsgtc,(cpx^+xp*1500)/6-singtc/3+plsgtc/3,(cpz^+zp*1500)/6-cosgtc/3);
+ result:=CustomVertex(cpx^+xp*1500,waterlevel,cpz^+zp*1500,0,1,0,$7F7F7F7F,(cpx^+xp*1500)/3+singtc,(cpz^+zp*1500)/3+cosgtc+plsgtc,(cpx^+xp*1500)/6-singtc/3+plsgtc/3,(cpz^+zp*1500)/6-cosgtc/3);
 end;
 
 function ujvizvertex(xp,zp:single):TCustomvertex;
 begin
- result:=CustomVertex(cpx^+xp*1500,10.1+singtc/10,cpz^+zp*1500,0,1,0,$7F7F7F7F,(cpx^+xp*1500)/3,(cpz^+zp*1500)/3,(cpx^+xp*1500)/6,(cpz^+zp*1500)/6);
+ result:=CustomVertex(cpx^+xp*1500,waterlevel,cpz^+zp*1500,0,1,0,$7F7F7F7F,(cpx^+xp*1500)/3,(cpz^+zp*1500)/3,(cpx^+xp*1500)/6,(cpz^+zp*1500)/6);
 end;
 
 procedure renderviz;
@@ -7969,15 +9059,31 @@ var
 viz:array [0..9] of TCustomVertex;
 tmplw:longword;
 matViewProj,matKorr,matkorr2:TD3DMatrix;
+speed:single;
 begin
+ speed:=-1;
+// scale:=-1;
  g_pd3dDevice.SetRenderState(D3DRS_FOGENABLE,itrue);
  if not( (G_peffect<>nil) and (opt_water>0) )then
      g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,itrue);
- if ((cpy^<40) or (opt_water>0)) and (mapmode=0) then
+ if ((cpy^<200) or (opt_water>0)) and (mapmode=0) then
  begin
- singtc:=sin((volttim mod 15000)*D3DX_PI*2/15000);
- cosgtc:=cos((volttim mod 15000)*D3DX_PI*2/15000);
- plsgtc:=(volttim mod 20000)/20000;
+ speed:=clip(0,0.65,felho.coverage/WEATHER_MAX*0.65) + 1;
+// scale:=clip(0.4,1,(1-felho.coverage/WEATHER_MAX)*0.6+0.4);
+// scale:=1;
+
+ vizkor1:=loop(0,D3DX_PI*2,vizkor1+((round(eltim*1000) mod round(15000*speed))*D3DX_PI*2/round(15000*speed)));
+ vizkor2:=loop(0,D3DX_PI*2,vizkor2+((round(eltim*1000) mod round(15000*speed))*D3DX_PI*2/round(15000*speed)));
+ vizkor3:=(round(vizkor3+round(eltim*1000)) mod round(20000*speed))/round(20000*speed);
+
+// writechat(formatfloat('#.00',vizkor3));
+ 
+//                  singtc:=sin((volttim mod round(15000*speed))*D3DX_PI*2/round(15000*speed));
+//                  cosgtc:=cos((volttim mod round(15000*speed))*D3DX_PI*2/round(15000*speed));
+//                      plsgtc:=(volttim mod round(20000*speed))/round(20000*speed);
+                  singtc:=sin(vizkor1);
+                  cosgtc:=cos(vizkor2);
+                      plsgtc:=vizkor3;
  end;
 
 
@@ -7998,13 +9104,19 @@ begin
 
  g_pd3dDevice.SetSamplerState(1, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR );
  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
- g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, FAKE_HDR);
+ g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,   FAKE_HDR);
 
+
+
+//  g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,D3DBLEND_SRCALPHA);
+////  g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,D3DBLEND_SRCALPHA);
+//  g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,D3DBLEND_ONE);
+//  g_pd3ddevice.SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_ADD);
 
       //}
       //{
 
- if (G_peffect<>nil) and (opt_water>0) and (cpy^>8.5) then
+ if (G_peffect<>nil) and (opt_water>0) and (vEyePt.y>waterlevel) then
     begin
 
       g_peffect.SetTechnique('WaterReflection');
@@ -8016,17 +9128,19 @@ begin
      d3dxmatrixmultiply(matViewproj,matView,matProj);
      d3dxmatrixmultiply(matkorr2,matProj,matKorr);
 
+
      g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
      g_pEffect.SetMatrix('g_mWorldView', matView);
      g_pEffect.SetMatrix('g_mProjectionKorr', matKorr2);
      g_pEffect.SetTexture('g_MeshTexture', reflecttexture);
      g_pEffect.SetTexture('g_Wavemap', waterbumpmap);
+//     g_pEffect.setfloat('waterscale', abs(scale));
 
      g_peffect._Begin(@tmplw,0);
      g_peffect.BeginPass(0);
 
      g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,itrue);
-     //g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iFalse);
+     g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,itrue);
      g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_SRCALPHA);
      g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_INVSRCALPHA);
      g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
@@ -8175,9 +9289,6 @@ begin
         debugstr := ojjektumarr[i].filenev;
         end;
       end;
-
-
-
 end;
 
 {$ENDIF}
@@ -8188,7 +9299,9 @@ end;
 procedure drawHUD;
 const
 avp:TD3DViewport9=(X:0;Y:0;width:0;Height:0;minZ:0;maxZ:1);
-terkeptav=1.732050*1024*0.1;
+//terkeptav=1.732050*1024*0.1;
+terkeptav=1.85*1024*0.1;
+magicmapratio=1.105;
 var
 viPo:TD3DViewport9;
 i,j,gunsz,techsz:integer;
@@ -8212,11 +9325,11 @@ cghash:cardinal;
 bszvolt:cardinal;
 szcol:cardinal;
 arect:Trect;
-killtmutat:boolean;
+//killtmutat:boolean;
 rendezve:array of integer;
 rtmp:integer;
 glph:array of Tglyph;
-isTyping:array of boolean;
+//isTyping:array of boolean;
 terkep1:TD3DXVector2;
 terszog,tertav:single;
 kisTAB:integer;
@@ -8224,6 +9337,7 @@ menuszor:single;
 chatszam:integer;
 tabsort,tabsorg:integer;
 cursor:string;
+magicaloffset:single;
 const
 menuplus=0.2;
 
@@ -8234,7 +9348,7 @@ begin
  vipo:=avp;
  vipo.Width:=SCwidth;
  vipo.Height:=SCheight;
- if (myfegyv=FEGYV_M82A1) and (not csipo) and (halal=0) then
+ if ((myfegyv=FEGYV_M82A1)or (myfegyv = FEGYV_HPL)) and (not csipo) and (halal=0) then
   D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/16, ASPECT_RATIO, 0.1, 1000.0)
  else
   D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/3, ASPECT_RATIO, 0.1, 1000.0);
@@ -8283,6 +9397,7 @@ begin
     sunhol.x:=sunhol.x-32;
     sunhol.y:=sunhol.y-32;
 
+    if meret>0.2 then
     if currevent=nil then
     if (cpy^>0) then
     menu.g_pSprite.Draw(suntex,nil,nil,@sunhol,$FFFFFFFF)
@@ -8374,7 +9489,7 @@ begin
  setlength(ap2,length(ppl));
  setlength(aa,length(ppl));
  setlength(ac,length(ppl));
- setlength(isTyping,length(ppl));
+// setlength(isTyping,length(ppl));
 
 
  // emberek fej feletti nevei
@@ -8430,7 +9545,7 @@ begin
     else
       ar[i]:= ppl[i].pls.nev;
 
-  isTyping[i]:= (tavpointpointsq(ppl[i].pos.pos,camvec)<sqr(25)) and (ppl[i].pos.state=MSTAT_CHAT);
+//  isTyping[i]:= (tavpointpointsq(ppl[i].pos.pos,camvec)<sqr(25)) and (ppl[i].pos.state=MSTAT_CHAT);
 
 
   if bol then
@@ -8448,22 +9563,27 @@ begin
 
 
  if length(ar)>0 then
-  menu.DrawTextsInGame(ar,ap,ap2,aa,false,isTyping);
+   menu.DrawTextsInGame(ar,ap,ap2,aa,false);
+//  menu.DrawTextsInGame(ar,ap,ap2,aa,false,isTyping);
+
  //menu.drawrect(0.0,0.0,0.2,0.25,$A0000000);
+
+ magicaloffset:=-vertScale*(4/3)*32+vertScale*(ASPECT_RATIO)*32;
 
  setlength(glph,2);
  glph[0].melyik:=1;
- glph[0].x:=(SCwidth-(SCwidth/10.91)-(4/3)*31+(ASPECT_RATIO)*31);
+ glph[0].x:=SCwidth-(SCwidth/10.91)+magicaloffset;
  glph[0].y:=(SCheight/8);
 
  glph[1].melyik:=0;
- glph[1].x:=(SCwidth-(SCwidth/10.91))+cos(-szogx)*(SCheight/8.57)*(4/3)/(ASPECT_RATIO)-(4/3)*31+(ASPECT_RATIO)*31;
+ glph[1].x:=(SCwidth-(SCwidth/10.91))+cos(-szogx)*(SCheight/8.57)+magicaloffset;
  glph[1].y:=(SCheight/8)+sin(-szogx)*(SCheight/8.57);
 
 
   for i:=0 to high(ppl) do
   if (ppl[i].pls.fegyv xor myfegyv)<128 then
-  if (ppl[i].pos.megjpos.y>10) then
+//  if (ppl[i].pos.megjpos.y>10) then
+  if not D3DXVector3Equal(ppl[i].pos.pos,D3DXVector3Zero) then //alive
   if  ((sqr(ppl[i].pos.pos.x-cpx^)+sqr(ppl[i].pos.pos.z-cpz^))<sqr(terkeptav)) or (mapmode=1) then
   begin
    terkep1.x:=ppl[i].pos.pos.x-cpx^;
@@ -8474,18 +9594,24 @@ begin
     terszog:=arctan2(terkep1.y,terkep1.x)
    else
     if terkep1.y>0 then terszog:=D3DX_PI/2 else terszog:=-D3DX_PI/2;
-   tertav:=sqrt((sqr(ppl[i].pos.pos.x-cpx^)+sqr(ppl[i].pos.pos.z-cpz^)))/terkeptav;
+//   tertav:=sqrt((sqr(ppl[i].pos.pos.x-cpx^)+sqr(ppl[i].pos.pos.z-cpz^)))/terkeptav;
    terszog:=-terszog;
    setlength(glph,length(glph)+1);
    glph[high(glph)].melyik:=2;
-   glph[high(glph)].x:=(SCwidth-(SCwidth/10.91))+cos(terszog-szogx)*tertav*(SCheight/8.57)*(4/3)/(ASPECT_RATIO)-(4/3)*31+(ASPECT_RATIO)*31;
-   glph[high(glph)].y:=(SCheight/8)+sin(terszog-szogx)*tertav*(SCheight/8.57);
+   glph[high(glph)].x:=(SCwidth-(SCwidth/10.91))+magicaloffset+vertScale*rotate2d(ppl[i].pos.pos.x-cpx^,ppl[i].pos.pos.z-cpz^,0,0,szogx).x/8.57*3*0.96;
+   glph[high(glph)].y:=(SCheight/8)                           -vertScale*rotate2d(ppl[i].pos.pos.x-cpx^,ppl[i].pos.pos.z-cpz^,0,0,szogx).y/8.57*3*0.96;
+//   glph[high(glph)].x:=(SCwidth-(SCwidth/10.91))+magicaloffset+cos(terszog-szogx)*tertav*(SCheight/8.57)*(4/3)/(ASPECT_RATIO);
+//   glph[high(glph)].y:=(SCheight/8)                           +sin(terszog-szogx)*tertav*(SCheight/8.57);
    if mapmode=1 then
    begin
    glph[high(glph)].melyik:=2;
-   glph[high(glph)].x:=(SCwidth/2)-1.15*(ppl[i].pos.megjpos.z-cpz^)*(4/3)/(ASPECT_RATIO)-(4/3)*31+(ASPECT_RATIO)*31;
-   glph[high(glph)].y:=(SCheight/2)-1.15*(ppl[i].pos.megjpos.x-cpx^);
-   
+//   glph[high(glph)].x:=(SCwidth/2) -1.07*(ppl[i].pos.megjpos.z-cpz^)*vertScale*(4/3)/(ASPECT_RATIO)+magicaloffset;
+//   glph[high(glph)].y:=(SCheight/2)-1.07*(ppl[i].pos.megjpos.x-cpx^)*vertScale;
+//   tertav:=sqrt((sqr(ppl[i].pos.pos.x-cpx^)+sqr(ppl[i].pos.pos.z-cpz^)));
+   glph[high(glph)].x:=(SCwidth/2) +magicmapratio*vertScale*rotate2d(ppl[i].pos.pos.x-cpx^,ppl[i].pos.pos.z-cpz^,0,0,szogx).x;
+   glph[high(glph)].y:=(SCheight/2)-magicmapratio*vertScale*rotate2d(ppl[i].pos.pos.x-cpx^,ppl[i].pos.pos.z-cpz^,0,0,szogx).y;
+
+;
   end;
  end;
 
@@ -8502,7 +9628,7 @@ begin
 
 
  menu.g_pSprite.SetTransform(identmatr);
- if opt_radar then
+ if opt_radar or (mapmode=1) then
  menu.DrawGlyphsInGame(glph);
 
  if menu.medalanimstart>0 then menu.DrawMedal;
@@ -8511,6 +9637,7 @@ begin
  if multisc.playersonserver<=0 then txt:=txt+lang[34]
  else
  txt:=txt+inttostr(multisc.playersonserver);
+
 
  techsz:=0;gunsz:=0;
  for i:=0 to high(ppl) do
@@ -8524,6 +9651,7 @@ begin
  txt:=txt+' : '#17#236+inttostr(gunsz)+#17#32' / '#17#75+inttostr(techsz)+#17#32;
 
  txt:=txt+' / '#17#128+inttostr(length(ppl)-gunsz-techsz)+#17#32;
+//   txt:=floattostr(myseb);
  menu.DrawSzinesChat(txt,0,0,0.4,0.05,$FF000000+betuszin);
  mag:=0.23;
  if not opt_radar then mag:=0;
@@ -8710,15 +9838,16 @@ begin
  end; 
  {$ENDIF}
 
+ if opt_drawfps then menu.drawtext(inttostr(fps),0,0.92,0.1,1,1,$FFFFFFFF);
+
+
  //  menu.g_pSprite.Draw(inttostr(sizeof(TD3DXAttributeRange)),nil,nil,nil,$80FFFFFF);
-
-
  //menu.drawtext(debugstr,0.2,0.8,1,1,2,$80FFFFFF);
  // if multip2p.laststatus then
  //   menu.drawtext('TRUE',0.9,0.8,1,2,2,$80FFFFFF)
  // else  menu.drawtext('FALSE',0.9,0.8,1,2,2,$80FFFFFF);
  // if multip2p.voltfalse then menu.drawtext('VOLT!',0.6,0.8,1,2,2,$80FFFFFF);
- if (currevent <> nil) then menu.drawtext(inttostr(currevent.phs)+currevent.ClassName,0.7,0.9,1,1,2,$70000000+betuszin);
+// if (currevent <> nil) then menu.drawtext(inttostr(currevent.phs)+currevent.ClassName,0.7,0.9,1,1,2,$70000000+betuszin);
   //menu.drawtext( floattostr(kiszall_cooldown),0.2,0.9,0.8,1,2,$70000000+betuszin);
   //menu.drawtext(inttostr(length(particles))+'/'+inttostr(particlehgh),0.2,0.9,0.8,1,false,$70000000+betuszin);
   //if not nofegyv then menu.drawtext('nofegyv',0.2,0.9,0.8,1,2,$70000000+betuszin);
@@ -8755,14 +9884,14 @@ begin
   //menu.DrawRect(0.1,0.1,0.9,0.9,$A0000000);
   menu.DrawRect(0.1,0.1,0.9,0.2,$A0000000);
   menu.DrawRect(0.1,0.1,0.9,0.9,$A0000000);
-  menu.Addteg(0.1,0.1,0.9,0.9,8);
-  menu.DrawKerekitett(menu.tegs[8,1]);
+  menu.Addteg(0.1,0.1,0.9,0.9,MENULAP_MAX-1);
+  menu.DrawKerekitett(menu.tegs[MENULAP_MAX-1,0]);
   menu.g_psprite.Flush;
   menu.g_psprite.SetTransform(identmatr);
   menu.DrawText('GUN',0.15,0.125,0.5,0.2,2,$FFFF6000);
   menu.DrawText('TECH',0.50,0.125,0.85,0.2,2,$FF00A0FF);
 //                       div 2048
-  killtmutat:=((timegettime shr 11) and 1)=1 ;
+//  killtmutat:=((timegettime shr 11) and 1)=1 ;
 
 
 
@@ -8940,8 +10069,7 @@ end;
 procedure setupTsnowballmat(mit:integer);
 var
   v1,v2,v3,vp:TD3DXVector3;
-  matWorld, mat, mat2: TD3DMatrix;
-  acpx,acpy,acpz,magic:single;
+  mat: TD3DMatrix;
 begin
  vp:=h31_tproj[mit].v2;
  d3dxvec3subtract(v1,h31_tproj[mit].v1,h31_tproj[mit].v2);
@@ -8965,8 +10093,7 @@ end;
 procedure setupGsnowballmat(mit:integer);
 var
   v1,v2,v3,vp:TD3DXVector3;
-  matWorld, mat, mat2: TD3DMatrix;
-  acpx,acpy,acpz,magic:single;
+  mat: TD3DMatrix;
 begin
  vp:=h31_gproj[mit].v2;
  d3dxvec3subtract(v1,h31_gproj[mit].v1,h31_gproj[mit].v2);
@@ -9157,8 +10284,8 @@ procedure rendermuks(i:integer;astate,afegyv:byte);
 begin
 
  SetupMuksmatr(i);
- muks.jkez:=fegyv.jkez(afegyv,astate);
- muks.bkez:=fegyv.bkez(afegyv,astate);
+ muks.jkez:=fegyv.jkez(afegyv,astate,clipszogy(ppl[i].pos.irany2));
+ muks.bkez:=fegyv.bkez(afegyv,astate,clipszogy(ppl[i].pos.irany2));
 
  case astate and MSTAT_MASK of
   0:muks.stand((astate and MSTAT_GUGGOL)>0);
@@ -9182,6 +10309,7 @@ var
 vj,vb,nj,nb,tj,tb,jk2,bk2:TD3DXVector3;
 mrp,mfm2:TD3DMatrix;
 i:integer;
+//vallmag:single;
 begin
  setupmymuksmatr;
  setupmyfegyvmatr;
@@ -9200,8 +10328,16 @@ begin
   tj:=D3DXVector3(tj.x+0.05,tj.y-1.5,tj.z-0.1);
   tb:=fegyv.bkez(myfegyv,0);
   tb:=D3DXVector3(tb.x+0.05,tb.y-1.5,tb.z-0.1);
-  if (myfegyv=FEGYV_LAW) or (myfegyv=FEGYV_H31_T) or (myfegyv=FEGYV_H31_G) then begin tj.x:=tj.x-0.1; tb.x:=tb.x-0.1; end;
-  if myfegyv=FEGYV_M4A1 then begin tj.y:=tj.y+0.03; tb.y:=tb.y+0.03; end;
+  
+  if (myfegyv=FEGYV_BM3) then
+  begin
+    tj:=vec3add2(tj,D3DXVector3(0,-0.01,0.11)); //bal
+    tb:=vec3add2(tb,D3DXVector3(-0.01,-0.01,0.15));
+  end;
+
+
+  //if (myfegyv=FEGYV_LAW) or (myfegyv=FEGYV_H31_T) or (myfegyv=FEGYV_H31_G) then begin tj.x:=tj.x-0.1; tb.x:=tb.x-0.1; end;
+//  if myfegyv=FEGYV_M4A1 then begin tj.y:=tj.y+0.03; tb.y:=tb.y+0.03; end; //todo WAT?
   d3dxvec3transformcoord(vj,tj,mfm);
   d3dxvec3transformcoord(vb,tb,mfm);
   d3dxvec3transformnormal(nj,jk2,mrp);
@@ -9215,6 +10351,38 @@ begin
   gmbk[8]:=vj;
   haromszog3d(gmbk[9],gmbk[5],gmbk[7],nj,0.5);
   haromszog3d(gmbk[8],gmbk[5],gmbk[6],nb,0.5);
+//  log(FormatFloat('0.####',nj.x));
+//  log(FormatFloat('0.####',nj.y));
+//  log(FormatFloat('0.####',nj.z));
+
+
+//
+// with muks do
+// begin
+//
+//  jk2:=D3DXVector3(0.5,-1,-0.5);
+//  bk2:=D3DXVector3(-0.5,-1,-0.5);
+//
+//  d3dxmatrixinverse(mfm2,nil,matview);
+//
+//  D3DXVec3transformcoord(tj,D3DXVector3(-0.2,-0.2,-0.2),mfm2);
+//
+//  tj:=fegyv.jkez(myfegyv,mstat);
+//  tb:=fegyv.bkez(myfegyv,mstat);
+//
+//  d3dxvec3transformcoord(vj,tj,mat_World);
+//  d3dxvec3transformcoord(vb,tb,mat_World);
+//  d3dxvec3transformnormal(nj,jk2,mat_World);
+//  d3dxvec3transformnormal(nb,bk2,mat_World);
+//
+//  for i:=0 to high(muks.gmbk) do
+//   gmbk[i]:=tj;
+//  gmbk[5]:=tj;//D3DXVector3(campos.x,campos.y-0.3,campos.z);
+//  gmbk[9]:=vb;
+//  gmbk[8]:=vj;
+//  haromszog3d(gmbk[9],gmbk[5],gmbk[7],nj,0.5);
+//  haromszog3d(gmbk[8],gmbk[5],gmbk[6],nb,0.5);
+
  end;
  if myfegyv<128 then
   muks.Render(gunszin,identmatr,campos)
@@ -9337,7 +10505,8 @@ begin
   g_pd3ddevice.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,98,sokszr,sizeof(TSkyVertex));
  end;                             
 
- if ((myfegyv=FEGYV_M82A1) and (not csipo)) and (halal=0) then
+ if (G_peffect=nil) or (opt_postproc<=POSTPROC_DISTORTION) then
+ if (((myfegyv=FEGYV_M82A1)or (myfegyv = FEGYV_HPL)) and (not csipo)) and (halal=0) then
  begin
   g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iFalse);
   D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI/4, ASPECT_RATIO, 0.1, 1000.0);
@@ -9369,42 +10538,42 @@ begin
 
 end;
 
-procedure drawdistortionppl;
-var
-pos:TD3DXVector3;
-begin
-  exit;
-
-  {mat:=identmatr;
-  mat._11:=0.5;
-  mat._22:=-0.5;
-  mat._41:=0.5;
-  mat._42:=0.5;
-
-  d3dxmatrixscaling(mat2,1,1,0.7);
-  d3dxmatrixmultiply(mat,matproj,mat);
-  d3dxmatrixmultiply(mat,mat2,mat);   }
-
-  g_pd3dDevice.SetTransform(D3DTS_TEXTURE0, identmatr);
-
-    mat_world:=identmatr;
-    muks.init;
-
-    g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_SELECTARG1);
-    setupidentmatr;
-    pos:=D3DXVector3(cpx^,cpy^,cpz^);
-
-
-   { for i:=0 to rbszam do
-    begin
-     //g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, rongybabak[i].szin);
-     rongybabak[i].transfertomuks(muks);
-     muks.RenderDistortion( rongybabak[i].szin,identmatr,matproj,matview,pos);
-    end;      }
-    muks.Flush;
-
-
-end;
+//procedure drawdistortionppl;
+//var
+//pos:TD3DXVector3;
+//begin
+//  exit;
+//
+//  {mat:=identmatr;
+//  mat._11:=0.5;
+//  mat._22:=-0.5;
+//  mat._41:=0.5;
+//  mat._42:=0.5;
+//
+//  d3dxmatrixscaling(mat2,1,1,0.7);
+//  d3dxmatrixmultiply(mat,matproj,mat);
+//  d3dxmatrixmultiply(mat,mat2,mat);   }
+//
+//  g_pd3dDevice.SetTransform(D3DTS_TEXTURE0, identmatr);
+//
+//    mat_world:=identmatr;
+//    muks.init;
+//
+//    g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_SELECTARG1);
+//    setupidentmatr;
+//    pos:=D3DXVector3(cpx^,cpy^,cpz^);
+//
+//
+//   { for i:=0 to rbszam do
+//    begin
+//     //g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, rongybabak[i].szin);
+//     rongybabak[i].transfertomuks(muks);
+//     muks.RenderDistortion( rongybabak[i].szin,identmatr,matproj,matview,pos);
+//    end;      }
+//    muks.Flush;
+//
+//
+//end;
 
 procedure DrawFullscreenRect;
 var
@@ -9422,18 +10591,18 @@ begin
   g_pd3ddevice.SetTransform(D3DTS_View,mati);
   g_pd3ddevice.SetTransform(D3DTS_world,identmatr);
   g_pd3ddevice.SetTransform(D3DTS_texture0,identmatr);
-  D3DXMatrixPerspectiveFovLH(elmProj, D3DX_PI/2, 4/3, 0.99, 1000.0);
+  D3DXMatrixPerspectiveFovLH(elmProj, D3DX_PI/2, ASPECT_RATIO, 0.99, 1000.0);
   D3DXMatrixOrthoLH(elmProj,2,2,0.99, 1000.0);
   g_pd3ddevice.SetTransform(D3DTS_PROJECTION,elmproj);
 
   sokszr[0].position:=D3DXVector3(-1,-1,1);
-  sokszr[0].u:=0+1/1600;  sokszr[0].v:=1+1/1200;
+  sokszr[0].u:=0+1/SCwidth/2;  sokszr[0].v:=1+1/SCheight/2;
   sokszr[1].position:=D3DXVector3(-1,1,1);
-  sokszr[1].u:=0+1/1600;  sokszr[1].v:=0+1/1200;
+  sokszr[1].u:=0+1/SCwidth/2;  sokszr[1].v:=0+1/SCheight/2;
   sokszr[2].position:=D3DXVector3( 1,-1,1);
-  sokszr[2].u:=1+1/1600;  sokszr[2].v:=1+1/1200;
+  sokszr[2].u:=1+1/SCwidth/2;  sokszr[2].v:=1+1/SCheight/2;
   sokszr[3].position:=D3DXVector3( 1,1,1);
-  sokszr[3].u:=1+1/1600;  sokszr[3].v:=0+1/1200;
+  sokszr[3].u:=1+1/SCwidth/2;  sokszr[3].v:=0+1/SCheight/2;
   g_pd3ddevice.SetFVF(D3DFVF_SKYVERTEX);
   g_pd3ddevice.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,sokszr,sizeof(TSkyVertex));
   g_pd3ddevice.SetTransform(D3DTS_View,matView);
@@ -9525,9 +10694,11 @@ end;
 procedure renderReflectionTex;
 var
 backbuffer,efftexsurf:IDirect3DSurface9;
-reflectmat:TD3DMatrix;
+reflectmat,matViewproj:TD3DMatrix;
 aplane:TD3DXplane;
 xmat:TD3DMatrix;
+tmplw:cardinal;
+wm,vm,pm:TD3DMatrix;
 begin
  if reflecttexture=nil then
  begin
@@ -9574,7 +10745,7 @@ begin
 
     g_pd3ddevice.GetTransform(D3DTS_VIEW,xmat);
     frust:=frustum(xmat,0.1,1100,D3DX_PI/3, ASPECT_RATIO);
-    
+
     renderautok(true);
 
 
@@ -9591,6 +10762,8 @@ begin
 
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    g_pd3dDevice.SetTextureStageState(2, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    g_pd3dDevice.SetTextureStageState(2, D3DTSS_COLORARG2, D3DTA_CURRENT);
     g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLORARG2, D3DTA_CURRENT);
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
 
@@ -9600,28 +10773,59 @@ begin
 
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
-    g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
+    g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+
+
+
+    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
+    g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
+
     g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
 
 
+    //közel
     if not (cpy^>150)then
+    if useoldterrain then
     begin
     g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
     g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
 
-    g_pd3dDevice.SetTexture(0,futex);
-    g_pd3dDevice.SetTexture(1,noise2tex);
-    DrawSplat(0,splatinds[0]);
+        g_pd3dDevice.SetTexture(0,futex); //futex
+        g_pd3dDevice.SetTexture(1,noise2tex);
+        DrawSplat(0,splatinds[0]);
 
-    g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
-    g_pd3dDevice.SetTexture(0,homtex);
-    g_pd3dDevice.SetTexture(1,hnoise);
-    DrawSplat(splatinds[1],splatinds[2]);
 
-    g_pd3dDevice.SetTexture(0,kotex);
-    g_pd3dDevice.SetTexture(1,noisetex);
-    DrawSplat(splatinds[0],splatinds[1]);
-     end;
+      g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
+
+      g_pd3dDevice.SetTexture(0,homtex); //homtex
+      g_pd3dDevice.SetTexture(1,hnoise);
+      DrawSplat(splatinds[1],splatinds[2]);
+
+      g_pd3dDevice.SetTexture(0,kotex);//kotex
+      g_pd3dDevice.SetTexture(1,noisetex);
+      DrawSplat(splatinds[0],splatinds[1]);
+    end
+    else
+    begin
+    g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
+    g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
+
+        g_pd3dDevice.SetTexture(0,mt2); //futex
+        g_pd3dDevice.SetTexture(1,noise2tex);
+        DrawSplat(0,splatinds[0]);
+
+
+      g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
+
+      g_pd3dDevice.SetTexture(0,mt2); //homtex
+      g_pd3dDevice.SetTexture(1,hnoise);
+      DrawSplat(splatinds[1],splatinds[2]);
+
+      g_pd3dDevice.SetTexture(0,mt2);//kotex
+      g_pd3dDevice.SetTexture(1,noisetex);
+      DrawSplat(splatinds[0],splatinds[1]);
+      
+    end;
 
     g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iFalse);
 
@@ -9631,17 +10835,21 @@ begin
 
     g_pd3dDevice.SetIndices(g_pIBlvl2);
     g_pd3dDevice.SetTexture(1,noise2tex);
-    g_pd3dDevice.SetTexture(0,mt1);
+    g_pd3dDevice.SetTexture(0,mt2);
 
 
     g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSU,  D3DTADDRESS_CLAMP);
     g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSV,  D3DTADDRESS_CLAMP);
      g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
-     DrawLvl((cpy^>150));
+
+
+        DrawLvl((cpy^>150)); //táv
+
+
      g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
      g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
      g_pd3dDevice.SetTexture(1,noisetex);
-     DrawLvl((cpy^>150));
+//     DrawLvl((cpy^>150));
       g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
 
       g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSU,  D3DTADDRESS_WRAP);
@@ -9650,7 +10858,7 @@ begin
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
 
 
-    g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   FAKE_HDR);
+ g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   FAKE_HDR);
     g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,   D3DTOP_DISABLE);
     g_pd3dDevice.SetSamplerState(1, D3DSAMP_MIPFILTER, D3DTEXF_NONE );
     g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR );
@@ -9663,7 +10871,7 @@ begin
 
     g_pd3ddevice.SetTransform(D3DTS_TEXTURE1,identmatr);
     g_pd3ddevice.SetTransform(D3DTS_TEXTURE0,identmatr);
-    ojjektumrenderer.Draw(opt_detail,nil,false,felho);
+    ojjektumrenderer.Draw(nil,opt_imposters,felho);
     g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP,   D3DTOP_DISABLE);
 
     g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
@@ -9691,7 +10899,6 @@ begin
   if hanyszor=0 then hanyszor:=timegettime div 10;
   if (timegettime-volttim)>1 then
   begin
-   framespersecond:=1000/(timegettime-volttim);
    eltim:=(timegettime-volttim)/1000;
    volttim:=timegettime;
   end;
@@ -9710,10 +10917,10 @@ begin
   //dummypos.pos.y:=advwove(dummypos.pos.x,dummypos.pos.z);
 
   case myfegyv of
-   FEGYV_M4A1,FEGYV_M82A1,FEGYV_MP5A3:lovok:=lovok-eltim*10;
+   FEGYV_M4A1,FEGYV_M82A1,FEGYV_MP5A3,FEGYV_HPL,FEGYV_BM3:lovok:=lovok-eltim*10;
    FEGYV_X72:lovok:=lovok-eltim*7;
-   FEGYV_MPG:lovok:=lovok+eltim*2;
-   FEGYV_QUAD:lovok:=lovok+eltim*2;
+   FEGYV_MPG:lovok:=lovok+eltim*4;
+   FEGYV_QUAD:lovok:=lovok+eltim*4;
   end;
 
   if lovok<0 then lovok:=0;
@@ -9721,10 +10928,11 @@ begin
   for i:=0 to high(ppl) do
   begin
    case ppl[i].pls.fegyv of
-    FEGYV_M4A1,FEGYV_M82A1,FEGYV_X72,
-    FEGYV_MP5A3:ppl[i].pls.lo:=ppl[i].pls.lo-eltim*10;
-    FEGYV_MPG:ppl[i].pls.lo:=ppl[i].pls.lo+eltim*2;
-    FEGYV_QUAD:ppl[i].pls.lo:=ppl[i].pls.lo+eltim*2;
+    FEGYV_M4A1,FEGYV_M82A1,FEGYV_BM3,FEGYV_HPL,FEGYV_MP5A3:ppl[i].pls.lo:=ppl[i].pls.lo-eltim*10;
+    FEGYV_X72:ppl[i].pls.lo:=ppl[i].pls.lo-eltim*7;
+    FEGYV_MPG:ppl[i].pls.lo:=ppl[i].pls.lo+eltim*4;
+    FEGYV_QUAD:ppl[i].pls.lo:=ppl[i].pls.lo+eltim*4;
+
    end;
 
    if ppl[i].pls.lo<0 then ppl[i].pls.lo:=0;
@@ -9752,7 +10960,10 @@ begin
     if halal>6 then respawn;
   end;
 
-
+{$IFDEF fegyverteszt}
+  if halal>0 then
+  respawn;
+{$ENDIF}                                
 
   laststate:='Handlelovesek';
   Handlelovesek;
@@ -9776,10 +10987,12 @@ end;
 
  
 procedure undebug_checksum;
+ {$IFDEF undebug}
 var
  addr:dword;
  meminfo:MEMORY_BASIC_INFORMATION;
  checksum:dword;
+ {$ENDIF}
 begin
  {$IFDEF undebug}
  checksum:=0;
@@ -9805,6 +11018,102 @@ begin
  {$ENDIF}
 end;
 
+{$IFDEF terraineditor}
+
+procedure moveTerr(x,y,z:single);
+begin
+  if closeojj>=0 then  //mozgassunk objektumot!!!
+  begin
+   ojjektumarr[closeojj].holvannak[closeojjhv].x := ojjektumarr[closeojj].holvannak[closeojjhv].x + x;
+   ojjektumarr[closeojj].holvannak[closeojjhv].y := ojjektumarr[closeojj].holvannak[closeojjhv].y + y;
+   ojjektumarr[closeojj].holvannak[closeojjhv].z := ojjektumarr[closeojj].holvannak[closeojjhv].z + z;
+  end;
+
+  posrads[closepr].posx := posrads[closepr].posx + x;
+  posrads[closepr].posy := posrads[closepr].posy + y;
+  posrads[closepr].posz := posrads[closepr].posz + z;
+
+
+end;
+
+
+procedure drawDebug;
+var
+i:integer;
+dist,distmin:single;
+mat,mat2,mat3:TD3DMatrix;
+begin
+
+ //g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iFalse);
+ g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,  D3DTOP_SELECTARG1 );
+
+ distmin := 10000000;
+ for i:=0 to high(posrads) do
+ with posrads[i] do
+ if individual then
+ begin
+  dist := tavPointPoint(D3DXVector3(posx,posy,posz),D3DXVector3(cpx^,cpy^,cpz^));
+  if dist < distmin then
+  begin
+    distmin := dist;
+    closepr := i;
+  end;
+ end;
+
+ if not posrads[closepr].individual then
+ begin
+   for i:=0 to high(ojjektumarr) do
+   with ojjektumarr[i] do
+   begin
+    if (closepr >= posradoffset) and (closepr <= posradoffset+hvszam) then
+    begin
+     closeojj := i;
+     closeojjhv := closepr-posradoffset;
+    end;
+   end;
+ end
+ else
+  closeojj := -1;
+
+
+
+ for i:=0 to high(posrads) do
+ with posrads[i] do
+ begin
+    g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iTrue);
+    if i = closepr then
+      g_pd3dDevice.SetTexture(0,viztex)
+    else
+      g_pd3dDevice.SetTexture(0,kotex);
+
+    D3DXMatrixTranslation(mat,posx,posy,posz);
+
+    D3DXMatrixScaling(mat2,radd,1,radd);
+    D3DXMatrixMultiply(mat3,mat2,mat);
+    g_pd3dDevice.SetTransform(D3DTS_WORLD, mat3);
+    if i = closepr then
+    begin
+      if floor(GetTickCount/500) mod 2 = 0 then continue;
+      g_pd3dDevice.SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
+    end
+    else
+      g_pd3dDevice.SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
+    noobmesh.DrawSubset(0);
+
+
+    D3DXMatrixScaling(mat2,raddn,1,raddn);
+    D3DXMatrixMultiply(mat3,mat2,mat);
+    g_pd3dDevice.SetTransform(D3DTS_WORLD, mat3);
+    g_pd3dDevice.SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
+     if i = closepr then g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iFalse);
+    noobmesh.DrawSubset(0);
+ end;
+ g_pd3dDevice.SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
+ g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iTrue);
+end;
+ {$ENDIF}
+
+
 
 procedure RenderScene;
 const
@@ -9812,19 +11121,40 @@ magicfuertek:array [0..4] of byte = (0,13,45,119,181);
 var
  i:integer;
  pos:TD3DVector;
+ tmplw:longword;
+ matViewProj:TD3DMatrix;
 begin
+
+   inc(framecount);       //TODO IF!
+   
+   if framecount = 10 then
+   begin
+   fps := floor(10000/(GetTickCount-frametime));
+   frametime := GetTickCount;
+   framecount := 0;
+   end;
+
+  //########################
+  //##### REFELECTION ######
+  //########################
    laststate:='Rendering reflections';
 
    if (myfegyv = FEGYV_MPG) then
-     (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.03))
+     (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.02))
    else if (myfegyv = FEGYV_QUAD) then
-     (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.01))
+     (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.012))
+   else if (myfegyv = FEGYV_HPL) then
+     (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.012))
    else
      (if lightIntensity > 0 then lightIntensity := max(0,lightIntensity - 0.04));
 
    //hát, ez elõre kell. pont.
   if (opt_water>0) then
    Renderreflectiontex;
+
+  //###################
+  //##### NORMAL ######
+  //###################
 
    laststate:='Rendering';
   // Clear the zbuffer
@@ -9863,6 +11193,11 @@ begin
      portalevent.RenderModels;
 
     setupidentmatr;
+
+   //####################
+   //##### TERRAIN ######
+   //####################
+
     // Render the vertex buffer contents
     g_pd3dDevice.SetStreamSource(0, g_pVB, 0, SizeOf(TCustomVertex));
     g_pd3dDevice.SetFVF(D3DFVF_CUSTOMVERTEX);
@@ -9886,52 +11221,144 @@ begin
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
 
-    if not (cpy^>150)then
-    begin
     g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
     g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
 
-    g_pd3dDevice.SetTexture(0,futex);
-    g_pd3dDevice.SetTexture(1,noise2tex);
-
-     DrawSplat(0,splatinds[0]);
+    if not (cpy^>150)then
+    begin
 
 
-    g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
+       //KÖZELI fû
 
-    g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
-    g_pd3dDevice.SetTexture(0,homtex);
-    g_pd3dDevice.SetTexture(1,hnoise);
-    DrawSplat(splatinds[1],splatinds[2]);
+      if useoldterrain then
+      begin
+        g_pd3dDevice.SetTexture(0,futex);
+        g_pd3dDevice.SetTexture(1,noise2tex);
+        DrawSplat(0,splatinds[0]);
+      end
+      else
+      begin
+       g_peffect.SetTechnique('Terrain');
+       g_peffect.SetVector('g_CameraPosition',D3DXVector4(campos.x,campos.y,campos.z,0));
+        g_pEffect.SetTexture('g_MeshTexture', mt1);
+        g_pEffect.SetTexture('g_Grass', futex);
+        g_pEffect.SetTexture('g_Sand', homtex);
+        g_pEffect.SetTexture('g_Rock', kotex);
+//        g_pEffect.SetTexture('g_Rock2', kotex2);
+//        g_pEffect.SetTexture('g_Rock3', kotex3);
+        g_pEffect.SetTexture('g_hnoise', hnoise);
+        g_peffect.SetFloat ('FogStart',fogstart);
+        g_peffect.SetFloat ('FogEnd',fogend);
+        g_peffect.SetVector('FogColor',Vec4fromCardinal(colorlerp(col_fog_rainy,col_fog_sunny,fogc)));
+        g_peffect.SetInt('homokcol',hoszin);
+        g_peffect.SetInt('vizeshomokcol',nhszin);
+        g_peffect.SetInt('vizcol',vizszin);
 
-    g_pd3dDevice.SetTexture(0,kotex);
-    g_pd3dDevice.SetTexture(1,noisetex);
-    DrawSplat(splatinds[0],splatinds[1]);
+        if felho.coverage>5 then
+          g_peffect.SetFloat('Fogc',fogc)
+        else
+          g_peffect.SetFloat('Fogc',0.5);
+
+        g_peffect.SetFloat('HDRszorzo',shaderhdr);
+
+        d3dxmatrixmultiply(matViewproj,matView,matProj);
+        g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
+
+
+           g_peffect._Begin(@tmplw,0);
+        g_peffect.BeginPass(0);
+        g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,iTrue);
+        g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,ifalse);
+        g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
+        g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,itrue);
+        g_pd3ddevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_CCW);
+        DrawSplat(0,splatinds[0]);
+        g_peffect.Endpass;
+        g_peffect._end;
+      end;
+
+
+
+      if useoldterrain then
+      begin
+      g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
+      g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
+      g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
+
+      g_pd3dDevice.SetTexture(0,homtex);
+      g_pd3dDevice.SetTexture(1,hnoise);
+      DrawSplat(splatinds[1],splatinds[2]);
+
+      g_pd3dDevice.SetTexture(0,kotex);
+      g_pd3dDevice.SetTexture(1,noisetex);
+      //KÖZELI szikla
+
+      DrawSplat(splatinds[0],splatinds[1]);
+      end;
+
     end;
 
-    g_pd3dDevice.SetRenderState(D3DRS_LIGHTING, iFalse);
+//
+//    g_pd3dDevice.SetRenderState(D3DRS_TEXTUREFACTOR,$FF0000FF);
+//
+//  //  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   fake_HDR);
+//   // g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE  );
+//    g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE );
+//
+//
+//
+//
+//    g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSU,  D3DTADDRESS_CLAMP);
+//    g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSV,  D3DTADDRESS_CLAMP);
+//     g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
+////     TÁVOLI TEREP
 
-    g_pd3dDevice.SetRenderState(D3DRS_TEXTUREFACTOR,$FF0000FF);
+      if useoldterrain then
+      begin
+        g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+        g_pd3dDevice.SetIndices(g_pIBlvl2);
+        g_pd3dDevice.SetTexture(1,noise3);
+        g_pd3dDevice.SetTexture(0,mt1);
+        DrawLvl((cpy^>150));
 
-  //  g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   fake_HDR);
-   // g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE  );
-    g_pd3dDevice.SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE );
+      end
+      else
+      begin
+        g_peffect.SetTechnique('Terrain');      //FarTerrain
 
-    g_pd3dDevice.SetIndices(g_pIBlvl2);
-    g_pd3dDevice.SetTexture(1,noise2tex);
-    g_pd3dDevice.SetTexture(0,mt1);
+        g_peffect.SetVector('g_CameraPosition',D3DXVector4(campos.x,campos.y,campos.z,0));
+        g_pEffect.SetTexture('g_MeshTexture', mt1); //nem mindig kell
+        g_peffect.SetVector('FogColor',Vec4fromCardinal(colorlerp(col_fog_rainy,col_fog_sunny,fogc)));
+
+        if felho.coverage>5 then
+          g_peffect.SetFloat('Fogc',fogc)
+        else
+          g_peffect.SetFloat('Fogc',0.5);
+        g_peffect.SetFloat('HDRszorzo',shaderhdr);
+
+        d3dxmatrixmultiply(matViewproj,matView,matProj);
+        g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
+
+        g_peffect._Begin(@tmplw,0);
+        g_peffect.BeginPass(0);
+//        g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,iTrue);
+//        g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,ifalse);
+//        g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
+//        g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,itrue);
+//        g_pd3ddevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_CCW);
+        DrawLvl((cpy^>150));
+        g_peffect.Endpass;
+        g_peffect._end;
+      end;
 
 
-    g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSU,  D3DTADDRESS_CLAMP);
-    g_pd3dDevice.SetSamplerState(0, D3DSAMP_ADDRESSV,  D3DTADDRESS_CLAMP);
-     g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
-     DrawLvl((cpy^>150));
-     g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+
      g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iTrue);
      g_pd3dDevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTrue);
      g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $5);
-     g_pd3dDevice.SetTexture(1,noisetex);
-     //DrawLvl((cpy^>150));
+
+     //noiseal szorzott távoli, nem kell
+//     DrawLvl((cpy^>150));
       g_pd3dDevice.SetRenderState(D3DRS_ALPHABLENDENABLE, iFalse);
       g_pd3dDevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFalse);
 
@@ -9955,9 +11382,9 @@ begin
 
     muks.init;
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAOP,   D3DTOP_SELECTARG1);
- g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $80);
- g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTRUE);
- g_pd3ddevice.SetRenderState(D3DRS_ALPHAFUNC,  D3DCMP_GREATEREQUAL );
+    g_pd3ddevice.SetRenderState(D3DRS_ALPHAREF, $80);
+    g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iTRUE);
+    g_pd3ddevice.SetRenderState(D3DRS_ALPHAFUNC,  D3DCMP_GREATEREQUAL );
     g_pd3dDevice.SetTexture(0,muks.tex);
 
     D3DXMatrixIdentity(mat_world);
@@ -9967,7 +11394,7 @@ begin
     if (menu.lap=-1) then //MENÜBÕL nem kéne...
     begin
     if (halal=0) and (not autoban) and (not kulsonezet) and (mapmode=0) then
-     if (csipo) or (myfegyv<>FEGYV_M82A1) then
+     if (csipo) or ((myfegyv<>FEGYV_M82A1) and (myfegyv <>FEGYV_HPL)) then
      if not nofegyv then
       rendermykez;
 
@@ -9989,13 +11416,13 @@ begin
 
     for i:=0 to high(ppl) do
     begin
-    if ppl[i].pls.autoban then ppl[i].pls.visible:=false;
-    if ppl[i].pls.visible then
-     if tavpointpointsq(ppl[i].pos.pos,campos)<sqr(500) then
-     begin
-      Rendermuks(i,ppl[i].pos.state,ppl[i].pls.fegyv);
-     end;
-  end;
+      if ppl[i].pls.autoban then ppl[i].pls.visible:=false;
+      if ppl[i].pls.visible then
+       if tavpointpointsq(ppl[i].pos.pos,campos)<sqr(500) then
+       begin
+        Rendermuks(i,ppl[i].pos.state,ppl[i].pls.fegyv);
+       end;
+    end;
     muks.Flush;
 
      g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, iFALSE);
@@ -10017,10 +11444,10 @@ begin
     if tavpointpointsq(campos,ppl[i].pos.pos)<sqr(50+20*opt_detail) then
     begin
      setupmuksmatr(i);
-     mat_world._41:=mat_world._41+ppl[i].pls.fejh.x;
-     mat_world._42:=mat_world._42+ppl[i].pls.fejh.y;
-     mat_world._43:=mat_world._43+ppl[i].pls.fejh.z;
-     fejcuccrenderer.Render(ppl[i].pls.fejcucc,mat_world,false,D3DXVector3(cpx^,cpy^,cpz^));
+     mat_bajusz._41:=mat_bajusz._41+ppl[i].pls.fejh.x;
+     mat_bajusz._42:=mat_bajusz._42+ppl[i].pls.fejh.y;
+     mat_bajusz._43:=mat_bajusz._43+ppl[i].pls.fejh.z;
+     fejcuccrenderer.Render(ppl[i].pls.fejcucc,mat_bajusz,false,D3DXVector3(cpx^,cpy^,cpz^));
     end;
     fejcuccrenderer.Flush;
 
@@ -10036,17 +11463,13 @@ begin
     g_pd3dDevice.SetRenderState(D3DRS_TEXTUREFACTOR,$FF5050FF);
     g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
 
-     if (opt_detail>0) and (g_pEffect<>nil) then
-        g_pEffect.SetTexture('g_MeshTexture', effecttexture);
-
-    if opt_detail>0 then
+    if (opt_detail>DETAIL_MIN) and (g_pEffect<>nil) then
     begin
-      ojjektumrenderer.Draw(opt_detail,g_peffect,((myfegyv<>FEGYV_M82A1) or csipo) and not mapbol, felho);
+//      g_pEffect.SetTexture('g_MeshTexture', effecttexture); //???
       propsystem.RenderModels(g_peffect);
-    end
-    else
-    ojjektumrenderer.Draw(opt_detail,nil,((myfegyv<>FEGYV_M82A1) or csipo) and not mapbol, felho);
+    end;
 
+    ojjektumrenderer.Draw(g_peffect,(((myfegyv<>FEGYV_M82A1) and (myfegyv <>FEGYV_HPL)) or csipo) and not mapbol and opt_imposters, felho);
 
 
     uninitojjektumok(g_pd3ddevice);
@@ -10055,7 +11478,6 @@ begin
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 
 
-    //developer
     //g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_SELECTARG1);
     g_pd3dDevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
 
@@ -10066,27 +11488,37 @@ begin
 
 
     setupmyfegyvmatr;
-    setupfegyvlights(fegylit+(FAKE_HDR-3)*2);
     if not kulsonezet then
-    if (not csipo) and (myfegyv=FEGYV_M82A1) then fegyv.drawscope(FEGYV_M82A1 {myfegyv}) else
+    if (not csipo) and ((myfegyv=FEGYV_M82A1)or (myfegyv = FEGYV_HPL)) then
+    begin
+
+      setupprojmat;
+      fegyv.drawscope(FEGYV_M82A1);
+    end
+    else
+
     if myfegyv<>FEGYV_NOOB then
      begin
+      setupfegyvlights(fegylit);
       setupmyfegyvprojmat;
       if not nofegyv then
-       fegyv.drawfegyv(myfegyv);
+       fegyv.drawfegyv(myfegyv,felho.coverage,fegylit);
       setupprojmat;
      end
     else
      if not (enableeffects and (opt_postproc>0)) then
      begin
+      setupfegyvlights(fegylit);
       setupmyfegyvprojmat;
       if not nofegyv then
-       fegyv.drawfegyv(myfegyv);
+       fegyv.drawfegyv(myfegyv,felho.coverage,fegylit);
       setupprojmat;
      end;
     end;
 
-
+       {$IFDEF terraineditor}
+    drawDebug;
+    {$ENDIF}
 
 
     setupfegyvlights(10);
@@ -10103,7 +11535,7 @@ begin
      pos:=ppl[i].pos.pos;
    //  if (abs(pos.x-MMO.mypos.pos.x)+abs(pos.z-MMO.mypos.pos.z))<0.5 then continue;
      SetupFegyvmatr(i,0<(ppl[i].pos.state and MSTAT_CSIPO));
-     fegyv.drawfegyv(ppl[i].pls.fegyv);
+     fegyv.drawfegyv(ppl[i].pls.fegyv,felho.coverage,10);
     end;
 
     pos:=D3DXVector3(cpx^,cpy^,cpz^);
@@ -10152,43 +11584,38 @@ begin
 
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
-    laststate:='Rendering bushes';
+
+    laststate:='Rendering foliage';
     setupidentmatr;
+    setWindStrength(max(0,1-felho.coverage/WEATHER_MAX));
+
+    if g_pEffect <> nil then
+    begin
+      g_pEffect.SetMatrix('g_mWorldViewProjection', matViewproj);
+      g_pEffect.SetFloat('time',(gettickcount mod ceil(200*(felho.coverage+10)))/ceil(200*(felho.coverage+10))*2*pi);
+      g_pEffect.SetFloat('weather',max(0,WEATHER_MAX-felho.coverage));
+      g_peffect.SetFloat('HDRszorzo',shaderhdr);
+    end;
+
 
     for i:=0 to Length(foliages)-1 do
     begin
-      foliages[i].init;
+      if not (foliages[i].level>2) and not tallgrass then continue; //fû és kikapcsolva van
+      foliages[i].init(g_pEffect,false);
       foliages[i].render;
     end;
 
-   // fuvek2.render;
     g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, ifalse);
 
-
-
-   // g_pd3ddevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
-    laststate:='Rendering Alpha stuff';
-    //Alfás cuccos
-
-
-    fegyv.preparealpha;
-
-
-    setupidentmatr;
-
-    // setupidentmatr;
- { g_pd3dDevice.SetFVF(D3DFVF_XYZ);
-
-    //initfu;
-    if legyenfu then
-    begin
-    for i:=0 to fuszam do
-     drawfu(i);
-
-    end;
-    uninitfu;}
-    g_pd3dDevice.SetFVF(D3DFVF_CUSTOMVERTEX);
+        laststate:='Rendering Alpha stuff';
+        setupidentmatr;
+       g_pd3dDevice.SetFVF(D3DFVF_CUSTOMVERTEX);
     renderviz;
+
+
+
+
+
 
 
     g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
@@ -10225,15 +11652,25 @@ begin
 
 
     g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP,   D3DTOP_MODULATE);
+
+
+    if dobulletholes then
+      DecalSystem_Render(matView);
+
+    Particlesystem_render(matView);
+
     laststate:='Rendering Alpha stuff (fegyv)';
+    fegyv.preparealpha;
     if (menu.lap=-1) then //MENÜBÕL nem kéne...
     begin
 
-     if not ((myfegyv=FEGYV_M82A1) and (not csipo)) then
+     if not (((myfegyv=FEGYV_M82A1) or (myfegyv = FEGYV_HPL)) and (not csipo)) then
        setupmyfegyvprojmat;
      setupmyfegyvmatr;
-     fegyv.drawfegyeffekt(myfegyv,lovok);
-     if not ((myfegyv=FEGYV_M82A1) and (not csipo)) then
+     if not ((myfegyv=FEGYV_QUAD) or ((myfegyv=FEGYV_M82A1) and (not csipo)))  then
+     //if not (myfegyv=FEGYV_QUAD)  then
+     fegyv.drawfegyeffekt(myfegyv,lovok,mymuzzszog);
+     if not (((myfegyv=FEGYV_M82A1)or (myfegyv = FEGYV_HPL)) and (not csipo)) then
       setupprojmat;
 
      for i:=0 to high(ppl) do
@@ -10241,7 +11678,7 @@ begin
      begin
       pos:=ppl[i].pos.pos;
       SetupFegyvmatr(i,0<(ppl[i].pos.state and MSTAT_CSIPO));
-      fegyv.drawfegyeffekt(ppl[i].pls.fegyv,ppl[i].pls.lo);//bug
+      fegyv.drawfegyeffekt(ppl[i].pls.fegyv,ppl[i].pls.lo,ppl[i].pls.muzzszog);
      end;
 
     end;
@@ -10253,7 +11690,8 @@ begin
 
     laststate:='Rendering Particle System';
 
-    Particlesystem_render(matView);
+
+
 
 
 
@@ -10277,7 +11715,9 @@ begin
     g_pd3dDevice.EndScene;
   end;
 
+{$IFDEF undebug}
   errorospointer^:=random(100);
+{$ENDIF}
 end;
 
 procedure RenderPostProcess;
@@ -10311,14 +11751,63 @@ begin
     SetupMatrices(false);
 
     if (menu.lap=-1) then //MENÜBÕL nem kéne...
-    if (G_peffect<>nil) and (opt_postproc>=POSTPROC_GREYSCALE) then
+    if (G_peffect<>nil) and (opt_postproc>=POSTPROC_SNIPER) then
+    begin
+
+     if (not csipo) and (myfegyv=FEGYV_M82A1) and (halal=0) then
+     begin
+      g_peffect.SetTechnique('GunSniperEffect');
+
+      g_pEffect.SetTexture('g_MeshTexture', effecttexture);
+      g_pEffect.SetFloat('aspect',ASPECT_RATIO);
+
+      g_peffect._Begin(@tmplw,0);
+      g_peffect.BeginPass(0);
+      g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,ifalse);
+      g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iTrue);
+      g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_SRCALPHA );
+      g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_INVSRCALPHA );
+      g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
+      g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,ifalse);
+      g_pd3ddevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE);
+      g_pd3ddevice.SetRenderState(D3DRS_ZENABLE,ifalse);
+      DrawFullscreenrect;
+      g_peffect.Endpass;
+      g_peffect._end;
+     end;
+
+
+     if (not csipo) and (myfegyv=FEGYV_HPL) and (halal=0) then
+     begin
+      g_peffect.SetTechnique('TechSniperEffect');
+
+      g_pEffect.SetTexture('g_MeshTexture', effecttexture);
+      g_pEffect.SetFloat('aspect',ASPECT_RATIO);
+
+      g_peffect._Begin(@tmplw,0);
+      g_peffect.BeginPass(0);
+      g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,ifalse);
+      g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iTrue);
+      g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_SRCALPHA );
+      g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_INVSRCALPHA );
+      g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
+      g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,ifalse);
+      g_pd3ddevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE);
+      g_pd3ddevice.SetRenderState(D3DRS_ZENABLE,ifalse);
+      DrawFullscreenrect;
+      g_peffect.Endpass;
+      g_peffect._end;
+     end;
+    end;
+
+     if (menu.lap=-1) then //MENÜBÕL nem kéne...
+     if (G_peffect<>nil) and (opt_greyscale) then
      if halal<>0 then
      begin
       g_peffect.SetTechnique('FullScreenGreyscale');
 
       g_pEffect.SetTexture('g_MeshTexture', effecttexture);
       g_pEffect.SetFloat('BlendFactor',min(halal/4,1));
-
 
       g_peffect._Begin(@tmplw,0);
       g_peffect.BeginPass(0);
@@ -10337,8 +11826,9 @@ begin
      end;
 
 
+
     if (G_peffect<>nil) and (opt_postproc>=POSTPROC_GLOW) then
-    if halal=0 then
+    if not ((not csipo) and ((myfegyv=FEGYV_M82A1)or (myfegyv = FEGYV_HPL))) and (halal=0) then
      begin
       g_peffect.SetTechnique('FullScreenGlow');
 
@@ -10347,10 +11837,9 @@ begin
       g_peffect._Begin(@tmplw,0);
       g_peffect.BeginPass(0);
       g_pd3ddevice.SetRenderState(D3DRS_ZWRITEENABLE,ifalse);
-      g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iFalse);
-      //g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iTrue);
-      //g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
-      //g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_ONE);
+      g_pd3ddevice.SetRenderState(D3DRS_ALPHABLENDENABLE,iTrue);
+      g_pd3dDevice.SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
+      g_pd3dDevice.SetRenderState(D3DRS_DESTBLEND,  D3DBLEND_ONE);
       g_pd3ddevice.SetRenderState(D3DRS_LIGHTING,ifalse);
       g_pd3ddevice.SetRenderState(D3DRS_FOGENABLE,ifalse);
       g_pd3ddevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE);
@@ -10452,7 +11941,7 @@ begin
      g_pd3dDevice.SetRenderState(D3DRS_AMBIENT, ambientszin);
      setupmyfegyvmatr;
 
-      fegyv.drawfegyv(myfegyv);
+      fegyv.drawfegyv(myfegyv,felho.coverage,fegylit);
 
     end;
 
@@ -10584,6 +12073,7 @@ begin
  RenderScene;
  RenderPostprocess;
 
+
 {$IFDEF profiler}
  QueryPerformanceCounter(profile_stop);
  profile_render := (MSecsPerSec*(profile_stop-profile_start)) div profile_frequency;
@@ -10701,6 +12191,45 @@ begin
    t1:=0;
   write(fil2,t1);
 
+  if tallgrass then
+   t1:=1
+  else
+   t1:=0;
+  write(fil2,t1);
+
+  if opt_imposters then
+   t1:=1
+  else
+   t1:=0;
+  write(fil2,t1);
+
+  write(fil2,hdrpref);
+
+  if dobulletholes then
+   t1:=1
+  else
+   t1:=0;
+  write(fil2,t1);
+
+  if domuzzleflash then
+   t1:=1
+  else
+   t1:=0;
+  write(fil2,t1);
+
+  if opt_greyscale then
+   t1:=1
+  else
+   t1:=0;
+  write(fil2,t1);
+
+  t1:=mouseInvX;
+  write(fil2,t1);
+
+  t1:=mouseInvY;
+  write(fil2,t1);
+
+
   finally
   closefile(fil2);
   end;
@@ -10729,7 +12258,7 @@ begin
  menufi[MI_MOUSE_SENS_LAB].valueS:=floattostrf(mousesens,fffixed,6,2);
 
  savemenumisc;
- for i:=0 to 7 do
+ for i:=0 to MENULAP_MAX do
  begin
 
 
@@ -10797,14 +12326,13 @@ begin
   begin
    menufi[MI_TEAM].valueS:='TECH';
    myfegyv:=FEGYV_MPG;
-   menufi[MI_FEGYV].valueS:='MPG';
   end
   else
   begin
    menufi[MI_TEAM].valueS:='GUN';
    myfegyv:=FEGYV_M4A1;
-   menufi[MI_FEGYV].valueS:='M4A1';
   end;
+  menufi[MI_FEGYV].valueS:=fegyvernev(myfegyv);
   exit;
  end;
 
@@ -10815,69 +12343,67 @@ begin
   FEGYV_M4A1:
    begin
     myfegyv:=FEGYV_M82A1;
-    menufi[MI_FEGYV].valueS:='M82A1';
    end;
   FEGYV_M82A1:
    begin
     myfegyv:=FEGYV_LAW;
-    menufi[MI_FEGYV].valueS:='LAW';
    end;
   FEGYV_LAW:
    begin
     myfegyv:=FEGYV_MP5A3;
-    menufi[MI_FEGYV].valueS:='MP5A3';
    end;
   FEGYV_MP5A3:
-  if isEventWeapon then
    begin
-    myfegyv:=FEGYV_H31_G;
-    menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_H31_G);
-   end
-   else
-   begin
-    myfegyv:=FEGYV_M4A1;
-    menufi[MI_FEGYV].valueS:='M4A1';
+    myfegyv:=FEGYV_BM3;
    end;
+  FEGYV_BM3:
+    if isEventWeapon then
+     begin
+      myfegyv:=FEGYV_H31_G;
+     end
+     else
+     begin
+      myfegyv:=FEGYV_M4A1;
+     end;
   FEGYV_MPG:
    begin
     myfegyv:=FEGYV_QUAD;
-    menufi[MI_FEGYV].valueS:='QUADRO';
    end;
   FEGYV_QUAD:
    begin
     myfegyv:=FEGYV_NOOB;
-    menufi[MI_FEGYV].valueS:='NOOB';
    end;
   FEGYV_NOOB:
    begin
     myfegyv:=FEGYV_X72;
-    menufi[MI_FEGYV].valueS:='X72';
    end;
   FEGYV_X72:
+   begin
+    myfegyv:=FEGYV_HPL;
+   end;
+  FEGYV_HPL:
   if isEventWeapon then
    begin
     myfegyv:=FEGYV_H31_T;
-    menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_H31_T);
    end
    else
    begin
     myfegyv:=FEGYV_MPG;
-    menufi[MI_FEGYV].valueS:='MPG';
    end;
 
   FEGYV_H31_T:
    begin
     myfegyv:=FEGYV_MPG;
-    menufi[MI_FEGYV].valueS:='MPG';
    end;
 
   FEGYV_H31_G:
    begin
     myfegyv:=FEGYV_M4A1;
-    menufi[MI_FEGYV].valueS:='M4A1';
    end;
-   
-  end
+
+  end;
+
+  menufi[MI_FEGYV].valueS:=fegyvernev(myfegyv);
 
  end;
 
@@ -10892,6 +12418,13 @@ begin
   menufi[MI_HEADJOBB].clicked:=false;
   myfejcucc:=(myfejcucc+1) mod stuffjson.GetNum(['hats']);
  end;
+
+ if menu.items[3,3].clicked then
+ begin
+  menu.items[3,3].clicked:=false;
+   menu.lap:=1;
+ end;
+
 
  //Exit
  if menu.items[3,4].clicked then
@@ -10933,6 +12466,13 @@ begin
  begin
   menufi[MI_GRAPHICS].clicked:=false;
   menu.lap:=4;
+  exit;
+ end;
+
+ if menufi[MI_MOREGRAPHICS].clicked then
+ begin
+  menufi[MI_MOREGRAPHICS].clicked:=false;
+  menu.lap:=8;
   exit;
  end;
 
@@ -11001,13 +12541,13 @@ begin
  end;
 
 
- {
+
  if menufi[MI_IMPOSTER].clicked then
  begin
   menufi[MI_IMPOSTER].clicked:=false;
   opt_imposters:=not opt_imposters;
  end;
- }
+
  if menufi[MI_SCREENSHOT].clicked then
  begin
   menufi[MI_SCREENSHOT].clicked:=false;
@@ -11059,6 +12599,51 @@ begin
   exit;
  end;
 
+if menufi[MI_TALLGRASS].clicked then
+ begin
+  menufi[MI_TALLGRASS].clicked:=false;
+  tallgrass:=not tallgrass;
+  exit;
+ end;
+
+if menufi[MI_BULLETHOLES].clicked then
+ begin
+  menufi[MI_BULLETHOLES].clicked:=false;
+  dobulletholes:=not dobulletholes;
+  
+  if dobulletholes and not decalslive then
+    DecalSystem_Init(g_pd3ddevice);
+  exit;
+ end;
+
+if menufi[MI_MUZZLEFLASH].clicked then
+ begin
+  menufi[MI_MUZZLEFLASH].clicked:=false;
+  domuzzleflash:=not domuzzleflash;
+  exit;
+ end;
+
+if menufi[MI_GREYSCALE].clicked then
+ begin
+  menufi[MI_GREYSCALE].clicked:=false;
+  opt_greyscale:=not opt_greyscale;
+  exit;
+ end;
+
+if menufi[MI_MINVX].clicked then
+ begin
+  menufi[MI_MINVX].clicked:=false;
+  mouseInvX:=-mouseInvX;
+  exit;
+ end;
+
+if menufi[MI_MINVY].clicked then
+ begin
+  menufi[MI_MINVY].clicked:=false;
+  mouseInvY:=-mouseInvY;
+  exit;
+ end;
+
  if menufi[MI_REGISTERED].clicked then
  begin
   menufi[MI_REGISTERED].clicked:=false;
@@ -11080,6 +12665,8 @@ begin
 
  opt_water:=round(menufi[MI_WATER].elx*WATER_MAX);
  menufi[MI_WATER].elx:=opt_water/WATER_MAX;
+
+ hdrpref:=menufi[MI_HDR].elx;
 
  if pre_opt_water<>opt_water then
  begin
@@ -11151,22 +12738,51 @@ begin
   menufi[MI_SAVEPW].valueS:='[ ]';
 
 
- {if opt_imposters then
+ if opt_imposters then
   menufi[MI_IMPOSTER].valueS:='[X]'
  else
   menufi[MI_IMPOSTER].valueS:='[ ]';
-  }
+
  if png_screenshot then
   menufi[MI_SCREENSHOT].valueS:='PNG'
  else
   menufi[MI_SCREENSHOT].valueS:='JPG';
 
-
-
  if mouseacc then
   menufi[MI_MOUSE_ACC].valueS:='[X]'
  else
   menufi[MI_MOUSE_ACC].valueS:='[ ]';
+
+ if tallgrass then
+  menufi[MI_TALLGRASS].valueS:='[X]'
+ else
+  menufi[MI_TALLGRASS].valueS:='[ ]';
+
+ if dobulletholes then
+  menufi[MI_BULLETHOLES].valueS:='[X]'
+ else
+  menufi[MI_BULLETHOLES].valueS:='[ ]';
+
+ if domuzzleflash then
+  menufi[MI_MUZZLEFLASH].valueS:='[X]'
+ else
+  menufi[MI_MUZZLEFLASH].valueS:='[ ]';
+
+ if opt_greyscale then
+  menufi[MI_GREYSCALE].valueS:='[X]'
+ else
+  menufi[MI_GREYSCALE].valueS:='[ ]';
+
+ if mouseInvX<0 then
+  menufi[MI_MINVX].valueS:='[X]'
+ else
+  menufi[MI_MINVX].valueS:='[ ]';
+
+ if mouseInvY<0 then
+  menufi[MI_MINVY].valueS:='[X]'
+ else
+  menufi[MI_MINVY].valueS:='[ ]';
+
 end;
 
 procedure Menuloop;
@@ -11179,7 +12795,16 @@ begin
  mapmode:=0;
  mapbol:=false;
 
- volttim:=timegettime;
+  if volttim=0 then volttim:=timegettime;
+  if hanyszor=0 then hanyszor:=timegettime div 10;
+  if (timegettime-volttim)>1 then
+  begin
+   eltim:=(timegettime-volttim)/1000;
+   volttim:=timegettime;
+  end;
+  
+  animstat:=(timegettime mod 1000)/1000;
+
  kulsonezet:=true;
  szogx:=mszogx+sin(2*D3DX_PI*(timegettime mod 20000)/20000)/5;
  laststate:='Handlefizik lite';
@@ -11508,7 +13133,7 @@ end;
 
 procedure varCompare(args:array of string);
 var
-argnum,i,j,k:integer;
+argnum,i,j:integer;
 v1,v2:single;
 truth:boolean;
 op:string;
@@ -11999,6 +13624,15 @@ begin
   if pos(' /sniper',mit)=1 then
    coordsniper:=true;
 
+  if pos(' /fps',mit)=1 then
+    opt_drawfps := not opt_drawfps;
+
+  if pos(' /texturelist',mit)=1 then
+    savetexfilelist;
+
+  if pos(' /saveterrainmodel',mit)=1 then
+    saveterrainmodel;
+
   if pos(' //',mit)=1 then evalscriptline(copy(mit,4,length(mit)-3));
 
  {$IFDEF propeditor}
@@ -12133,6 +13767,10 @@ end;
 procedure handlewmchar(mit:wparam);
 var
 i:integer;
+{$IFDEF repkedomod}
+tempd3dbuf:ID3DXBuffer;
+n:integer;
+{$ENDIF}
 begin
 
 
@@ -12169,26 +13807,74 @@ begin
 //  if (chr(mit)='g') or (chr(mit)='G') then multisc.Medal('H','U');
   if (chr(mit)='g')  then
   begin
-  cpx^:=-283;
-  cpy^:=20;
-  cpz^:=-108;
-  cpox^:=-283;
-  cpoy^:=20;
-  cpoz^:=-108;
-//    multisc.Medal('C','3');
+
+   D3DXCreateEffectFromFile(g_pd3dDevice, 'data/effects.fx', nil, nil, 0, nil, g_pEffect, @tempd3dbuf);
+
+//    if not LTFF(g_pd3dDevice, 'data\textures\rock_12.jpg',kotex,TEXFLAG_COLOR) then exit;
+//     if not LTFF(g_pd3dDevice, 'data\textures\rock_detail.jpg',kotex3) then exit;
+//    if not LTFF(g_pd3dDevice, 'data\textures\grass.jpg',futex,TEXFLAG_COLOR) then exit;
+
+
+
+
+//  LTFF(g_pd3dDevice, 'data\textures\grass.jpg',futex);
+//  LTFF(g_pd3dDevice, 'data\textures\sand.jpg',homtex);
 
   end;
 
   if (chr(mit)='h')  then
   begin
-     multisc.Medal('H','U');
+
+
+ n:=stuffjson.GetNum(['foliages']);
+ setlength(foliages,n);
+ for i:=0 to n-1 do
+  begin
+
+   foliages[i] := TFoliage.create(G_pd3ddevice,'textures/'+stuffjson.GetString(['foliages',i,'texture']),stuffjson.GetFloat(['foliages',i,'width']),
+   stuffjson.GetFloat(['foliages',i,'height']),stuffjson.GetFloat(['foliages',i,'offset']),stuffjson.GetString(['foliages',i,'shape']));
+   foliages[i].level := stuffjson.GetInt(['foliages',i,'level']);
+  end;
+
+//   Inc(rand1);
+//   write(logfile,'1: ');
+//   writeln(logfile,rand1);
+//   rand1:= rand1 mod 18; 
 
   end;
 
+
+  if (chr(mit)='j')  then
+  begin
+
+   Inc(rand2);
+   write(logfile,'2: ');
+   writeln(logfile,rand2);
+   rand2:= rand2 mod 18;
+
+  end;
+
+
+
 //  if (chr(mit)='n') then addHudMessage('asd',$FF0000);;
-  if (chr(mit)='x') then multisc.weather:=multisc.weather+1;
-  if (chr(mit)='v') then multisc.weather:=0;
-  //if (chr(mit)='r') then multisc.doevent:='spaceship';
+  if (chr(mit)='x') then
+  begin
+    if multisc.weather<WEATHER_MAX then
+    multisc.weather:=multisc.weather+1;
+    writeChat('weather=' + inttostr(multisc.weather));
+  end;
+  if (chr(mit)='v') then
+  begin
+    multisc.weather:=0;
+    writeChat('weather=' + inttostr(multisc.weather));
+  end;
+
+  if multisc.weather<>felho.coverage then
+  begin
+   felho.coverage:=multisc.weather;
+   felho.makenew;
+  end;
+  if (chr(mit)='r') then multisc.doevent:='spaceship';
 
 
 
@@ -12202,6 +13888,22 @@ begin
   if (chr(mit)='6') then ojjektumTextures[me_tid].specIntensity := ojjektumTextures[me_tid].specIntensity + 0.1;
   if (chr(mit)='4') then ojjektumTextures[me_tid].specIntensity := ojjektumTextures[me_tid].specIntensity - 0.1;
   if (chr(mit)='5') then   matieditor;
+  multisc.weather:=100;
+  felho.coverage:=100;
+  {$ENDIF}
+  {$IFDEF terraineditor}
+  if (chr(mit)='+') then begin moveTerr(0,0.1,0); end;
+  if (chr(mit)='-') then begin moveTerr(0,-0.1,0); end;
+  if (chr(mit)='8') then begin moveTerr(0,0,0.1); end;
+  if (chr(mit)='2') then begin moveTerr(0,0,-0.1); end;
+  if (chr(mit)='6') then begin moveTerr(0.1,0,0); end;
+  if (chr(mit)='4') then begin moveTerr(-0.1,0,0); end;
+  if (chr(mit)='5') then remaketerrain;
+
+  if (chr(mit)='7') and (closeojj=-1) then begin posrads[closepr].radd := posrads[closepr].radd + 0.1; end;
+  if (chr(mit)='1') and (closeojj=-1) then begin posrads[closepr].radd := posrads[closepr].radd - 0.1; end;
+  if (chr(mit)='9') and (closeojj=-1) then begin posrads[closepr].raddn := posrads[closepr].raddn + 0.1; end;
+  if (chr(mit)='3') and (closeojj=-1) then begin posrads[closepr].raddn := posrads[closepr].raddn - 0.1; end;
   {$ENDIF}
   {$IFDEF propeditor}
   if (chr(mit)='0') then propsystem.removeLast;
@@ -12359,9 +14061,6 @@ end;
 
 
 
-
-
-
 procedure fillupmenu;
 var
 i:integer;
@@ -12369,7 +14068,8 @@ fil:textfile;
 fil2:file of single;
 str,password:string;
 t1:single;
-balstart,jobbveg,balveg,jobbstart,korr,bigtext,fent,sor:single;
+balstart,jobbveg,balveg,jobbstart,korr,bigtext,fent,sor,szel,jobbkozep:single;
+lap,hanyadik:byte;
 begin
  if not directoryexists('data\cfg') then createdirectory('data\cfg',nil);
  if fileexists('data\cfg\name.cfg') then
@@ -12396,12 +14096,13 @@ begin
  balveg   := 0.4;
  jobbstart:= 0.5;
  jobbveg  := 0.5+(1.067*(SCheight*0.5))/SCwidth;
- korr := (SCheight*1.333)/SCwidth;
+ korr := (SCheight*4/3)/SCwidth;
+ jobbkozep:=(jobbstart+jobbveg)/2;
 
  bigtext := 0.8;
 
  //Menü lap all
- for i:=0 to 7 do
+ for i:=0 to MENULAP_MAX do
  begin
   menu.Addteg(balstart,0.3,balveg,0.8,i);
   menu.AddText(balstart,0.35,balveg,0.45,bigtext,i,lang[0],true);
@@ -12412,7 +14113,6 @@ begin
  //Menü lap 0;
 
  // Invisible GazMSG
-
  menu.Addteg(jobbstart,0.3,jobbveg,0.8,0);
  menu.tegs[0,1].visible:=false;
 
@@ -12447,10 +14147,21 @@ begin
  //Menü lap 2 --- Options
  menu.Addteg(jobbstart,0.3,jobbveg,0.8,2);
 
- menu.AddText(jobbstart,0.35,jobbveg,0.45,1,2,lang[12],true);      menufi[MI_GRAPHICS]:=menu.items[2,3];
- menu.AddText(jobbstart,0.45,jobbveg,0.55,1,2,lang[13],true);         menufi[MI_SOUND]:=menu.items[2,4];
- menu.AddText(jobbstart,0.55,jobbveg,0.65,1,2,lang[14],true);      menufi[MI_CONTROLS]:=menu.items[2,5];
- menu.AddText(jobbstart,0.65,jobbveg,0.75,1,2,lang[11],true);      menufi[MI_INTERFACE]:=menu.items[2,6];
+ sor:=0.08;
+ fent:=0.35;
+ hanyadik:=0;
+ lap:=2;
+ menu.AddText(jobbstart,fent+sor*hanyadik,jobbveg,fent+sor*(hanyadik+1),1,2,lang[12],true);      menufi[MI_GRAPHICS]:=menu.items[lap,3];
+ inc(hanyadik);
+ menu.AddText(jobbstart,fent+sor*hanyadik,jobbveg,fent+sor*(hanyadik+1),1,2,lang[87],true);      menufi[MI_MOREGRAPHICS]:=menu.items[lap,4];
+ inc(hanyadik);
+ menu.AddText(jobbstart,fent+sor*hanyadik,jobbveg,fent+sor*(hanyadik+1),1,2,lang[13],true);      menufi[MI_SOUND]:=menu.items[lap,5];
+ inc(hanyadik);
+ menu.AddText(jobbstart,fent+sor*hanyadik,jobbveg,fent+sor*(hanyadik+1),1,2,lang[14],true);      menufi[MI_CONTROLS]:=menu.items[lap,6];
+ inc(hanyadik);
+ menu.AddText(jobbstart,fent+sor*hanyadik,jobbveg,fent+sor*(hanyadik+1),1,2,lang[11],true);      menufi[MI_INTERFACE]:=menu.items[lap,7];
+
+
 
  //Menü lap 3 --- Exit
  menu.Addteg(jobbstart,0.3,jobbveg,0.8,3);
@@ -12476,14 +14187,14 @@ begin
  menu.AddText(jobbstart ,fent+sor*7,jobbstart+0.13*korr,fent+sor*8,0.5,4,lang[78],false);
  menu.Addcsuszka(jobbstart+0.13*korr,fent+sor*7,jobbveg-0.03*korr,fent+sor*8,1,4,'',0.5);       menufi[MI_PARTICLE]:=menu.items[4,10];
 
- menu.AddText(jobbstart+korr*0.05,fent+sor*9,jobbstart+korr*0.2,fent+sor*10,0.5,4,lang[19],false);
- menu.AddText(jobbstart+korr*0.2 ,fent+sor*9,jobbstart+korr*0.3,fent+sor*10,1,4,'[X]',true); menufi[MI_RAIN]:=menu.items[4,12];
+ menu.AddText(jobbstart+korr*0.05,fent+sor*9,jobbstart+korr*0.25,fent+sor*10,0.5,4,lang[19],false);
+ menu.AddText(jobbstart+korr*0.25 ,fent+sor*9,jobbstart+korr*0.35,fent+sor*10,1,4,'[X]',true); menufi[MI_RAIN]:=menu.items[4,12];
 
- menu.AddText(jobbstart+korr*0.05,fent+sor*11,jobbstart+korr*0.2,fent+sor*12,0.5,4,lang[79],false);
- menu.AddText(jobbstart+korr*0.2 ,fent+sor*11,jobbstart+korr*0.3,fent+sor*12,1,4,'[X]',true); menufi[MI_MOTIONBLUR]:=menu.items[4,14];
+ menu.AddText(jobbstart+korr*0.05,fent+sor*11,jobbstart+korr*0.25,fent+sor*12,0.5,4,lang[79],false);
+ menu.AddText(jobbstart+korr*0.25 ,fent+sor*11,jobbstart+korr*0.35,fent+sor*12,1,4,'[X]',true); menufi[MI_MOTIONBLUR]:=menu.items[4,14];
 
- menu.AddText(jobbstart+korr*0.05,fent+sor*13,jobbstart+korr*0.2,fent+sor*14,0.5,4,lang[74],false);
- menu.AddText(jobbstart+korr*0.2 ,fent+sor*13,jobbstart+korr*0.3,fent+sor*14,0.5,4,'[X]',true); menufi[MI_SCREENSHOT]:=menu.items[4,16];
+ menu.AddText(jobbstart+korr*0.05,fent+sor*13,jobbstart+korr*0.25,fent+sor*14,0.5,4,lang[74],false);
+ menu.AddText(jobbstart+korr*0.25 ,fent+sor*13,jobbstart+korr*0.35,fent+sor*14,0.5,4,'[X]',true); menufi[MI_SCREENSHOT]:=menu.items[4,16];
 
  //menu.AddText(0.51 ,0.64,0.69,0.68,0.5,4,lang[75],false);
  //menu.AddText(0.69 ,0.64,0.77,0.68,0.5,4,'[X]',true); menufi[MI_IMPOSTER]:=menu.items[4,14];
@@ -12510,15 +14221,43 @@ begin
  menu.AddText(jobbstart+0.35*korr ,0.580,jobbstart+0.4*korr,0.650,1,5,'[X]',true); menufi[MI_R_ACTION]:=menu.items[5,14];
 
  //Menü lap 6 --- Controls
+ sor:=0.034;
+ fent:=0.5;
+ hanyadik:=1;
+ lap:=6;
+ szel:=(jobbveg-jobbstart)/9/korr; //basszatok lovat
+
  menu.Addteg(jobbstart,0.3,jobbveg,0.8,6);
 
  menu.AddText(jobbstart,0.350,jobbstart+korr*0.3,0.400,0.5,6,lang[26],false);
  menu.AddText(jobbveg-korr*0.2,0.350,jobbveg,0.400,0.5,6,'0.1',false);               menufi[MI_MOUSE_SENS_LAB]:=menu.items[6,4];
+
  menu.Addcsuszka(jobbstart+korr*0.05,0.420,jobbveg-korr*0.05,0.470,1,6,'',0.5);                  menufi[MI_MOUSE_SENS]:=menu.items[6,5];
- menu.AddText(jobbstart ,0.50,jobbstart+0.3*korr,0.560,0.5,6,lang[27],false);
- menu.AddText(jobbstart+0.3*korr ,0.50,jobbveg-0.03*korr,0.560,1,6,'[WTF]',true);              menufi[MI_MOUSE_ACC]:=menu.items[6,7];
+
+ menu.AddText(jobbstart ,fent+sor*hanyadik,jobbstart+0.3*korr,fent+sor*(hanyadik+1),0.5,6,lang[27],false);
+ menu.AddText(jobbstart+0.3*korr ,fent+sor*hanyadik,jobbveg-0.03*korr,fent+sor*(hanyadik+1),1,6,'[WTF]',true);              menufi[MI_MOUSE_ACC]:=menu.items[6,7];
+ inc(hanyadik,2);
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*hanyadik,jobbveg-0.05*korr,fent+sor*(hanyadik+1),0.5,lap,lang[93],false);
+// menu.AddText(jobbstart+korr*0.2 ,fent+sor*hanyadik,jobbstart+korr*0.3,fent+sor*(hanyadik+1),1,lap,'[X]',true);     menufi[MI_MINVX]:=menu.items[lap,14];
+ inc(hanyadik,1);
+
+ sor:=0.036;
+
+ menu.AddText(jobbkozep+korr*szel*-2,fent+sor*hanyadik,jobbkozep+korr*szel*-1,fent+sor*(hanyadik+1),0.5,lap,'X',false);
+ menu.AddText(jobbkozep+korr*szel*-1,fent+sor*hanyadik,jobbkozep+korr*szel*-0,fent+sor*(hanyadik+1),1,lap,'[X]',true);     menufi[MI_MINVX]:=menu.items[lap,10];
+ menu.AddText(jobbkozep+korr*szel*-0,fent+sor*hanyadik,jobbkozep+korr*szel*+1,fent+sor*(hanyadik+1),0.5,lap,'Y',false);
+ menu.AddText(jobbkozep+korr*szel*+1,fent+sor*hanyadik,jobbkozep+korr*szel*+2,fent+sor*(hanyadik+1),1,lap,'[X]',true);     menufi[MI_MINVY]:=menu.items[lap,12];
+
+// menu.AddText(jobbstart+korr*0.05,fent+sor*hanyadik,jobbstart+korr*0.2,fent+sor*(hanyadik+1),0.5,lap,lang[74],false);
+// menu.AddText(jobbstart+korr*0.2 ,fent+sor*hanyadik,jobbstart+korr*0.3,fent+sor*(hanyadik+1),0.5,lap,'[X]',true);   menufi[MI_MINVY]:=menu.items[lap,16];
+
 
  //Menü lap 7 --- Interface
+
+ fent:=0.3;
+ sor:=0.034;
+
  menu.Addteg(jobbstart,0.3,jobbveg,0.8,7);
 
  menu.AddText(jobbstart ,fent+sor*3,jobbstart+0.3*korr,fent+sor*4,0.5,7,lang[66],false);
@@ -12536,7 +14275,38 @@ begin
  menu.AddText(jobbstart ,fent+sor*11,jobbstart+0.3*korr,fent+sor*12,0.5,7,lang[76],false);
  menu.AddText(jobbstart+0.3*korr ,fent+sor*11,jobbveg-0.03*korr,fent+sor*12,1,7,'[X]',true); menufi[MI_SAVEPW]:=menu.items[7,12];
 
-// menu.AddText(0.45,0.3,0.9,0.8,0.5,6,'Sorry, no other settings. Yet.',false);
+ //Menü lap 8 --- Options-More graphics
+ sor:=0.034;
+ fent:=0.3;
+ hanyadik:=1;
+ lap:=8;
+ 
+ menu.Addteg(jobbstart,0.3,jobbveg,0.8,8);
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*hanyadik,jobbstart+korr*0.25,fent+sor*(hanyadik+1),0.5,lap,lang[88],false);
+ menu.AddText(jobbstart+korr*0.25 ,fent+sor*hanyadik,jobbstart+korr*0.35,fent+sor*(hanyadik+1),1,lap,'[X]',true);     menufi[MI_TALLGRASS]:=menu.items[lap,hanyadik+3];
+ inc(hanyadik,2);
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*hanyadik,jobbstart+korr*0.25,fent+sor*(hanyadik+1),0.5,lap,lang[89],false);
+ menu.AddText(jobbstart+korr*0.25 ,fent+sor*hanyadik,jobbstart+korr*0.35,fent+sor*(hanyadik+1),1,lap,'[X]',true);     menufi[MI_IMPOSTER]:=menu.items[lap,hanyadik+3];
+ inc(hanyadik,2);
+
+ menu.AddText(jobbstart ,fent+sor*hanyadik,jobbstart+0.13*korr,fent+sor*(hanyadik+1),0.5,lap,lang[90],false);
+ menu.Addcsuszka(jobbstart+0.13*korr,fent+sor*hanyadik,jobbveg-0.03*korr,fent+sor*(hanyadik+1),1,lap,'',0.5);       menufi[MI_HDR]:=menu.items[lap,hanyadik+3];
+ inc(hanyadik,2);
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*hanyadik,jobbstart+korr*0.25,fent+sor*(hanyadik+1),0.5,lap,lang[91],false);
+ menu.AddText(jobbstart+korr*0.25 ,fent+sor*hanyadik,jobbstart+korr*0.35,fent+sor*(hanyadik+1),1,lap,'[X]',true);     menufi[MI_BULLETHOLES]:=menu.items[lap,hanyadik+3];
+ inc(hanyadik,2);
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*hanyadik,jobbstart+korr*0.25,fent+sor*(hanyadik+1),0.5,lap,lang[92],false);
+ menu.AddText(jobbstart+korr*0.25 ,fent+sor*hanyadik,jobbstart+korr*0.35,fent+sor*(hanyadik+1),1,lap,'[X]',true);     menufi[MI_MUZZLEFLASH]:=menu.items[lap,hanyadik+3];
+ inc(hanyadik,2);
+
+ menu.AddText(jobbstart+korr*0.05,fent+sor*hanyadik,jobbstart+korr*0.25,fent+sor*(hanyadik+1),0.5,lap,lang[94],false);
+ menu.AddText(jobbstart+korr*0.25 ,fent+sor*hanyadik,jobbstart+korr*0.35,fent+sor*(hanyadik+1),1,lap,'[X]',true);     menufi[MI_GREYSCALE]:=menu.items[lap,hanyadik+3];
+
+
 
  if myfegyv<128 then
   menufi[MI_TEAM].valueS:='GUN';
@@ -12545,137 +14315,23 @@ begin
   menufi[MI_TEAM].valueS:='Random';
 
  case myfegyv of
-  FEGYV_M4A1:menufi[MI_FEGYV].valueS:='M4A1';
-  FEGYV_M82A1:menufi[MI_FEGYV].valueS:='M82A1';
-  FEGYV_LAW:menufi[MI_FEGYV].valueS:='LAW';
-  FEGYV_MPG:menufi[MI_FEGYV].valueS:='MPG';
-  FEGYV_QUAD:menufi[MI_FEGYV].valueS:='QUAD';
-  FEGYV_NOOB:menufi[MI_FEGYV].valueS:='NOOB';
-  FEGYV_X72:menufi[MI_FEGYV].valueS:='X72';
-  FEGYV_MP5A3:menufi[MI_FEGYV].valueS:='MP5A3';
+  FEGYV_M4A1:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_M4A1);
+  FEGYV_M82A1:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_M82A1);
+  FEGYV_LAW:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_LAW);
+  FEGYV_MPG:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_MPG);
+  FEGYV_QUAD:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_QUAD);
+  FEGYV_NOOB:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_NOOB);
+  FEGYV_X72:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_X72);
+  FEGYV_MP5A3:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_MP5A3);
+  FEGYV_BM3:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_BM3);
+  FEGYV_HPL:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_HPL);
 
   FEGYV_H31_T:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_H31_T);
   FEGYV_H31_G:menufi[MI_FEGYV].valueS:=fegyvernev(FEGYV_H31_G);
  else
-  myfegyv:=random(3)+random(2)*128;
+  myfegyv:=random(3)+random(2)*128; //TODO ezt dinamikusra
  end;
 
-
-
- if fileexists('data\cfg\misc.cfg') then
- begin
-  assignfile(fil2,'data\cfg\misc.cfg');
-  reset(fil2);
-  read(fil2,menufi[MI_MOUSE_SENS].elx);
-  read(fil2,menufi[MI_VOL].elx);
-  read(fil2,menufi[MI_MP3_VOL].elx);
-
-  read(fil2,t1);
-  
-  myfejcucc:=round(t1);
-  if (myfejcucc>stuffjson.GetNum(['hats'])-1) or (myfejcucc<0) then myfejcucc:=0;
-
-  read(fil2,t1);
-  opt_detail:=round(t1);
-  read(fil2,t1);
-  opt_postproc:=round(t1);
-  read(fil2,t1);
-  opt_water:=round(t1);
-  read(fil2,t1);
-  opt_particle:=round(t1);
-  
-  menufi[MI_DETAIL].elx:=opt_detail/DETAIL_MAX;
-  menufi[MI_EFFECTS].elx:=opt_postproc/POSTPROC_MAX;
-  menufi[MI_WATER].elx:=opt_water/WATER_MAX;
-  menufi[MI_PARTICLE].elx:=opt_particle/PARTICLE_MAX;
-
-
-  read(fil2,t1);
-  opt_rain:=t1>0.5;
-
-  read(fil2,t1);
-  opt_motionblur:=t1>0.5;
-
-  read(fil2,t1);
-  opt_taunts:=t1>0.5;
-
-  read(fil2,t1);
-  mouseacc:=t1>0.5;
-
-  read(fil2,t1);
-  mp3ambient:=t1>0.5;
-  read(fil2,t1);
-  mp3action:=t1>0.5;
-  read(fil2,t1);
-  mp3car:=t1>0.5;
-
-
-  read(fil2,t1);
-  png_screenshot:=t1>0.5;
-
-  read(fil2,t1);
-  opt_radar:=t1>0.5;
-
-  read(fil2,t1);
-  opt_nochat:=t1>0.5;
-
-  read(fil2,t1);
-  opt_zonename:=t1>0.5;
-
-  read(fil2,t1);
-  opt_tips:=t1>0.5;
-
-  read(fil2,t1);
-  savepw:=t1>0.5;
-  if savepw then
-  begin
-    menufi[MI_REGISTERED].clicked:=true;
-    lasthash:=decodehash(lasthash);
-  end;
-
-
-  closefile(fil2);
- end
- else
- begin
-  menufi[MI_MOUSE_SENS].elx:=0.5;
-  menufi[MI_VOL].elx:=0.5;
-  menufi[MI_MP3_VOL].elx:=0.5;
-  opt_detail:=DETAIL_MAX;
-  opt_postproc:=POSTPROC_GREYSCALE;
-  opt_water:=2;
-  opt_particle:=2;
-  opt_rain:=true;
-  opt_motionblur:=false;
-  png_screenshot:=false;
-  opt_taunts:=true;
-  opt_radar:=true;
-  opt_nochat:=false;
-  opt_zonename:=false;
-  opt_tips:=true;
-  savepw:=false;
-  mouseacc:=true;
-  mp3ambient:=false;
-  mp3action:=false;
-  mp3car:=true;
-  myfejcucc:=random(stuffjson.GetNum(['hats']));
- end;
-
-  //TODO remove
-
- //opt_imposters := false;
-
- if g_pEffect=nil then
- begin
-  opt_detail:=0;
-  if opt_postproc>POSTPROC_DISTORTION then
-   opt_postproc:=POSTPROC_DISTORTION;
- end;
- 
- if not enableeffects then
- begin
-  opt_postproc:=0;
- end;
 
 end;
 
@@ -12710,6 +14366,9 @@ procedure initnewmenu;
 var
 i:integer;
 begin
+ shaderhdr:=1;
+ hdrgoal:=1;
+ HDRincit:=8160;
  gobacktomenu:=false;
  menu.lap:=0;
  if kickmsg<>'' then
@@ -12720,7 +14379,7 @@ begin
   kickmsg:='';
   //hardkick
   if hardkick then
-  for i:=0 to 6 do
+  for i:=0 to MENULAP_MAX do
   begin
    menu.items[i,0].focusable:=false;
    menu.items[i,1].focusable:=false;
@@ -12731,6 +14390,18 @@ begin
  end;
 end;
 
+procedure writeChat(s:string);
+var
+  i:integer;
+begin
+  if multisc <> nil then
+  begin
+    for i:=high(multisc.chats) downto 1 do
+    multisc.chats[i]:=multisc.chats[i-1];
+    multisc.chats[0].uzenet:=s;
+  end;
+end;
+
 procedure loadVideoIni;
 var
   fil:TextFile;
@@ -12739,9 +14410,10 @@ begin
 
   SCwidth := GetSystemMetrics(SM_CXSCREEN);
   SCheight := GetSystemMetrics(SM_CYSCREEN);
-  texture_res:= 1;
+  texture_res:= TEXTURE_VERYHIGH;
   isnormals := true;
   iswindowed := false;
+  useoldterrain:= false;
   ASPECT_RATIO:=SCwidth/SCheight;
 
 
@@ -12763,8 +14435,13 @@ begin
       if (l2 = 'multisampling') then multisampling := strtoint(copy(line,pos('=',line)+1,length(line)));
       if (l2 = 'windowed') then iswindowed := strtoint(copy(line,pos('=',line)+1,length(line)))=1;
       if (l2 = 'normals') then isnormals := strtoint(copy(line,pos('=',line)+1,length(line)))=1;
+      if (l2 = 'oldterrain') then useoldterrain := strtoint(copy(line,pos('=',line)+1,length(line)))=1;
       if (l2 = 'langid') then nyelv := strtoint(copy(line,pos('=',line)+1,length(line))) and $3FF;
       if (l2 = 'texture_res') then texture_res := strtoint(copy(line,pos('=',line)+1,length(line)));
+
+      if texture_res = TEXTURE_LOW_LEG then texture_res:= TEXTURE_LOW;
+      if texture_res = TEXTURE_MED_LEG then texture_res:= TEXTURE_MED;
+      if texture_res = TEXTURE_HIGH_LEG then texture_res:= TEXTURE_HIGH;
 
     end;
     closefile(fil);
@@ -12773,6 +14450,11 @@ begin
   pixelY:= 1/SCheight;
   ASPECT_RATIO:=SCwidth/SCheight;
   vertScale:= SCheight/600;
+
+  {$IFDEF oldterrain}
+    useoldterrain:= true;
+  {$ENDIF}    
+
 end;
 
 
@@ -12812,6 +14494,10 @@ type TNtSetInformationThread= Function(hProcess: THandle;ProcessInformationClass
 var
   ntSIT:TNtSetInformationThread;
   hDebugObject:Thandle;
+{$ENDIF}
+
+{$IFDEF terraineditor}
+  terrfile:Textfile;
 {$ENDIF}
 
 label men,jatek,vege;
@@ -13000,10 +14686,10 @@ begin //                 BEGIIIN
 
 
     menu:=T3dMenu.Create(g_pd3ddevice,safemode);
-    if not LTFF(g_pd3dDevice, 'data/gui/chat.png',menu.chatbubble) then exit;
-    addfiletoChecksum('data/gui/chat.png');
+//    if not LTFF(g_pd3dDevice, 'data/gui/chat.png',menu.chatbubble) then exit;
+//    addfiletoChecksum('data/gui/chat.png');
     writeln(logfile,'Loading menu');flush(logfile);
-    laststate:='Loading menu';
+    laststate:=lang[85];
     if menu=nil then
     begin
       messagebox(0,'Menu.Create brutal error',Pchar(lang[30]),MB_SETFOREGROUND);
@@ -13031,7 +14717,7 @@ begin //                 BEGIIIN
 
     GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT,fsettings);
     fsettings.DecimalSeparator:='.';
-    
+
     writeln(logfile,'Loaded menu');flush(logfile);
     menu.DrawLoadScreen(0);
     if SUCCEEDED(InitializeAll) then
@@ -13043,7 +14729,9 @@ begin //                 BEGIIIN
       laststate:='Init Menu 1';
       writeln(logfile,'Loaded geometry and data'); flush(logfile);
     //menü helye
-      FillupMenu;
+
+      //FillupMenu;
+//      crunchSettings; //tyúklife
       writeln(logfile,'Checksum:'+inttohex(checksum,8));
     {$IFDEF nochecksumcheck}
       checksum:=datachecksum;
@@ -13217,6 +14905,9 @@ begin //                 BEGIIIN
           end;
           if gobacktomenu then
           begin
+            shaderhdr:=1;
+            hdrgoal:=1;
+            HDRincit:=8160;
             menu.DrawLoadScreen(200);
             //war_kb:= false;
             //war_1v1:= false;
@@ -13286,6 +14977,29 @@ begin //                 BEGIIIN
       end;
   {$ENDIF}
 
+
+ {$IFDEF terraineditor}
+  assignfile(terrfile,'terrainmodifiers.json');
+  rewrite(terrfile);
+      writeln(terrfile,'{');
+      writeln(terrfile,'  "terrain_modifiers" : [');
+      for i:=low(posrads) to high(posrads) do
+      begin
+        if not posrads[i].individual then continue;
+        writeln(terrfile, ' {');
+        if (posrads[i].name <> '') then writeln(terrfile, '"name" : "' + posrads[i].name + '",');
+        writeln(terrfile, '   "x" : ' + FormatFloat('0.####',posrads[i].posx) + ',');
+        writeln(terrfile, '   "y" : ' + FormatFloat('0.####',posrads[i].posy) + ',');
+        writeln(terrfile, '   "z" : ' + FormatFloat('0.####',posrads[i].posz) + ',');
+        writeln(terrfile, '   "radius" : ' + FormatFloat('0.####',posrads[i].radd) + ',');
+        writeln(terrfile, '   "offset" : ' + FormatFloat('0.####',posrads[i].raddn));
+        writeln(terrfile,  '  },');
+      end;
+   writeln(terrfile, '  ]');
+   writeln(terrfile, '}');
+   closefile(terrfile);
+  {$ENDIF}
+  
   if lostdevice then writeln(logfile,'Device lost');
   closeSound;
 

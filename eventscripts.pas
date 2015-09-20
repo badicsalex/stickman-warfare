@@ -278,6 +278,7 @@ var
 m,i:integer;
 vec1,vec2,plsvec:TD3DXVector3;
 x,y:single;
+atav:single;
 begin
 sounds;
 
@@ -311,15 +312,17 @@ m:=0;
  Particlesystem_add(simpleparticleCreate(vec1,D3DXVector3(0,0,0),2,2,$FFFFFFFF,0,300))
  end;
 
-
-
+ atav:=tavpointpointsq(eventpos,d3dxvector3(cpx^,cpy^,cpz^));
+ if (atav<sqr(100*opt_particle)) then
  if (phs=3) or ( ((phs=2) and (random(2000)<phstim-2000)))  then
  begin
+
  vec1 := D3DXVector3(0,cos(fordul+D3DX_PI*0.25*(phstim mod 8))*3,sin(fordul+D3DX_PI*0.25*(phstim mod 8))*3);
   D3DXVec3Add(vec1,eventpos,vec1);
  Particlesystem_add(simpleparticleCreate(vec1,D3DXVector3(0.05,0,0),0.2,0.02,$FF00FFFF,0,200));
  end;
 
+ if (atav<sqr(100*opt_particle)) then
  if (phs=3) and ((phstim mod 10) = 0) then
  begin
         plsvec.x:=random(200)-100;
@@ -334,6 +337,7 @@ m:=0;
       // Particlesystem_Add_Villam(vec2,plsvec,0.2,0.25,5,0.1,$FFfffdce,100);
  end;
 
+ if (atav<sqr(100*opt_particle)) then
  if (phs=3) and ((phstim mod 2) = 0) then
  begin
  x:=cos(-fordul/2+D3DX_PI*0.1176*(phstim mod 17))*3;

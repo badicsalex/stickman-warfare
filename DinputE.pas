@@ -85,8 +85,8 @@ begin
  vmouss:=mouss;
  keybrd.GetDeviceState(sizeof(keys),pointer(@keys));
  mous.GetDeviceState(sizeof(mouss),pointer(@mouss));
- mousmovx:=mouss.lX*Mousesensitivity;
- mousmovy:=mouss.lY*Mousesensitivity;
+ mousmovx:=mouss.lX*Mousesensitivity*mouseInvX;
+ mousmovy:=mouss.lY*Mousesensitivity*mouseInvY;
  mousmovscrl:=mouss.lZ;
  if mouseacceleration then AccelerateMouse;
  if (cpos.x>0) and (cpos.y>0) then
