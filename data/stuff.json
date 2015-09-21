@@ -1685,7 +1685,7 @@
 			"z" : 103.445,
 			"radius" : 14,
 			"offset" : 27,
-      "name" : "factory helyén",
+      "name" : "factory helyén"
 		},
 		{
 			"x" : -780,
@@ -1701,7 +1701,7 @@
 			"z" : 10.58,
 			"offset" : 13,
 			"radius" : 3,
-			"name" : "panthifeljárat",
+			"name" : "panthifeljárat"
 		},
 		{
 			"x" : -181.27,
@@ -1709,7 +1709,7 @@
 			"z" : 4.05,
 			"radius" : 1.5,
 			"offset" : 7,
-			"name" : "panthifeljárat",
+			"name" : "panthifeljárat"
 		},
 		{
 			"x" : -174.92,
@@ -1717,7 +1717,7 @@
 			"z" : -0.68,
 			"radius" : 1.5,
 			"offset" : 7,
-			"name" : "panthifeljárat",
+			"name" : "panthifeljárat"
 		},
 		{
 			"x" : -165.17,
@@ -1725,7 +1725,7 @@
 			"z" : 7.98,
 			"radius" : 3,
 			"offset" : 14,
-			"name" : "panthifeljárat",
+			"name" : "panthifeljárat"
 		},
 		{
 			"x" : -187.82,
@@ -1733,7 +1733,7 @@
 			"z" : 17.95,
 			"offset" : 13,
 			"radius" : 3,
-			"name" : "panthifeljárat",
+			"name" : "panthifeljárat"
 		},
 		{
 			"x" : -420.565,
@@ -2168,7 +2168,8 @@
 		"splash4.jpg",
 		"splash5.jpg",
 		"splash6.jpg",
-		"splash7.jpg"
+		"splash7.jpg",
+		"splash8.jpg"
 	],
 	"foliages" : [
 		{
