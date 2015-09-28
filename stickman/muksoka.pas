@@ -121,11 +121,11 @@ begin
 
 
   if FAILED(g_pd3dDevice.CreateVertexBuffer(20000*sizeof(TCustomVertex),
-                                            D3DUSAGE_WRITEONLY+D3DUSAGE_DYNAMIC, D3DFVF_CUSTOMVERTEX,
+                                            D3DUSAGE_WRITEONLY or D3DUSAGE_DYNAMIC, D3DFVF_CUSTOMVERTEX,
                                             D3DPOOL_DEFAULT, g_pmuksVB, nil))
   then Exit;
   if FAILED(g_pd3dDevice.CreateIndexBuffer(40000*2,
-                                            D3DUSAGE_WRITEONLY+D3DUSAGE_DYNAMIC,D3DFMT_INDEX16,
+                                            D3DUSAGE_WRITEONLY or D3DUSAGE_DYNAMIC,D3DFMT_INDEX16,
                                             D3DPOOL_DEFAULT, g_pmuksIB, nil))
 
   then Exit;
@@ -1047,6 +1047,7 @@ end;
 
 procedure TFejcuccrenderer.flush;
 begin
+  if (VBwh2>0) and ((IBwh2 div 3)>0) then
  g_pd3dDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,VBwh2,0,IBwh2 div 3);
  VBwh2:=0;
  IBWh2:=0;

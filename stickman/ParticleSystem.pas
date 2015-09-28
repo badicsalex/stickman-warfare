@@ -153,7 +153,7 @@ begin
   g_pd3dDevice.SetTransform(D3DTS_WORLD,mat);
   g_pd3dDevice.SetTransform(D3DTS_TEXTURE0,mat);
   g_pd3dDevice.SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE);
-  g_pd3dDevice.SetRenderState(D3DRS_ZWRITEENABLE,ifalse);
+  g_pd3dDevice.SetRenderState(D3DRS_ZWRITEENABLE,itrue);
 //     g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iFalse);
 
   d3dxmatrixinverse(mat,nil,viewmatrix);
@@ -240,7 +240,8 @@ begin
 
   for i:=hmin to hmax-1 do
     for j:=i+1 to hmax do
-      if (D3DXvec3dot(particles[i].v1,ev)<D3DXvec3dot(particles[j].v1,ev)) then // LFnagyobb(particles[i],particles[j],ev) then
+//      if (D3DXvec3dot(particles[i].v1,ev)<D3DXvec3dot(particles[j].v1,ev)) then // LFnagyobb(particles[i],particles[j],ev) then
+      if (particles[i].v1.x * ev.x + particles[i].v1.y * ev.y + particles[i].v1.z * ev.z)<(particles[j].v1.x * ev.x + particles[j].v1.y * ev.y + particles[j].v1.z * ev.z) then //inline.
       begin
         tmp:=particles[i];
         particles[i]:=particles[j];

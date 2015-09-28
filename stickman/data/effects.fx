@@ -382,10 +382,12 @@ struct VS_INPUT_POM
     float4 Position  : POSITION;    
     float2 TexUV1    : TEXCOORD0;
     float2 TexUV2    : TEXCOORD1;
-    float4 normal    : NORMAL;    
-    float4 tangent   : TANGENT0;
-    float4 binormal  : BINORMAL0;
+    float3 normal    : NORMAL;    
+    float3 tangent   : TANGENT0;
+    float3 binormal  : BINORMAL0;
 };
+
+
 
 struct PS_INPUT_POM
 {   
@@ -396,6 +398,13 @@ struct PS_INPUT_POM
     float3 ray    : TEXCOORD2;    
 };
 
+struct VS_INPUT_TERRAIN
+{
+    float4 Position  : POSITION;    
+    float2 TexUV1    : TEXCOORD0;
+    float2 TexUV2    : TEXCOORD1;
+};
+
 struct PS_INPUT_TERRAIN
 {   
 
@@ -403,8 +412,7 @@ struct PS_INPUT_TERRAIN
     float2 TexUV1    : TEXCOORD0;
     float2 TexUV2    : TEXCOORD1; 
     float Fog       : FOG;
-	float4 Normal    : TEXCOORD3;
-	float3 CameraVector : TEXCOORD4;
+  	float3 CameraVector : TEXCOORD4;
 };
 
 struct PS_INPUT_METAL
@@ -934,7 +942,7 @@ PS_INPUT_METAL PropVS ( VS_INPUT_POM In)
 
 PS_INPUT_METAL Output;
 
-	float4 normal = In.normal;
+	float3 normal = In.normal;
 	float4 pos = In.Position;
 	if (rotation!=0)
 	{
@@ -973,7 +981,7 @@ PS_OUTPUT PropPS( PS_INPUT_METAL In)
   return Output;
 }
 
-PS_INPUT_TERRAIN TerrainVS( VS_INPUT_POM In) 
+PS_INPUT_TERRAIN TerrainVS( VS_INPUT_TERRAIN In) 
 { 
     PS_INPUT_TERRAIN Output;
 
@@ -982,12 +990,12 @@ PS_INPUT_TERRAIN TerrainVS( VS_INPUT_POM In)
     Output.TexUV1  = In.TexUV1;
     Output.TexUV2  = In.TexUV2;
     Output.Fog = 1- saturate((Output.Position.z-FogStart)/(FogEnd-FogStart));   
-	Output.Normal = In.normal;
+	//Output.Normal = In.normal;
 	Output.CameraVector = Output.Position - g_CameraPosition;
     return Output;
 }
 
-PS_INPUT_TERRAIN Terrain2VS( VS_INPUT_POM In) 
+PS_INPUT_TERRAIN Terrain2VS( VS_INPUT_TERRAIN In) 
 { 
     PS_INPUT_TERRAIN Output;
 
@@ -999,7 +1007,7 @@ PS_INPUT_TERRAIN Terrain2VS( VS_INPUT_POM In)
     Output.TexUV1  = In.TexUV1;
     Output.TexUV2  = In.TexUV2;
     Output.Fog = 1- saturate((Output.Position.z-FogStart)/(FogEnd-FogStart));   
-	Output.Normal = In.normal;
+	//Output.Normal = In.normal;
 	Output.CameraVector = Output.Position - g_CameraPosition;
     return Output;
 }
