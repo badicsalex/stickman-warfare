@@ -1896,6 +1896,7 @@ begin
     for j:=0 to drawtable[i].xasz-1 do
       if drawtable[i].DIPdata[j*ojjektumarr[i].hvszam].tex=k then
         with drawtable[i].DIPdata[j*ojjektumarr[i].hvszam+jj] do
+        if facecount>0 then
         begin
           g_pd3ddevice.SetTexture(1,ojjektumarr[i].lightmap); //a szopás iránya: le
           g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,vertstart,0,vertcount,facestart,facecount);
@@ -1983,6 +1984,7 @@ begin
         if drawtable[i].visible[j]and drawtable[i].RenderZ[j] then
           for k:=0 to drawtable[i].xasz-1 do
             if (drawtable[i].DIPdata[j+k].tex>=0) then
+            if drawtable[i].DIPdata[j+k].faceCount>0 then
             begin
               if not ojjektumtextures[drawtable[i].DIPdata[j+k].tex].alphatest and
                 not ojjektumtextures[drawtable[i].DIPdata[j+k].tex].emitting then
@@ -2056,7 +2058,7 @@ begin
         pEffect.SetTexture('g_MeshTexture',ojjektumtextures[k].tex);
         if ojjektumtextures[k].normalmap then
           pEffect.SetTexture('g_MeshHeightmap',ojjektumtextures[k].heightmap);
-        pEffect.SetBool('vanNormal',ojjektumtextures[k].normalmap);
+
         pEffect.SetFloat('HDRszorzo',HDRszorzo);
         if felho.coverage>5 then begin//napos
           pEffect.SetFloat('specHardness',ojjektumtextures[k].specHardness);
@@ -2132,6 +2134,7 @@ begin
             for jj:=0 to ojjektumarr[i].hvszam-1 do
               if drawtable[i].visible[jj] then
                 with drawtable[i].DIPdata[j*ojjektumarr[i].hvszam+jj] do
+                if facecount>0 then
                   g_pd3ddevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST,vertstart,0,vertcount,facestart,facecount);
       end;
     end;
