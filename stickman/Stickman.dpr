@@ -12,11 +12,11 @@
  *                                           *)
 {$R stickman.RES}
 {$DEFINE force16bitindices} //ez hibás, pár helyen, ha nincs kipontozva, meg kell majd nézni
-{.$DEFINE undebug}
+{$DEFINE undebug}
 {.$DEFINE panthihogomb}
 {.$DEFINE nochecksumcheck}
 {.$DEFINE speedhack}
-{$DEFINE repkedomod}
+{.$DEFINE repkedomod}
 {.$DEFINE winter}
 {.$DEFINE godmode}
 {.$DEFINE admingun}
@@ -1112,7 +1112,7 @@ var
 begin
 
   laststate:= 'Remakeindexbuffer 1';
-  if FAILED(g_pIB.Lock(0, 0, pIndices, D3DLOCK_DISCARD))
+  if FAILED(g_pIB.Lock(0, 0, pIndices, 0)) //D3DLOCK_DISCARD
     then Exit;
   {.$R+}
   hol:=pIndices;
@@ -1466,6 +1466,8 @@ begin
     foliages[i].level:=stuffjson.GetInt(['foliages', i, 'level']);
 
   end;
+
+  writeln(logfile, 'Loaded foliage');flush(logfile);
 
   n:=stuffjson.GetNum(['sounds']);
   setlength(sounds, n);
@@ -2816,7 +2818,7 @@ begin
   //specialis selymes fu LEGACY
  { if legyenfu then
    if FAILED(g_pd3dDevice.CreateVertexBuffer((lvlsizp*lvlsizp*(4)+100)*SizeOf(TCustomVertex),
-                                            D3DUSAGE_WRITEONLY+D3DUSAGE_DYNAMIC, D3DFVF_CUSTOMVERTEX,
+                                            D3DUSAGE_WRITEONLY or D3DUSAGE_DYNAMIC, D3DFVF_CUSTOMVERTEX,
                                             D3DPOOL_DEFAULT, g_pdynVB, nil))
   then Exit; }
 
@@ -2886,7 +2888,8 @@ begin
 
   allind:=indmost;
 
-  if FAILED(g_pIBlvl2.Lock(0, 0, Pointer(pIndices), D3DLOCK_DISCARD))
+//alapind:array[0..lvlsizp * lvlsizp * 6] of Dword;
+  if FAILED(g_pIBlvl2.Lock(0, lvlsizp * lvlsizp * 6 +1, Pointer(pIndices), 0)) //D3DLOCK_DISCARD
     then Exit;
 
   indmost:=0;
@@ -2936,7 +2939,6 @@ begin
     //if not bokrok.betoltve then exit;
     //if not fuvek.betoltve then exit;
     //if not fuvek2.betoltve then exit;
-  writeln(logfile, 'Loaded foliage');flush(logfile);
 
   cloud_color:=stuffjson.GetInt(['cloud', 'color']);
   sky_ambient:=stuffjson.GetInt(['cloud', 'ambient']);
@@ -3002,7 +3004,9 @@ begin
 //write(logfile,mettol);
 //write(logfile,'  ');
 //writeln(logfile, (meddig - mettol) div 3);
+//flush(logfile);
 
+if ((meddig - mettol) div 3)>0 then
   g_pd3dDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, lvlsizp * lvlsizp * (farlvl - lvlmin + 1), mettol, (meddig - mettol) div 3)
 end;
 
@@ -3472,6 +3476,9 @@ begin
       kuldd:=timegettime;
     end;
   end;
+
+//  cpx^:=900;cpy^:=50;cpz^:=900;
+//  cpox^:=cpx^;cpoy^:=cpy^;cpoz^:=cpz^;
 
   updateterrain;
   tryupdatefoliage(true);
@@ -6240,7 +6247,16 @@ begin
         if (atav < sqr(vis * opt_particle)) and ((hanyszor and period) = period) and (not disabled) then
         begin
           //jöhet a rajzolás
-          chance:=opt_particle / PARTICLE_MAX;
+          chance:=opt_particle / PARTICLE_MAX; //ez már csak fallback, ha megváltozna valami
+
+          if (opt_particle=PARTICLE_MAX) then
+          chance:=1;
+
+          if (opt_particle=2) then
+          chance:=1/3;
+
+          if (opt_particle=1) then
+          chance:=1/10;
 
           lt:=lifetime + random(rndlt);
           if felho.coverage <= 5 then lt:=lt div 2;
@@ -8440,7 +8456,7 @@ end;
 
 procedure setupprojmat;
 begin
-  if ((myfegyv = FEGYV_M82A1) or (myfegyv = FEGYV_HPL)) and (not csipo) then
+  if ((myfegyv = FEGYV_M82A1) or (myfegyv = FEGYV_HPL)) and (not csipo) and (halal = 0) then
   begin
     D3DXMatrixPerspectiveFovLH(matProj, D3DX_PI / 16, ASPECT_RATIO, 0.1, 1100.0);
     frust:=frustum(matview, 0.1, 1100, D3DX_PI / 16, ASPECT_RATIO);
@@ -8730,7 +8746,7 @@ end;
 
 procedure handleBulletholes(aloves:Tloves);
 var
-  i, j, k:integer;
+  j, k:integer;
   size, y:single;
   tmp, tmp2, tmp3, tmp4:Td3dxvector3;
   material:byte;
@@ -8786,9 +8802,9 @@ end;
 
 procedure Handlelovesek;
 var
-  i, j, k, love:integer;
+  i, j, love:integer;
   aloves:Tloves;
-  tmp, tmp2, tmp3:TD3DXVector3;
+  tmp, tmp2:TD3DXVector3;
   dst:single;
   atc:cardinal;
   gtc:cardinal;
@@ -9068,7 +9084,7 @@ var
   matViewProj, matKorr, matkorr2:TD3DMatrix;
   speed:single;
 begin
-  speed:= -1;
+//  speed:= -1;
   // scale:=-1;
   g_pd3dDevice.SetRenderState(D3DRS_FOGENABLE, itrue);
   if not ((G_peffect <> nil) and (opt_water > 0)) then
@@ -10512,7 +10528,7 @@ begin
     g_pd3ddevice.DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 98, sokszr, sizeof(TSkyVertex));
   end;
 
-  if (G_peffect = nil) or (opt_postproc <= POSTPROC_DISTORTION) then
+  if (G_peffect = nil) or (opt_postproc < POSTPROC_SNIPER) then
     if (((myfegyv = FEGYV_M82A1) or (myfegyv = FEGYV_HPL)) and (not csipo)) and (halal = 0) then
     begin
       g_pd3dDevice.SetRenderState(D3DRS_ZENABLE, iFalse);
@@ -10701,11 +10717,10 @@ end;
 procedure renderReflectionTex;
 var
   backbuffer, efftexsurf:IDirect3DSurface9;
-  reflectmat, matViewproj:TD3DMatrix;
+  reflectmat:TD3DMatrix;
   aplane:TD3DXplane;
   xmat:TD3DMatrix;
-  tmplw:cardinal;
-  wm, vm, pm:TD3DMatrix;
+
 begin
   if reflecttexture = nil then
   begin
@@ -11610,18 +11625,14 @@ begin
       g_pEffect.SetFloat('weather', max(0, WEATHER_MAX - felho.coverage));
       g_peffect.SetFloat('HDRszorzo', shaderhdr);
     end;
-    laststate:= '11';
 
     for i:=0 to Length(foliages) - 1 do
     begin
-      laststate:= '22 ' + IntToStr(i);
       if not (foliages[i].level > 2) and not tallgrass then continue; //fû és kikapcsolva van
+      
       foliages[i].init;
-      laststate:= '33 ' + IntToStr(i);
       foliages[i].render;
-      laststate:= '44 ' + IntToStr(i);
     end;
-    laststate:= '55';
     g_pd3ddevice.SetRenderState(D3DRS_ALPHATESTENABLE, ifalse);
 
     laststate:= 'Rendering Alpha stuff';
@@ -13843,30 +13854,14 @@ end;   {}
 
 
 {$IFDEF repkedomod}
-      //  if (chr(mit)='p') or (chr(mit)='P') then multisc.Medal('W','U'); //marker
       if (chr(mit) = 'p') or (chr(mit) = 'P') then repules:= not repules;
-      //  if (chr(mit)='g') or (chr(mit)='G') then multisc.Medal('H','U');
       if (chr(mit) = 'g') then
       begin
-
         D3DXCreateEffectFromFile(g_pd3dDevice, 'data/effects.fx', nil, nil, 0, nil, g_pEffect, @tempd3dbuf);
-
-        //    if not LTFF(g_pd3dDevice, 'data\textures\rock_12.jpg',kotex,TEXFLAG_COLOR) then exit;
-        //     if not LTFF(g_pd3dDevice, 'data\textures\rock_detail.jpg',kotex3) then exit;
-        //    if not LTFF(g_pd3dDevice, 'data\textures\grass.jpg',futex,TEXFLAG_COLOR) then exit;
-
-
-
-
-        //  LTFF(g_pd3dDevice, 'data\textures\grass.jpg',futex);
-        //  LTFF(g_pd3dDevice, 'data\textures\sand.jpg',homtex);
-
       end;
 
       if (chr(mit) = 'h') then
       begin
-
-
         n:=stuffjson.GetNum(['foliages']);
         setlength(foliages, n);
         for i:=0 to n - 1 do
@@ -13885,19 +13880,6 @@ end;   {}
       end;
 
 
-      if (chr(mit) = 'j') then
-      begin
-
-        Inc(rand2);
-        write(logfile, '2: ');
-        writeln(logfile, rand2);
-        rand2:=rand2 mod 18;
-
-      end;
-
-
-
-      //  if (chr(mit)='n') then addHudMessage('asd',$FF0000);;
       if (chr(mit) = 'x') then
       begin
         if multisc.weather < WEATHER_MAX then
@@ -13916,9 +13898,6 @@ end;   {}
         felho.makenew;
       end;
       if (chr(mit) = 'r') then multisc.doevent:= 'spaceship';
-
-
-
 
 {$ENDIF}
 {$IFDEF matieditor}
@@ -14106,9 +14085,7 @@ end;   {}
   var
     i:integer;
     fil:textfile;
-    fil2:file of single;
     str, password:string;
-    t1:single;
     balstart, jobbveg, balveg, jobbstart, korr, bigtext, fent, sor, szel, jobbkozep:single;
     lap, hanyadik:byte;
   begin
@@ -14764,6 +14741,7 @@ begin //                 BEGIIIN
       if SUCCEEDED(InitializeAll) then
       begin
         menu.DrawLoadScreen(100);
+
         menu.fckep:=fejcuccrenderer.tex;
 
         // messagebox(0,PChar('Lflngt:'+floattostr(lflngt2/lflngt)),'Stats',0);

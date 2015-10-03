@@ -166,10 +166,10 @@ begin
     D3DPOOL_DEFAULT,g_pIB,nil))
     then Exit;
 
-  if FAILED(g_pIB.Lock(0,sqr(skyfelbontas-1)*6*2,Pointer(pindices),D3DLOCK_DISCARD))
+  if FAILED(g_pIB.Lock(0,sqr(skyfelbontas-1)*6*2,Pointer(pindices),0)) //D3DLOCK_DISCARD
     then Exit;
 
-  if FAILED(g_pVB.Lock(0,sqr(skyfelbontas)*sizeof(TFelhoVertex),Pointer(pVertices),D3DLOCK_DISCARD))
+  if FAILED(g_pVB.Lock(0,sqr(skyfelbontas)*sizeof(TFelhoVertex),Pointer(pVertices),0)) //D3DLOCK_DISCARD
     then Exit;
 
   write(logfile,'buffers...');flush(logfile);
@@ -317,7 +317,6 @@ const
 var
   plan:TD3DXPlane;
   tmplw:cardinal;
-  texfactor:cardinal;
 begin
   laststate:='RenderWeather';
   g_pd3ddevice.SetStreamSource(0,g_pVB,0,sizeof(TFelhoVertex));

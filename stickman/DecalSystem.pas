@@ -57,7 +57,7 @@ var
   ps_vert:array[0..20000] of Tparticlevertex;
   ps_ind:array[0..30000] of word;
   vertszam,indszam:integer;
-  sortind:integer;
+  //sortind:integer;
 
   g_pd3ddevice:IDirect3DDevice9;
   ps_texes:array of IDirect3DTexture9;
@@ -71,12 +71,12 @@ var
 begin
   g_pd3ddevice:=a_pd3ddevice;
   if FAILED(g_pd3dDevice.CreateVertexBuffer(20000*SizeOf(Tparticlevertex),
-    D3DUSAGE_WRITEONLY and D3DUSAGE_DYNAMIC,D3DFVF_PARTICLEVERTEX,
+    D3DUSAGE_WRITEONLY or D3DUSAGE_DYNAMIC,D3DFVF_PARTICLEVERTEX,
     D3DPOOL_DEFAULT,ps_VB,nil))
     then Exit;
 
   if FAILED(g_pd3dDevice.CreateIndexBuffer(30000*SizeOf(word),
-    D3DUSAGE_WRITEONLY and D3DUSAGE_DYNAMIC,D3DFMT_INDEX16,
+    D3DUSAGE_WRITEONLY or D3DUSAGE_DYNAMIC,D3DFMT_INDEX16,
     D3DPOOL_DEFAULT,ps_IB,nil))
     then Exit;
 
@@ -123,12 +123,10 @@ procedure DecalSystem_Render(viewmatrix:TD3DMatrix);
 
 var
   mat:TD3DMatrix;
-  i,j,k:integer;
-  tmp:Tparticle;
+  i,j:integer;
   tmost:word;
   pindices,pvertices:pointer;
   ev:TD3DXVector3;
-  hmin,hmax:integer;
   planv:TD3DXVector3;
   plan:TD3DXPlane;
   tmplw:longword;

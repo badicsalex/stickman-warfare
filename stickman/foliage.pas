@@ -115,7 +115,7 @@ const
     (position:(x: - 1;y:0;z: - 1);u:0;v:1),
     (position:(x:1;y:1;z:0);u:1;v:0),
     (position:(x: - 1;y:1;z:0);u:0;v:0),
-    (position:(x:1;y:0;z:1);u:1;v:1),
+    (position:(x:1;y:0;z:1);u:1;v:1),                                      
     (position:(x: - 1;y:0;z:1);u:0;v:1),
     (position:(x:1;y:0;z: - 1);u:1;v:1),
     (position:(x: - 1;y:0;z: - 1);u:0;v:1));
@@ -126,7 +126,9 @@ begin
   begin
     shift:=i * 12;
     for j:=0 to 11 do
+    begin
       pVertices[shift + j]:=fixarray[j];
+    end;
   end;
 end;
 
@@ -139,11 +141,15 @@ const
 var
   i, j, shift:integer;
 begin
+
   for i:=0 to racsnum * 2 - 1 do
   begin
     for j:=0 to 11 do
+    begin
       pIndices[i * 12 + j]:=fixarray[j] + i * 6;
+    end;
   end;
+
 end;
 
 procedure grassVertexGenerator(pVertices:PFoliageVertexArray);
@@ -195,8 +201,11 @@ begin
   for i:=0 to racsnum * 4 - 1 do
   begin
     for j:=0 to 11 do
+    begin
       pIndices[i * 12 + j]:=fixarray[j] + i * 4;
+    end;
   end;
+
 end;
 
 
@@ -230,33 +239,20 @@ begin
   if FAILED(g_pd3dDevice.CreateVertexBuffer(sizeof(TFoliageVertex) * totalvertexnum,
     D3DUSAGE_WRITEONLY or D3DUSAGE_DYNAMIC, D3DFVF_bokorvertex,
     D3DPOOL_DEFAULT, g_pVB, nil))
-    then begin
-    logerror('1');
-    Exit;
-  end;
+  then Exit;
 
   if FAILED(g_pd3dDevice.CreateIndexBuffer(sizeof(Word) * totalindexnum,
     D3DUSAGE_WRITEONLY, D3DFMT_INDEX16,
     D3DPOOL_DEFAULT, g_pIB, nil))
-
-  then begin
-    logerror('2');
-    Exit;
-  end;
+  then Exit;
 
   if FAILED(g_pIB.Lock(0, sizeof(Word) * totalindexnum, Pointer(pindices), 0))
-    then begin
-    logerror('3');
-    Exit;
-  end;
+  then Exit;
 
   shape.indexgen(pindices);
 
   if FAILED(g_pIB.unlock)
-    then begin
-    logerror('4');
-    Exit;
-  end;
+   then Exit;
 
   if not LTFF(g_pd3dDevice, 'data\' + texnam, g_ptexture) then
     Exit;
@@ -273,7 +269,6 @@ procedure TFoliage.Init;
 var
   tmplw:longword;
 begin
-  laststate:= '66';
 
   shaderrelvolt:=csicsahdr;
 
@@ -288,11 +283,11 @@ begin
 //    g_pEffect.SetFloat('specIntensity',0.6);
 //    g_pEffect.SetBool('upsidedown',shape.upsidedown);
     g_peffect._Begin(@tmplw, 0);
-    g_peffect.BeginPass(0);laststate:= '77';
+    g_peffect.BeginPass(0);
   end
   else
   begin
-    g_pD3Ddevice.SetTexture(0, g_ptexture);laststate:= '88';
+    g_pD3Ddevice.SetTexture(0, g_ptexture);
 
   end;
 
@@ -301,7 +296,6 @@ begin
   g_pd3ddevice.SetRenderState(D3DRS_Lighting, iFALSE);
   g_pd3ddevice.SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
   g_pd3ddevice.SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-  laststate:= '99';
 
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLOROP, FAKE_HDR);
   //  g_pd3dDevice.SetTextureStageState(0,D3DTSS_COLOROP,D3DTOP_SELECTARG1);
@@ -312,31 +306,32 @@ begin
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
   //  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);
-  laststate:= '1010';
+
+  g_pd3dDevice.SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+  g_pd3dDevice.SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+
+  g_pd3dDevice.SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
+  g_pd3dDevice.SetTextureStageState(2, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+
 end;
 
 
 procedure TFoliage.Render;
 begin
-  laststate:= '1111';
   g_pd3dDevice.SetStreamSource(0, g_pVB, 0, SizeOf(TFoliageVertex));
-  g_pd3dDevice.SetIndices(g_pIB);
   g_pd3dDevice.SetFVF(D3DFVF_bokorvertex);
-  laststate:= '1212';
-  g_pd3dDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, totalvertexnum, 0, totalindexnum);
-  laststate:= '1313';
+  g_pd3dDevice.SetIndices(g_pIB);
+  g_pd3dDevice.DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, totalvertexnum, 0, totalindexnum div 3);
   if shaderrelvolt then
   begin
     g_peffect.Endpass;
-    g_peffect._end;laststate:= '1414';
+    g_peffect._end;
   end;
-  laststate:= '1515';
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_CONSTANT, $FFFFFFFF);
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
   g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);laststate:= '1616';
-
+  g_pd3dDevice.SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TEXTURE);
 end;
 
 
@@ -354,7 +349,7 @@ var
 begin
   pls:=pow2i[level];
 
-  if FAILED(g_pVB.lock(0, sizeof(TFoliageVertex) * totalvertexnum, pointer(pvertices), D3DLOCK_DISCARD))
+  if FAILED(g_pVB.lock(0, sizeof(TFoliageVertex) * totalvertexnum, pointer(pvertices), 0)) //D3DLOCK_DISCARD
     then
   begin
     logerror('Failed to lock foliage verticles');
@@ -362,7 +357,6 @@ begin
   end;
 
   shape.vertexgen(pvertices); // itt betesszük az alap pozíciókat meg UV-t
-
 
   //    sw := TStopWatch.Create() ;
   //    sw.Start;
