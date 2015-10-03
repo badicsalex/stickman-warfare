@@ -187,7 +187,7 @@ end;
 procedure TPortalEvent.Rendermodels;
 var
  a:integer;
- cszam,szint:single;
+ szint:single;
  hely,tmp:TD3DXVector3;
  mat,mat1,mat2,mat3:TD3DMatrix;
 begin
@@ -225,7 +225,6 @@ begin
   begin
   for a:=0 to 7 do
     begin
-    cszam:=phstim;
     szint:=(phstim-a*250)/250;
     if szint>1 then szint:=1;
     if szint<0 then szint:=0;

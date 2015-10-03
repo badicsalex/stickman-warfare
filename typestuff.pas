@@ -532,11 +532,8 @@ type
   Tojjrectarr=array of Tojjrect;
 const
   //STICKMAN
-//  PROG_VER=209030;
-  PROG_VER=209050;
-  //  datachecksum=$8FDC3EF0;
-  //  datachecksum=$FC2E9707;
-  datachecksum=$EC018FB7;
+  PROG_VER=209060;
+  datachecksum=$03BA822D;
 
 var
   checksum:Dword=0;
@@ -603,8 +600,6 @@ var
 
   //  depthbias:single=-0.0001;
   //  depthbiasP:PCardinal=@depthbias;
-  rand1:integer;
-  rand2:integer;
 
   pantheonPos:TD3DXVector3;
 
@@ -918,7 +913,7 @@ function clipszogybajusz(szogy:single):single;
 function flipcoin(chance:single):boolean;
 function waterlevel:Single;
 
-function fegyindex(fegy:byte):byte;
+//function fegyindex(fegy:byte):byte;
 
 function matname(material:byte):String;
 
@@ -1072,6 +1067,7 @@ function unloop(c:char):byte;
 var
   i:byte;
 begin
+  result:=255;
   for i:=1 to 62 do
   begin
     if goodchars[i]=c then
@@ -1855,6 +1851,10 @@ begin
   probal:=0;
   vissz:
   gotolni:=false;
+
+  if not fileexists(nev) then
+    gotolni:=true
+  else
   try
     eredm:=D3DXCreateTextureFromFileEx(aDevice,PChar(nev),w,h,0,0,D3DFMT_A8R8G8B8,
       D3DPOOL_DEFAULT,D3DX_DEFAULT,D3DX_DEFAULT,0,nil,nil,tex);
@@ -4592,30 +4592,33 @@ begin
   end;
 end;
 
-function fegyindex(fegy:byte):byte;//ideiglenes, jsonból kell
-begin
-  case fegy of
-    FEGYV_M4A1:result:=0;
-    FEGYV_M82A1:result:=1;
-    FEGYV_LAW:result:=2;
-    FEGYV_MP5A3:result:=3;
-    FEGYV_BM3:result:=4;
-
-    FEGYV_MPG:result:=5;
-    FEGYV_QUAD:result:=6;
-    FEGYV_NOOB:result:=7;
-    FEGYV_X72:result:=8;
-    FEGYV_HPL:result:=9;
-  end;
-
-  //  FEGYV_H31_G:result:=100; //a szerveren a 4 a kibaszott quad
-  //  FEGYV_H31_T=200;
-
-end;
+//function fegyindex(fegy:byte):byte;//ideiglenes, jsonból kell
+//
+//
+//begin
+//  case fegy of
+//    FEGYV_M4A1:result:=0;
+//    FEGYV_M82A1:result:=1;
+//    FEGYV_LAW:result:=2;
+//    FEGYV_MP5A3:result:=3;
+//    FEGYV_BM3:result:=4;
+//
+//    FEGYV_MPG:result:=5;
+//    FEGYV_QUAD:result:=6;
+//    FEGYV_NOOB:result:=7;
+//    FEGYV_X72:result:=8;
+//    FEGYV_HPL:result:=9;
+//  end;
+//
+//  //  FEGYV_H31_G:result:=100; //a szerveren a 4 a kibaszott quad
+//  //  FEGYV_H31_T=200;
+//
+//end;
 
 procedure log(s:string);
 begin
   writeln(logfile,s);
+  flush(logfile);
 end;
 
 function stuff(i:integer):TD3DXVector3;

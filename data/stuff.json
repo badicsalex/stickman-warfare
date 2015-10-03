@@ -1,2615 +1,2827 @@
+
 {
-	"modname" : "Official",
-	"random_seed" : 25,
-	"color_font" : "0x0000B0",
-	"color_menu_normal" : "0xFFF45E1B",
-	"color_menu_select" : "0xFFFFC070",
-	"color_menu_info" : "0xFF000000",
-	"color_grass" : "0xFF7ba843",
-	"color_mud" : "0xFF514024",
-	"color_sand" : "0xFFF2CDC2",
-	"color_wet_sand" : "0xFFCCA295",
-	"color_rock" : "0xFF6E6E6C",
-	"color_water" : "0xFF0064FA",
-	"color_gun" : "0xFF000000",
-	"color_tech" : "0xFF000040",
-	"color_grass_dust" : "0xFFaacc7a",
-	"color_mud_dust" : "0xFF514024",
-	"color_sand_dust" : "0xFFDCB9B2",
-	"lower_menu_text" : "Music: Unreal Superhero III Symphonic version by Jaakko Takalo",
-	"terrain" : {
-		"grass_level" : 15.75,
-		"wetsand_level" : 10.75,
-		"water_baselevel" : 10.15
-	},
-	"cloud" : {
-		"color" : "0xFFFFFF",
-		"ambient" : 100,
-		"speed" : 0.00003
-	},
-	"fog" : {
-		"color_sunny" : "0xFFC8EBFA",
-		"color_rainy" : "0xFF909090",
-		"color_underwater" : "0xFF4CA3FF",
-		"radius_sunny" : 900,
-		"radius_rainy" : 600
-	},
-	"light" : {
-		"color_ambient" : "0xFF202020",
-		"color_sun" : "0xFFFFFFE6",
-		"color_shadow" : "0xFF252550"
-	},
-	"spawn_height" : 10,
-	"spawn_radius" : 5,
-	"weapon" : {
-		"MPG" : {
-			"color" : {
-				"1" : "0x0040A0FF",
-				"2" : "0xA040A0F0",
-				"3" : "0xFFFFFFFF",
-				"4" : "0xFF0032FA"
-			}
-		},
-		"QUAD" : {
-			"color" : {
-				"1" : "0x30406040",
-				"2" : "0x6080B080",
-				"3" : "0x00FF00",
-				"4" : "0xA0FFA0",
-				"5" : "0xFFFFFFFF",
-				"6" : "0xA0A0A0",
-				"7" : "0x4C00FF00",
-				"8" : "0x20103010",
-				"9" : "0xFFFFFF"
-			}
-		},
-		"NOOB" : {
-			"color" : {
-				"1" : "0x50FF6020",
-				"2" : "0xFFFFFFFF"
-			}
-		},
-		"X72" : {
-			"color" : {
-				"1" : "0x8080FF",
-				"2" : "0xFFFFFFFF",
-				"3" : "0x000000FF",
-				"4" : "0xFFFFFF",
-				"5" : "0x1040FF",
-				"6" : "0x00202020",
-				"7" : "0x00000020",
-				"8" : "0xFFFFFFFF"
-			}
-		},
-		"HPL" : {
-			"color" : {
-				"1" : "0xFF7700FF",
-				"2" : "0x609782b0",
-				"3" : "0x7700FF",
-				"4" : "0xcb9eff",
-				"5" : "0xFFFFFFFF"
-			}
-		},
-		"WATER" : {
-			"1" : "0xFFDDDDFF",
-			"2" : "0xFFFFFFFF"
-		},
-		"DUST" : "0xFFAAAAAA"
-	},
-	"vehicle" : {
-		"gun" : {
-			"effect" : true,
-			"scale" : {
-				"x" : 2.3,
-				"y" : 0.7,
-				"z" : 1.3
-			},
-			"friction" : 0.1,
-			"max_speed" : 0.7,
-			"torque" : 0.025,
-			"suspension" : {
-				"length" : 0.7,
-				"strength" : 0.1,
-				"absorb" : 0.03
-			},
-			"wheels" : {
-				"friction" : 0.2,
-				"radius" : 0.5,
-				"width" : 0.2,
-				"position" : [
-					{
-						"x" : -1,
-						"y" : -1,
-						"z" : 0.8
-					},
-					{
-						"x" : -1,
-						"y" : -1,
-						"z" : -0.7
-					},
-					{
-						"x" : 1,
-						"y" : -1,
-						"z" : 0.8
-					},
-					{
-						"x" : 1,
-						"y" : -1,
-						"z" : -0.7
-					}
-				]
-			}
-		},
-		"tech" : {
-			"effect" : true,
-			"scale" : {
-				"x" : 1.8,
-				"y" : 0.9,
-				"z" : 1.5
-			},
-			"friction" : 0.1,
-			"max_speed" : 0.075,
-			"torque" : 0.015,
-			"suspension" : {
-				"length" : 0.7,
-				"strength" : 0.1,
-				"absorb" : 0.03
-			},
-			"wheels" : {
-				"friction" : 0.2,
-				"radius" : 0.5,
-				"width" : 0.2,
-				"position" : [
-					{
-						"x" : -0.9,
-						"y" : -1,
-						"z" : 1
-					},
-					{
-						"x" : -0.9,
-						"y" : -1,
-						"z" : -0.9
-					},
-					{
-						"x" : 0.9,
-						"y" : -1,
-						"z" : 1
-					},
-					{
-						"x" : 0.9,
-						"y" : -1,
-						"z" : -0.9
-					}
-				]
-			}
-		}
-	},
-	"buildings" : {
-		"bunker4" : {
-			"special" : [
-				"spawngun",
-				"spawntech",
-				"vehiclegun",
-				"vehicletech"
-			],
-			"scalex" : 3,
-			"scaley" : 2,
-			"zone" : "Bunker",
-			"position" : [
-				{
-					"x" : -194.75,
-					"y" : 29.11,
-					"z" : -121.56
-				},
-				{
-					"x" : -355.06,
-					"y" : 12.64,
-					"z" : -23.18
-				},
-				{
-					"x" : -215.75,
-					"y" : 46.12,
-					"z" : 35.33
-				},
-				{
-					"x" : -349.62,
-					"y" : 14.62,
-					"z" : -114.77
-				},
-				{
-					"x" : -117.48,
-					"y" : 42.66,
-					"z" : -133.85
-				},
-				{
-					"x" : -384.21,
-					"y" : 25.3,
-					"z" : 34.12
-				},
-				{
-					"x" : -271.07,
-					"y" : 30.29,
-					"z" : -207.6
-				},
-				{
-					"x" : -219.41,
-					"y" : 23.88,
-					"z" : -73.96
-				},
-				{
-					"x" : -118.94,
-					"y" : 41,
-					"z" : -45.65
-				},
-				{
-					"x" : -258.41,
-					"y" : 14.62,
-					"z" : -113.2
-				},
-				{
-					"x" : -325.3,
-					"y" : 20.71,
-					"z" : -179.45
-				},
-				{
-					"x" : -322.18,
-					"y" : 14.62,
-					"z" : -130.45
-				},
-				{
-					"x" : -405.45,
-					"y" : 14.11,
-					"z" : -140.9
-				},
-				{
-					"x" : -431.1,
-					"y" : 25.28,
-					"z" : 44.56
-				},
-				{
-					"x" : -383.77,
-					"y" : 16.25,
-					"z" : 102.42
-				},
-				{
-					"x" : -256.08,
-					"y" : 16.2,
-					"z" : 71.9
-				},
-				{
-					"x" : -319.61,
-					"y" : 16.2,
-					"z" : 57.14
-				},
-				{
-					"x" : -248.3,
-					"y" : 22.04,
-					"z" : 164.67
-				},
-				{
-					"x" : -293,
-					"y" : 22.04,
-					"z" : 131.09
-				},
-				{
-					"x" : -471.81,
-					"y" : 25.25,
-					"z" : 78.58
-				},
-				{
-					"x" : -434.12,
-					"y" : 25.24,
-					"z" : 122.27
-				},
-				{
-					"x" : -306.52,
-					"y" : 22,
-					"z" : 179.44
-				},
-				{
-					"x" : -364.06,
-					"y" : 16.2,
-					"z" : 142.91
-				},
-				{
-					"x" : -358.56,
-					"y" : 16.2,
-					"z" : 195.04
-				},
-				{
-					"x" : -136.41,
-					"y" : 25.07,
-					"z" : 152.33
-				},
-				{
-					"x" : -150.64,
-					"y" : 19,
-					"z" : 195.79
-				},
-				{
-					"x" : -185,
-					"y" : 20,
-					"z" : 137.4
-				},
-				{
-					"x" : -431.401,
-					"y" : 23.5,
-					"z" : -30.398
-				},
-				{
-					"x" : -489.28,
-					"y" : 22.01,
-					"z" : -55.98
-				}
-			]
-		},
-		"kikoto" : {
-			"scalex" : 1,
-			"scaley" : 1,
-			"zone" : "Port",
-			"special" : [
-				"dontflattenterrain"
-			],
-			"position" : [
-				{
-					"x" : -299.09,
-					"y" : 10.51,
-					"z" : -9.04
-				}
-			]
-		},
-		"steelworks" : {
-			"scalex" : 4,
-			"scaley" : 4,
-			"zone" : "Industrial District B",
-			"position" : [
-				{
-					"x" : -285.53,
-					"y" : 16.2,
-					"z" : 88.56
-				}
-			]
-		},
-		"raktar1" : {
-			"scalex" : 1,
-			"scaley" : 1,
-			"zone" : "Industrial District B",
-			"position" : [
-				{
-					"x" : -348.06,
-					"y" : 16.2,
-					"z" : 94.81
-				}
-			]
-		},
-		"raktar2" : {
-			"scalex" : 1,
-			"scaley" : 1,
-			"zone" : "Industrial District B",
-			"position" : [
-				{
-					"x" : -348.06,
-					"y" : 16.2,
-					"z" : 94.81
-				}
-			]
-		},
-		"oil" : {
-			"scalex" : 2.5,
-			"scaley" : 2.5,
-			"zone" : "Industrial District B",
-			"position" : [
-				{
-					"x" : -348.06,
-					"y" : 16.2,
-					"z" : 165.81
-				}
-			]
-		},
-		"nafta" : {
-			"scalex" : 5,
-			"scaley" : 5,
-			"zone" : "Industrial District A",
-			"position" : [
-				{
-					"x" : -282.813,
-					"y" : 22.04,
-					"z" : 158.02
-				}
-			]
-		},
-		"towerhouse" : {
-			"scalex" : 3,
-			"scaley" : 3,
-			"zone" : "Lighthouse",
-			"position" : [
-				{
-					"x" : -219.26,
-					"y" : 24.79,
-					"z" : -39.93
-				}
-			]
-		},
-		"radio2" : {
-			"scalex" : 2.2,
-			"scaley" : 2.2,
-			"zone" : "AlComp",
-			"position" : [
-				{
-					"x" : -280.04,
-					"y" : 14.62,
-					"z" : -105.49
-				}
-			]
-		},
-		"almacomp1" : {
-			"scalex" : 1,
-			"scaley" : 1,
-			"zone" : "AlComp",
-			"special" : [
-				"dontflattenterrain"
-			],
-			"position" : [
-				{
-					"x" : -311.4,
-					"y" : 14.623,
-					"z" : -118
-				}
-			]
-		},
-		"romhaz1" : {
-			"scalex" : 7,
-			"scaley" : 7,
-			"zone" : "Modern ruins",
-			"special" : [
-				"fittoterrain"
-			],
-			"position" : [
-				{
-					"x" : -290.45,
-					"y" : 32.06,
-					"z" : -209.89
-				}
-			]
-		},
-		"romhaz2" : {
-			"scalex" : 2.5,
-			"scaley" : 2.5,
-			"zone" : "Modern ruins",
-			"special" : [
-				"fittoterrain"
-			],
-			"position" : [
-				{
-					"x" : -250.79,
-					"y" : 38.16,
-					"z" : -190.82
-				}
-			]
-		},
-		"banker" : {
-			"scalex" : 5,
-			"scaley" : 5,
-			"zone" : "AlComp",
-			"position" : [
-				{
-					"x" : -328.77,
-					"y" : 20.7,
-					"z" : -160.37
-				}
-			]
-		},
-		"fuggo" : {
-			"scalex" : 2,
-			"scaley" : 2,
-			"position" : [
-				{
-					"x" : -400,
-					"y" : 10,
-					"z" : -100
-				}
-			],
-			"special" : [
-				"dontflattenterrain"
-			],
-			"zone" : "Bridge"
-		},
-		"pantheon" : {
-			"scalex" : 4,
-			"scaley" : 4,
-			"zone" : "Pantheon",
-			"position" : [
-				{
-					"x" : -123.48,
-					"y" : 65.05,
-					"z" : 47.05
-				}
-			]
-		},
-		"mayan" : {
-			"scalex" : 7,
-			"scaley" : 7,
-			"zone" : "Mayan pyramid",
-			"position" : [
-				{
-					"x" : -125.56,
-					"y" : 42.66,
-					"z" : -96.93
-				}
-			]
-		},
-		"maya_a3" : {
-			"scalex" : 2,
-			"scaley" : 2,
-			"special" : [
-				"fittoterrain"
-			],
-			"zone" : "Mayan ruins",
-			"position" : [
-				{
-					"x" : -176.26,
-					"y" : 34.58,
-					"z" : -107.38
-				}
-			]
-		},
-		"maya_b3" : {
-			"scalex" : 2,
-			"scaley" : 2,
-			"special" : [
-				"fittoterrain"
-			],
-			"zone" : "Mayan ruins",
-			"position" : [
-				{
-					"x" : -159.09,
-					"y" : 40.94,
-					"z" : -51.18
-				}
-			]
-		},
-		"kispiri" : {
-			"scalex" : 1.5,
-			"scaley" : 1.5,
-			"zone" : "Stick Portal",
-			"position" : [
-				{
-					"x" : -92.74,
-					"y" : 41,
-					"z" : -47.1
-				}
-			]
-		},
-		"towerF" : {
-			"scalex" : 2.5,
-			"scaley" : 2.5,
-			"zone" : "Fantasy Tower",
-			"position" : [
-				{
-					"x" : -481.19,
-					"y" : 22.01,
-					"z" : -45.27
-				}
-			]
-		},
-		"techkomplex" : {
-			"scalex" : 1,
-			"scaley" : 1,
-			"zone" : "Delta Complex",
-			"position" : [
-				{
-					"x" : -406.07,
-					"y" : 25.24,
-					"z" : 51.29
-				}
-			]
-		},
-		"towerV" : {
-			"scalex" : 3,
-			"scaley" : 3,
-			"zone" : "Lighthouse",
-			"position" : [
-				{
-					"x" : -216.38,
-					"y" : 24.97,
-					"z" : -49.15
-				}
-			]
-		},
-		"kbsz" : {
-			"scalex" : 3,
-			"scaley" : 3,
-			"zone" : "Klanbazis Island",
-			"position" : [
-				{
-					"x" : -800,
-					"y" : 17,
-					"z" : -800
-				}
-			]
-		},
-		"out" : {
-			"position" : [
-				{
-					"x" : 946.667,
-					"y" : 100,
-					"z" : -936.667
-				}
-			],
-			"scalex" : 3,
-			"scaley" : 3,
-			"zone" : "Outland",
-			"special" : [
-				"dontflattenterrain"
-			]
-		},
-		"1v1map" : {
-			"position" : [
-				{
-					"x" : -86.667,
-					"y" : 2,
-					"z" : -306.667
-				}
-			],
-			"zone" : "Castle",
-			"scalex" : 1,
-			"scaley" : 1
-		},
-		"facinhuses" : {
-			"position" : [
-				{
-					"x" : 943.333,
-					"y" : 100,
-					"z" : 896.667
-				}
-			],
-			"zone" : "Facing Houses",
-			"special" : [
-				"dontflattenterrain"
-			],
-			"scalex" : 4,
-			"scaley" : 4
-		},
-		"portal_inst" : {
-			"position" : [
-				{
-					"x" : -157.191,
-					"y" : 19.45,
-					"z" : 169.497
-				}
-			],
-			"zone" : "Portal Institution",
-			"special" : [
-				"dontflattenterrain"
-			],
-			"scalex" : 2,
-			"scaley" : 2
-		},
-		"atlantis_a" : {
-			"position" : [
-				{
-					"x" : -783.333,
-					"y" : -120,
-					"z" : 746.667
-				}
-			],
-			"zone" : "Atlantis",
-			"scalex" : 3.3,
-			"scaley" : 3.3
-		},
-		"atlantis_b" : {
-			"position" : [
-				{
-					"x" : -783.333,
-					"y" : -120,
-					"z" : 746.667
-				}
-			],
-			"zone" : "Atlantis",
-			"scalex" : 3.3,
-			"scaley" : 3.3
-		},
-		"solarcomp" : {
-			"scalex" : 3.1,
-			"scaley" : 3.1,
-			"zone" : "Delta Base",
-			"position" : [
-				{
-					"x" : -442.26,
-					"y" : 25.24,
-					"z" : 94.14
-				}
-			]
-		},
-		"autohid" : {
-			"position" : [
-				{
-					"x" : -235.553,
-					"y" : 16,
-					"z" : 166.273
-				}
-			],
-			"scalex" : 13,
-			"scaley" : 13,
-			"special" : [
-				"dontflattenterrain"
-			],
-			"zone" : "Highway"
-		},
-		"apartment" : {
-			"position" : [
-				{
-					"x" : -427.417,
-					"y" : 24,
-					"z" : -9.172
-				}
-			],
-			"zone" : "Apartment",
-			"scalex" : 1,
-			"scaley" : 1,
-			"special" : [
-				"dontflattenterrain"
-			]
-		},
-		"palmalittle" : {
-			"position" : [
-				{
-					"x" : 185.44,
-					"y" : 10.8,
-					"z" : 312.17
-				}
-			],
-			"zone" : "Oasis",
-			"special" : [
-				"dontflattenterrain"
-			],
-			"scalex" : 2,
-			"scaley" : 2
-		}
-	},
-	"materials" : {
-		"acel_01.jpg" : {
-			"type" : "metal",
-			"normalmap" : "acel_01_NRM.jpg",
-			"specHardness" : 10,
-			"specIntensity" : 1.3
-		},
-		"acel_02.jpg" : {
-			"type" : "metal",
-			"normalmap" : "acel_02_NRM.jpg",
-			"specHardness" : 12.2,
-			"specIntensity" : 1.3
-		},
-		"acel_03.jpg" : {
-			"type" : "metal",
-			"normalmap" : "acel_03_NRM.jpg",
-			"specHardness" : 20.2,
-			"specIntensity" : 0.6
-		},
-		"acel_04.jpg" : {
-			"type" : "metal",
-			"normalmap" : "acel_04_NRM.jpg",
-			"specHardness" : 26.9,
-			"specIntensity" : 1.3
-		},
-		"acel_05.jpg" : {
-			"type" : "metal",
-			"normalmap" : "acel_05_NRM.jpg",
-			"specHardness" : 13.7,
-			"specIntensity" : 0.9
-		},
-		"alumetal.jpg" : {
-			"type" : "metal",
-			"normalmap" : "alumetal_NRM.jpg",
-			"specHardness" : 15.9,
-			"specIntensity" : 0.9
-		},
-		"barrel.jpg" : {
-			"type" : "metal",
-			"specHardness" : 8.7,
-			"specIntensity" : 3.2
-		},
-		"beton_01.jpg" : {
-			"normalmap" : "beton_01_NRM.jpg",
-			"specHardness" : 7.8,
-			"specIntensity" : 0.3
-		},
-		"beton_02.jpg" : {
-			"normalmap" : "beton_02_NRM.jpg",
-			"specHardness" : 5,
-			"specIntensity" : 1
-		},
-		"beton_03.jpg" : {
-			"normalmap" : "beton_03_NRM.jpg",
-			"specHardness" : 14.3,
-			"specIntensity" : 0.8
-		},
-		"beton_04.jpg" : {
-			"normalmap" : "beton_04_NRM.jpg",
-			"specHardness" : 1.5,
-			"specIntensity" : 0.7
-		},
-		"beton_05.jpg" : {
-			"normalmap" : "beton_05_NRM.jpg",
-			"specHardness" : 7.7,
-			"specIntensity" : 0.3
-		},
-		"beton_06.jpg" : {
-			"normalmap" : "beton_06_NRM.jpg",
-			"specHardness" : 2,
-			"specIntensity" : 0.3
-		},
-		"beton_07.jpg" : {
-			"normalmap" : "beton_07_NRM.jpg",
-			"specHardness" : 3.7,
-			"specIntensity" : 0.2
-		},
-		"box_01.jpg" : {
-			"type" : "wood",
-			"normalmap" : "box_01_NRM.jpg",
-			"specHardness" : 3,
-			"specIntensity" : 0.5
-		},
-		"box_02.jpg" : {
-			"type" : "wood",
-			"normalmap" : "box_02_NRM.jpg",
-			"specHardness" : 2.2,
-			"specIntensity" : 0.4
-		},
-		"contain1.jpg" : {
-			"type" : "metal",
-			"normalmap" : "contain1_NRM.jpg",
-			"specHardness" : 16.1,
-			"specIntensity" : 1.1
-		},
-		"contain2.jpg" : {
-			"type" : "metal",
-			"normalmap" : "contain2_NRM.jpg",
-			"specHardness" : 25.4,
-			"specIntensity" : 1.4
-		},
-		"fa_01.jpg" : {
-			"type" : "wood",
-			"normalmap" : "fa_01_NRM.jpg",
-			"specHardness" : 3,
-			"specIntensity" : 0.6
-		},
-		"fa_02.jpg" : {
-			"type" : "wood",
-			"normalmap" : "fa_02_NRM.jpg",
-			"specHardness" : 5.5,
-			"specIntensity" : 0.5
-		},
-		"fa_03.jpg" : {
-			"type" : "wood",
-			"normalmap" : "fa_03_NRM.jpg",
-			"specHardness" : 3.5,
-			"specIntensity" : 0.8
-		},
-		"fa_04.jpg" : {
-			"type" : "wood",
-			"normalmap" : "fa_04_NRM.jpg",
-			"specHardness" : 5.6,
-			"specIntensity" : 0.4
-		},
-		"fa_05.jpg" : {
-			"type" : "wood",
-			"normalmap" : "fa_05_NRM.jpg",
-			"specHardness" : 11.6,
-			"specIntensity" : 0.4
-		},
-		"floor_01.jpg" : {
-			"type" : "metal",
-			"normalmap" : "floor_01_NRM.jpg",
-			"specHardness" : 24,
-			"specIntensity" : 1
-		},
-		"floor_02.jpg" : {
-			"type" : "metal",
-			"normalmap" : "floor_02_NRM.jpg",
-			"specHardness" : 15.4,
-			"specIntensity" : 4
-		},
-		"floor_03.jpg" : {
-			"normalmap" : "floor_03_NRM.jpg",
-			"specHardness" : 2.4,
-			"specIntensity" : 0.8
-		},
-		"floor_04.jpg" : {
-			"normalmap" : "floor_04_NRM.jpg",
-			"specHardness" : 8.3,
-			"specIntensity" : 2
-		},
-		"gun_01.jpg" : {
-			"type" : "metal",
-			"normalmap" : "gun_01_NRM.jpg",
-			"specHardness" : 2.4,
-			"specIntensity" : 1.2
-		},
-		"window.jpg" : {
-			"normalmap" : "litwndow_NRM.jpg",
-			"specHardness" : 4,
-			"specIntensity" : 0.5
-		},
-		"litwndow.jpg" : {
-			"special" : [
-				"emitting"
-			]
-		},
-		"mayan.jpg" : {
-			"normalmap" : "mayan_NRM.jpg",
-			"specHardness" : 1.7,
-			"specIntensity" : 1.7
-		},
-		"metal_01.jpg" : {
-			"type" : "metal",
-			"normalmap" : "metal_01_NRM.jpg",
-			"specHardness" : 7.4,
-			"specIntensity" : 0.9
-		},
-		"metal_06.jpg" : {
-			"type" : "metal",
-			"normalmap" : "metal_06_NRM.jpg",
-			"specHardness" : 19,
-			"specIntensity" : 0.7
-		},
-		"panel_01.jpg" : {
-			"type" : "metal",
-			"normalmap" : "panel_01_NRM.jpg",
-			"specHardness" : 13.7,
-			"specIntensity" : 1.6
-		},
-		"parkany.png" : {
-			"normalmap" : "parkany_NRM.jpg",
-			"specHardness" : 4,
-			"specIntensity" : 0.4
-		},
-		"rock_03.jpg" : {
-			"normalmap" : "rock_03_NRM.jpg",
-			"specHardness" : 3.5,
-			"specIntensity" : 0.4
-		},
-		"rock_04.jpg" : {
-			"normalmap" : "rock_04_NRM.jpg",
-			"specHardness" : 2.1,
-			"specIntensity" : 0.7
-		},
-		"rock_05.jpg" : {
-			"normalmap" : "rock_05_NRM.jpg",
-			"specHardness" : 4.9,
-			"specIntensity" : 0.4
-		},
-		"rock_06.jpg" : {
-			"normalmap" : "rock_06_NRM.jpg",
-			"specHardness" : 3.2,
-			"specIntensity" : 1.1
-		},
-		"rock_07.jpg" : {
-			"normalmap" : "rock_07_NRM.jpg",
-			"specHardness" : 6.1,
-			"specIntensity" : 0.4
-		},
-		"rock_08.jpg" : {
-			"normalmap" : "rock_08_NRM.jpg",
-			"specHardness" : 12.3,
-			"specIntensity" : 0.6
-		},
-		"rock_09.jpg" : {
-			"normalmap" : "rock_09_NRM.jpg",
-			"specHardness" : 13,
-			"specIntensity" : 1.6
-		},
-		"rock_10.jpg" : {
-			"specHardness" : 5,
-			"specIntensity" : 0.5
-		},
-		"rock_11.jpg" : {
-			"normalmap" : "rock_11_NRM.jpg",
-			"specHardness" : 3.3,
-			"specIntensity" : 0.65
-		},
-		"roof_01.jpg" : {
-			"type" : "metal",
-			"normalmap" : "roof_01_NRM.jpg",
-			"specHardness" : 9.3,
-			"specIntensity" : 1.5
-		},
-		"roof_02.jpg" : {
-			"normalmap" : "roof_02_NRM.jpg",
-			"specHardness" : 6.6,
-			"specIntensity" : 1.1
-		},
-		"roof_03.jpg" : {
-			"normalmap" : "roof_03_NRM.jpg",
-			"specHardness" : 4.2,
-			"specIntensity" : 0.5
-		},
-		"roof_04.jpg" : {
-			"type" : "metal",
-			"normalmap" : "roof_04_NRM.jpg",
-			"specHardness" : 10.8,
-			"specIntensity" : 0.7
-		},
-		"roof_05.jpg" : {
-			"type" : "wood",
-			"normalmap" : "roof_05_NRM.jpg",
-			"specHardness" : 1.9,
-			"specIntensity" : 1.3
-		},
-		"rozsd_01.jpg" : {
-			"type" : "metal",
-			"normalmap" : "rozsd_01_NRM.jpg",
-			"specHardness" : 8.1,
-			"specIntensity" : 1.1
-		},
-		"rusconcr.jpg" : {
-			"normalmap" : "rusconcr_NRM.jpg",
-			"specHardness" : 0.5,
-			"specIntensity" : 0.6
-		},
-		"suncell.jpg" : {
-			"type" : "metal",
-			"normalmap" : "suncell_NRM.jpg",
-			"specHardness" : 37.2,
-			"specIntensity" : 1.9
-		},
-		"tegla_01.jpg" : {
-			"normalmap" : "tegla_01_NRM.jpg",
-			"specHardness" : 7.7,
-			"specIntensity" : 0.7
-		},
-		"tegla_02.jpg" : {
-			"normalmap" : "tegla_02_NRM.jpg",
-			"specHardness" : 1.9,
-			"specIntensity" : 0.85
-		},
-		"tegla_03.jpg" : {
-			"normalmap" : "tegla_03_NRM.jpg",
-			"specHardness" : 2.5,
-			"specIntensity" : 0.3
-		},
-		"tegla_04.jpg" : {
-			"normalmap" : "tegla_04_NRM.jpg",
-			"specHardness" : 5,
-			"specIntensity" : 0.7
-		},
-		"xyz.jpg" : {
-			"type" : "metal",
-			"normalmap" : "xyz_NRM.jpg",
-			"specHardness" : 4,
-			"specIntensity" : 0.5
-		},
-		"grill_01.png" : {
-			"type" : "metal",
-			"special" : [
-				"alphatest",
-				"notbulletproof",
-				"grill"
-			],
-			"specHardness" : 8.6,
-			"specIntensity" : 1.1
-		},
-		"palmleaf.png" : {
-			"special" : [
-				"alphatest",
-				"notbulletproof"
-			],
-			"type" : "metal",
-			"specHardness" : 8.6,
-			"specIntensity" : 1.1
-		},
-		"grill_02.png" : {
-			"type" : "metal",
-			"special" : [
-				"alphatest",
-				"notbulletproof",
-				"grill"
-			],
-			"specHardness" : 8.6,
-			"specIntensity" : 1.1
-		},
-		"kispiri.jpg" : {
-			"special" : [
-				"emitting"
-			]
-		},
-		"lght.jpg" : {
-			"special" : [
-				"disabled"
-			]
-		},
-		"lght.bmp" : {
-			"special" : [
-				"disabled"
-			]
-		},
-		"wwindow.png" : {
-			"special" : [
-				"alphatest",
-				"notbulletproof",
-				"grill"
-			],
-			"type" : "wood"
-		},
-		"decals1.png" : {
-			"special" : [
-				"alphatest"
-			],
-			"type" : "wood"
-		},
-		"reddy.png" : {
-			"type" : "metal",
-			"specHardness" : 60,
-			"specIntensity" : 2
-		},
-		"metal003.bmp" : {
-			"heightmap" : "metal003_hm.jpg"
-		},
-		"marble1.jpg" : {
-			"specHardness" : 21.6,
-			"specIntensity" : 0.7
-		},
-		"marble2.jpg" : {
-			"specHardness" : 21.6,
-			"specIntensity" : 0.7
-		},
-		"marble3.jpg" : {
-			"specHardness" : 21.6,
-			"specIntensity" : 0.7
-		},
-		"uveg.jpg" : {
-			"specHardness" : 11.9,
-			"specIntensity" : 2.7
-		},
-		"jpgfal8.jpg" : {
-			"specHardness" : 11.9,
-			"specIntensity" : 2.7
-		},
-		"steel_x.png" : {
-			"type" : "metal",
-			"special" : [
-				"alphatest",
-				"notbulletproof"
-			]
-		},
-		"screen.png" : {
-			"special" : [
-				"emitting"
-			]
-		},
-		"golden.bmp" : {
-			"special" : [
-				"emitting"
-			]
-		}
-	},
-	"particle_systems" : [
-		{
-			"name" : "smallfire",
-			"speed" : {
-				"x" : 0,
-				"y" : 0.009,
-				"z" : 0
-			},
-			"random_speed" : 1.1,
-			"random_tangent" : 0.007,
-			"start_color" : "0x55F45C0B",
-			"end_color" : "0x55ECBB13",
-			"rnd_color" : "0x00000000",
-			"visible_range" : 20,
-			"start_size" : 0.23,
-			"end_size" : 0.04,
-			"amount" : 1,
-			"period" : 10,
-			"lifetime" : 43,
-			"texture" : "fire",
-			"type" : "simple"
-		},
-		{
-			"name" : "kemenyfust",
-			"speed" : {
-				"x" : 0,
-				"y" : 0.03,
-				"z" : 0
-			},
-			"random_speed" : 1.1,
-			"random_tangent" : 0.1,
-			"start_color" : "0xFFAAAAAA",
-			"end_color" : "0x00000000",
-			"rnd_color" : "0x00030303",
-			"visible_range" : 150,
-			"start_size" : 1.5,
-			"end_size" : 13.25,
-			"factor" : 0.15,
-			"amount" : 1,
-			"period" : 10,
-			"lifetime" : 500,
-			"random_lifetime" : 1000,
-			"texture" : "smoke",
-			"type" : "cooling"
-		},
-		{
-			"name" : "szikra",
-			"speed" : {
-				"x" : -0.011,
-				"y" : 0,
-				"z" : -0.023
-			},
-			"random_speed" : 1.1,
-			"random_tangent" : 0.03,
-			"start_color" : "0xFFFFFF00",
-			"end_color" : "0xFFFFFF00",
-			"rnd_color" : "0x00000000",
-			"visible_range" : 20,
-			"start_size" : 0.04,
-			"end_size" : 0.01,
-			"factor" : 0.15,
-			"amount" : 11,
-			"period" : 400,
-			"lifetime" : 100,
-			"type" : "gravity"
-		},
-		{
-			"name" : "kislang",
-			"speed" : {
-				"x" : 0,
-				"y" : 0.001,
-				"z" : 0
-			},
-			"random_speed" : 0,
-			"random_tangent" : 0,
-			"start_color" : "0x55F45C0B",
-			"end_color" : "0x55ECBB13",
-			"rnd_color" : "0x00000000",
-			"visible_range" : 10,
-			"start_size" : 0.02,
-			"end_size" : 0.026,
-			"amount" : 1,
-			"period" : 20,
-			"lifetime" : 30,
-			"texture" : "fire",
-			"type" : "simple"
-		}
-	],
-	"emitters" : {
-		"1v1map1" : {
-			"x" : -81,
-			"y" : 14.56,
-			"z" : -314,
-			"type" : "smallfire"
-		},
-		"1v1map2" : {
-			"x" : -95.68,
-			"y" : 14.56,
-			"z" : -299.35,
-			"type" : "smallfire"
-		},
-		"1v1map3" : {
-			"x" : -91.9,
-			"y" : 14.56,
-			"z" : -310.4,
-			"type" : "smallfire"
-		},
-		"1v1map4" : {
-			"x" : -84.52,
-			"y" : 14.56,
-			"z" : -302.99,
-			"type" : "smallfire"
-		},
-		"f4" : {
-			"x" : -141.44,
-			"y" : 68.94,
-			"z" : 63.1,
-			"type" : "smallfire"
-		},
-		"f5" : {
-			"x" : -135.24,
-			"y" : 68.94,
-			"z" : 67.96,
-			"type" : "smallfire"
-		},
-		"f6" : {
-			"x" : -111.64,
-			"y" : 68.94,
-			"z" : 25.6,
-			"type" : "smallfire"
-		},
-		"f7" : {
-			"x" : -108.31,
-			"y" : 68.94,
-			"z" : 28.36,
-			"type" : "smallfire"
-		},
-		"f8" : {
-			"x" : -104.88,
-			"y" : 68.94,
-			"z" : 31.15,
-			"type" : "smallfire"
-		},
-		"kemeny1" : {
-			"x" : -284,
-			"y" : 57.4,
-			"z" : 155,
-			"type" : "kemenyfust"
-		},
-		"kemeny2" : {
-			"x" : -273.5,
-			"y" : 51.5,
-			"z" : 179.65,
-			"type" : "kemenyfust"
-		},
-		"kemeny3" : {
-			"x" : -340.19,
-			"y" : 41.45,
-			"z" : 161.19,
-			"type" : "kemenyfust"
-		},
-		"szikra" : {
-			"x" : -417.28,
-			"y" : 46.78,
-			"z" : 60.58,
-			"type" : "szikra"
-		},
-		"kislang1" : {
-			"x" : -116.4,
-			"y" : 46.035,
-			"z" : -103.77,
-			"type" : "kislang"
-		},
-		"kislang2" : {
-			"x" : -117.62,
-			"y" : 50.675,
-			"z" : -102.67,
-			"type" : "kislang"
-		},
-		"kislang3" : {
-			"x" : -129.27,
-			"y" : 54.125,
-			"z" : -92.78,
-			"type" : "kislang"
-		},
-		"kislang4" : {
-			"x" : -125.81,
-			"y" : 46.035,
-			"z" : -88.97,
-			"type" : "kislang"
-		}
-	},
-	"teleports" : [
-		{
-			"from" : {
-				"x" : -123,
-				"y" : 43.22,
-				"z" : -95.72
-			},
-			"to" : {
-				"x" : -777.6,
-				"y" : 17.1,
-				"z" : -780.18
-			},
-			"radius" : 1,
-			"visible_range" : 20,
-			"name" : "techkb",
-			"type" : 1
-		},
-		{
-			"from" : {
-				"x" : -123,
-				"y" : 43.22,
-				"z" : -95.72
-			},
-			"to" : {
-				"x" : -836.49,
-				"y" : 17.1,
-				"z" : -799.52
-			},
-			"radius" : 1,
-			"visible_range" : 20,
-			"name" : "gunkb",
-			"type" : 2
-		},
-		{
-			"radius" : 1,
-			"visible_range" : 20,
-			"from" : {
-				"x" : -85.1,
-				"y" : 41.89,
-				"z" : -45.36
-			},
-			"to" : {
-				"x" : 936.08,
-				"y" : 111.3,
-				"z" : -955.16
-			},
-			"name" : "techout",
-			"type" : 1
-		},
-		{
-			"radius" : 1,
-			"visible_range" : 20,
-			"from" : {
-				"x" : -93.12,
-				"y" : 41.89,
-				"z" : -53.36
-			},
-			"to" : {
-				"x" : 927.14,
-				"y" : 104.1,
-				"z" : 888.25
-			},
-			"name" : "techfw",
-			"type" : 1
-		},
-		{
-			"radius" : 1,
-			"visible_range" : 20,
-			"from" : {
-				"x" : -93.12,
-				"y" : 41.89,
-				"z" : -40.71
-			},
-			"to" : {
-				"x" : -72.73,
-				"y" : 11.8,
-				"z" : -291.2
-			},
-			"name" : "tech1v1",
-			"type" : 1
-		},
-		{
-			"radius" : 1,
-			"visible_range" : 20,
-			"from" : {
-				"x" : -85.57,
-				"y" : 41.89,
-				"z" : -49.1
-			},
-			"to" : {
-				"x" : 955.05,
-				"y" : 110.91,
-				"z" : -919.17
-			},
-			"name" : "gunout",
-			"type" : 2
-		},
-		{
-			"radius" : 1,
-			"visible_range" : 20,
-			"from" : {
-				"x" : -89.72,
-				"y" : 41.89,
-				"z" : -40.71
-			},
-			"to" : {
-				"x" : -99.124,
-				"y" : 11.8,
-				"z" : -323.16
-			},
-			"name" : "gun1v1",
-			"type" : 2
-		},
-		{
-			"radius" : 1,
-			"visible_range" : 20,
-			"from" : {
-				"x" : -89.78,
-				"y" : 41.89,
-				"z" : -53.17
-			},
-			"to" : {
-				"x" : 952.47,
-				"y" : 104.1,
-				"z" : 901.97
-			},
-			"name" : "gunfw",
-			"type" : 2
-		},
-		{
-			"radius" : 2.5,
-			"visible_range" : 0,
-			"from" : {
-				"x" : -166.79,
-				"y" : 35.43,
-				"z" : 176.48
-			},
-			"to" : {
-				"x" : -812.23,
-				"y" : -111.38,
-				"z" : 721.63
-			},
-			"type" : 0
-		}
-	],
-	"terrain_modifiers" : [
-		{
-			"x" : -309.38,
-			"y" : 11.75,
-			"z" : 25.25,
-			"radius" : 7,
-			"offset" : 12,
-			"name" : "port1"
-		},
-		{
-			"x" : -333.536,
-			"y" : 5.6,
-			"z" : -57.331,
-			"radius" : 15,
-			"offset" : 20,
-			"name" : "f4"
-		},
-		{
-			"x" : -353.11,
-			"y" : 5.4,
-			"z" : -67.05,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f5"
-		},
-		{
-			"x" : -367.5,
-			"y" : 5,
-			"z" : -70.03,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f6"
-		},
-		{
-			"x" : -376.98,
-			"y" : 5,
-			"z" : -83.53,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f7"
-		},
-		{
-			"x" : -388.93,
-			"y" : 5,
-			"z" : -93.24,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f8"
-		},
-		{
-			"x" : -404.9,
-			"y" : 5,
-			"z" : -103.4,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f9"
-		},
-		{
-			"x" : -418.74,
-			"y" : 5,
-			"z" : -101.44,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f10"
-		},
-		{
-			"x" : -417.54,
-			"y" : 5,
-			"z" : -111.13,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f11"
-		},
-		{
-			"x" : -448.17,
-			"y" : 5,
-			"z" : -111.48,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f12"
-		},
-		{
-			"x" : -467.67,
-			"y" : 5.1,
-			"z" : -124.46,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f13"
-		},
-		{
-			"x" : -486.18,
-			"y" : 5.2,
-			"z" : -133.55,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f14"
-		},
-		{
-			"x" : -515.89,
-			"y" : 5.3,
-			"z" : -125.13,
-			"radius" : 13,
-			"offset" : 20,
-			"name" : "f15"
-		},
-		{
-			"x" : -554.15,
-			"y" : 5.2,
-			"z" : -113.87,
-			"radius" : 17,
-			"offset" : 25,
-			"name" : "f16"
-		},
-		{
-			"x" : -591.9,
-			"y" : 5.1,
-			"z" : -106.638,
-			"radius" : 14,
-			"offset" : 22,
-			"name" : "f17"
-		},
-		{
-			"x" : -626.853,
-			"y" : 5,
-			"z" : -121.569,
-			"radius" : 16,
-			"offset" : 25,
-			"name" : "f18"
-		},
-		{
-			"x" : -169.354,
-			"y" : 19,
-			"z" : 178.831,
-			"radius" : 29,
-			"offset" : 55,
-			"name" : "porti"
-		},
-		{
-			"x" : -355.25,
-			"y" : 15.5,
-			"z" : -125.75,
-			"radius" : 2,
-			"offset" : 14,
-			"name" : "alcomp"
-		},
-		{
-			"x" : -321.82,
-			"y" : 14.76,
-			"z" : -133.39,
-			"radius" : 6.3,
-			"offset" : 8,
-			"name" : "alcomp"
-		},
-		{
-			"x" : -227.051,
-			"y" : 21,
-			"z" : 137.13,
-			"radius" : 22
-		},
-		{
-			"x" : -241.372,
-			"y" : 21,
-			"z" : 103.445,
-			"radius" : 14,
-			"offset" : 27,
+  "modname" : "Official",
+  "random_seed" : 25,
+  "color_font" : "0x0000B0",
+  "color_menu_normal" : "0xFFF45E1B",
+  "color_menu_select" : "0xFFFFC070",
+  "color_menu_info" : "0xFF000000",
+  "color_grass" : "0xFF7ba843",
+  "color_mud" : "0xFF514024",
+  "color_sand" : "0xFFF2CDC2",
+  "color_wet_sand" : "0xFFCCA295",
+  "color_rock" : "0xFF6E6E6C",
+  "color_water" : "0xFF0064FA",
+  "color_gun" : "0xFF000000",
+  "color_tech" : "0xFF000040",
+  "color_grass_dust" : "0xFFaacc7a",
+  "color_mud_dust" : "0xFF514024",
+  "color_sand_dust" : "0xFFDCB9B2",
+  "lower_menu_text" : "Music: Unreal Superhero III Symphonic version by Jaakko Takalo",
+  "terrain" :
+  {
+    "grass_level" : 15.75,
+    "wetsand_level" : 10.75,
+    "water_baselevel" : 10.15
+  },
+  "cloud" :
+  {
+    "color" : "0xFFFFFF",
+    "ambient" : 100,
+    "speed" : 0.00003
+  },
+  "fog" :
+  {
+    "color_sunny" : "0xFFC8EBFA",
+    "color_rainy" : "0xFF909090",
+    "color_underwater" : "0xFF4CA3FF",
+    "radius_sunny" : 900,
+    "radius_rainy" : 600
+  },
+  "light" :
+  {
+    "color_ambient" : "0xFF202020",
+    "color_sun" : "0xFFFFFFE6",
+    "color_shadow" : "0xFF252550"
+  },
+  "spawn_height" : 10,
+  "spawn_radius" : 5,
+  "weapon" :
+  {
+    "MPG" :
+    {
+      "color" :
+      {
+        "1" : "0x0040A0FF",
+        "2" : "0xA040A0F0",
+        "3" : "0xFFFFFFFF",
+        "4" : "0xFF0032FA"
+      }
+    },
+    "QUAD" :
+    {
+      "color" :
+      {
+        "1" : "0x30406040",
+        "2" : "0x6080B080",
+        "3" : "0x00FF00",
+        "4" : "0xA0FFA0",
+        "5" : "0xFFFFFFFF",
+        "6" : "0xA0A0A0",
+        "7" : "0x4C00FF00",
+        "8" : "0x20103010",
+        "9" : "0xFFFFFF"
+      }
+    },
+    "NOOB" :
+    {
+      "color" :
+      {
+        "1" : "0x50FF6020",
+        "2" : "0xFFFFFFFF"
+      }
+    },
+    "X72" :
+    {
+      "color" :
+      {
+        "1" : "0x8080FF",
+        "2" : "0xFFFFFFFF",
+        "3" : "0x000000FF",
+        "4" : "0xFFFFFF",
+        "5" : "0x1040FF",
+        "6" : "0x00202020",
+        "7" : "0x00000020",
+        "8" : "0xFFFFFFFF"
+      }
+    },
+    "HPL" :
+    {
+      "color" :
+      {
+        "1" : "0xFF7700FF",
+        "2" : "0x609782b0",
+        "3" : "0x7700FF",
+        "4" : "0xcb9eff",
+        "5" : "0xFFFFFFFF"
+      }
+    },
+    "WATER" :
+    {
+      "1" : "0xFFDDDDFF",
+      "2" : "0xFFFFFFFF"
+    },
+    "DUST" : "0xFFAAAAAA"
+  },
+  "vehicle" :
+  {
+    "gun" :
+    {
+      "effect" : true,
+      "scale" :
+      {
+        "x" : 2.3,
+        "y" : 0.7,
+        "z" : 1.3
+      },
+      "friction" : 0.1,
+      "max_speed" : 0.7,
+      "torque" : 0.025,
+      "suspension" :
+      {
+        "length" : 0.7,
+        "strength" : 0.1,
+        "absorb" : 0.03
+      },
+      "wheels" :
+      {
+        "friction" : 0.2,
+        "radius" : 0.5,
+        "width" : 0.2,
+        "position" : [
+          {
+            "x" : -1,
+            "y" : -1,
+            "z" : 0.8
+          },
+          {
+            "x" : -1,
+            "y" : -1,
+            "z" : -0.7
+          },
+          {
+            "x" : 1,
+            "y" : -1,
+            "z" : 0.8
+          },
+          {
+            "x" : 1,
+            "y" : -1,
+            "z" : -0.7
+          }
+        ]
+      }
+    },
+    "tech" :
+    {
+      "effect" : true,
+      "scale" :
+      {
+        "x" : 1.8,
+        "y" : 0.9,
+        "z" : 1.5
+      },
+      "friction" : 0.1,
+      "max_speed" : 0.075,
+      "torque" : 0.015,
+      "suspension" :
+      {
+        "length" : 0.7,
+        "strength" : 0.1,
+        "absorb" : 0.03
+      },
+      "wheels" :
+      {
+        "friction" : 0.2,
+        "radius" : 0.5,
+        "width" : 0.2,
+        "position" : [
+          {
+            "x" : -0.9,
+            "y" : -1,
+            "z" : 1
+          },
+          {
+            "x" : -0.9,
+            "y" : -1,
+            "z" : -0.9
+          },
+          {
+            "x" : 0.9,
+            "y" : -1,
+            "z" : 1
+          },
+          {
+            "x" : 0.9,
+            "y" : -1,
+            "z" : -0.9
+          }
+        ]
+      }
+    }
+  },
+  "buildings" :
+  {
+    "bunker4" :
+    {
+      "special" : [
+        "spawngun",
+        "spawntech",
+        "vehiclegun",
+        "vehicletech"
+      ],
+      "scalex" : 3,
+      "scaley" : 2,
+      "zone" : "Bunker",
+      "position" : [
+        {
+          "x" : -194.75,
+          "y" : 29.11,
+          "z" : -121.56
+        },
+        {
+          "x" : -355.06,
+          "y" : 12.64,
+          "z" : -23.18
+        },
+        {
+          "x" : -215.75,
+          "y" : 46.12,
+          "z" : 35.33
+        },
+        {
+          "x" : -349.62,
+          "y" : 14.62,
+          "z" : -114.77
+        },
+        {
+          "x" : -117.48,
+          "y" : 42.66,
+          "z" : -133.85
+        },
+        {
+          "x" : -384.21,
+          "y" : 25.3,
+          "z" : 34.12
+        },
+        {
+          "x" : -271.07,
+          "y" : 30.29,
+          "z" : -207.6
+        },
+        {
+          "x" : -219.41,
+          "y" : 23.88,
+          "z" : -73.96
+        },
+        {
+          "x" : -118.94,
+          "y" : 41,
+          "z" : -45.65
+        },
+        {
+          "x" : -258.41,
+          "y" : 14.62,
+          "z" : -113.2
+        },
+        {
+          "x" : -325.3,
+          "y" : 20.71,
+          "z" : -179.45
+        },
+        {
+          "x" : -322.18,
+          "y" : 14.62,
+          "z" : -130.45
+        },
+        {
+          "x" : -405.45,
+          "y" : 14.11,
+          "z" : -140.9
+        },
+        {
+          "x" : -431.1,
+          "y" : 25.28,
+          "z" : 44.56
+        },
+        {
+          "x" : -383.77,
+          "y" : 16.25,
+          "z" : 102.42
+        },
+        {
+          "x" : -256.08,
+          "y" : 16.2,
+          "z" : 71.9
+        },
+        {
+          "x" : -319.61,
+          "y" : 16.2,
+          "z" : 57.14
+        },
+        {
+          "x" : -248.3,
+          "y" : 22.04,
+          "z" : 164.67
+        },
+        {
+          "x" : -293,
+          "y" : 22.04,
+          "z" : 131.09
+        },
+        {
+          "x" : -471.81,
+          "y" : 25.25,
+          "z" : 78.58
+        },
+        {
+          "x" : -434.12,
+          "y" : 25.24,
+          "z" : 122.27
+        },
+        {
+          "x" : -306.52,
+          "y" : 22,
+          "z" : 179.44
+        },
+        {
+          "x" : -364.06,
+          "y" : 16.2,
+          "z" : 142.91
+        },
+        {
+          "x" : -358.56,
+          "y" : 16.2,
+          "z" : 195.04
+        },
+        {
+          "x" : -136.41,
+          "y" : 25.07,
+          "z" : 152.33
+        },
+        {
+          "x" : -150.64,
+          "y" : 19,
+          "z" : 195.79
+        },
+        {
+          "x" : -185,
+          "y" : 20,
+          "z" : 137.4
+        },
+        {
+          "x" : -431.401,
+          "y" : 23.5,
+          "z" : -30.398
+        },
+        {
+          "x" : -489.28,
+          "y" : 22.01,
+          "z" : -55.98
+        }
+      ]
+    },
+    "kikoto" :
+    {
+      "scalex" : 1,
+      "scaley" : 1,
+      "zone" : "Port",
+      "special" : [
+        "dontflattenterrain"
+      ],
+      "position" : [
+        {
+          "x" : -299.09,
+          "y" : 10.51,
+          "z" : -9.04
+        }
+      ]
+    },
+    "steelworks" :
+    {
+      "scalex" : 4,
+      "scaley" : 4,
+      "zone" : "Industrial District B",
+      "position" : [
+        {
+          "x" : -285.53,
+          "y" : 16.2,
+          "z" : 88.56
+        }
+      ]
+    },
+    "raktar1" :
+    {
+      "scalex" : 1,
+      "scaley" : 1,
+      "zone" : "Industrial District B",
+      "position" : [
+        {
+          "x" : -348.06,
+          "y" : 16.2,
+          "z" : 94.81
+        }
+      ]
+    },
+    "raktar2" :
+    {
+      "scalex" : 1,
+      "scaley" : 1,
+      "zone" : "Industrial District B",
+      "position" : [
+        {
+          "x" : -348.06,
+          "y" : 16.2,
+          "z" : 94.81
+        }
+      ]
+    },
+    "oil" :
+    {
+      "scalex" : 2.5,
+      "scaley" : 2.5,
+      "zone" : "Industrial District B",
+      "position" : [
+        {
+          "x" : -348.06,
+          "y" : 16.2,
+          "z" : 165.81
+        }
+      ]
+    },
+    "nafta" :
+    {
+      "scalex" : 5,
+      "scaley" : 5,
+      "zone" : "Industrial District A",
+      "position" : [
+        {
+          "x" : -282.813,
+          "y" : 22.04,
+          "z" : 158.02
+        }
+      ]
+    },
+    "towerhouse" :
+    {
+      "scalex" : 3,
+      "scaley" : 3,
+      "zone" : "Lighthouse",
+      "position" : [
+        {
+          "x" : -219.26,
+          "y" : 24.79,
+          "z" : -39.93
+        }
+      ]
+    },
+    "radio2" :
+    {
+      "scalex" : 2.2,
+      "scaley" : 2.2,
+      "zone" : "AlComp",
+      "position" : [
+        {
+          "x" : -280.04,
+          "y" : 14.62,
+          "z" : -105.49
+        }
+      ]
+    },
+    "almacomp1" :
+    {
+      "scalex" : 1,
+      "scaley" : 1,
+      "zone" : "AlComp",
+      "special" : [
+        "dontflattenterrain"
+      ],
+      "position" : [
+        {
+          "x" : -311.4,
+          "y" : 14.623,
+          "z" : -118
+        }
+      ]
+    },
+    "romhaz1" :
+    {
+      "scalex" : 7,
+      "scaley" : 7,
+      "zone" : "Modern ruins",
+      "special" : [
+        "fittoterrain"
+      ],
+      "position" : [
+        {
+          "x" : -290.45,
+          "y" : 32.06,
+          "z" : -209.89
+        }
+      ]
+    },
+    "romhaz2" :
+    {
+      "scalex" : 2.5,
+      "scaley" : 2.5,
+      "zone" : "Modern ruins",
+      "special" : [
+        "fittoterrain"
+      ],
+      "position" : [
+        {
+          "x" : -250.79,
+          "y" : 38.16,
+          "z" : -190.82
+        }
+      ]
+    },
+    "banker" :
+    {
+      "scalex" : 5,
+      "scaley" : 5,
+      "zone" : "AlComp",
+      "position" : [
+        {
+          "x" : -328.77,
+          "y" : 20.7,
+          "z" : -160.37
+        }
+      ]
+    },
+    "fuggo" :
+    {
+      "scalex" : 2,
+      "scaley" : 2,
+      "position" : [
+        {
+          "x" : -400,
+          "y" : 10,
+          "z" : -100
+        }
+      ],
+      "special" : [
+        "dontflattenterrain"
+      ],
+      "zone" : "Bridge"
+    },
+    "pantheon" :
+    {
+      "scalex" : 4,
+      "scaley" : 4,
+      "zone" : "Pantheon",
+      "position" : [
+        {
+          "x" : -123.48,
+          "y" : 65.05,
+          "z" : 47.05
+        }
+      ]
+    },
+    "mayan" :
+    {
+      "scalex" : 7,
+      "scaley" : 7,
+      "zone" : "Mayan pyramid",
+      "position" : [
+        {
+          "x" : -125.56,
+          "y" : 42.66,
+          "z" : -96.93
+        }
+      ]
+    },
+    "maya_a3" :
+    {
+      "scalex" : 2,
+      "scaley" : 2,
+      "special" : [
+        "fittoterrain"
+      ],
+      "zone" : "Mayan ruins",
+      "position" : [
+        {
+          "x" : -176.26,
+          "y" : 34.58,
+          "z" : -107.38
+        }
+      ]
+    },
+    "maya_b3" :
+    {
+      "scalex" : 2,
+      "scaley" : 2,
+      "special" : [
+        "fittoterrain"
+      ],
+      "zone" : "Mayan ruins",
+      "position" : [
+        {
+          "x" : -159.09,
+          "y" : 40.94,
+          "z" : -51.18
+        }
+      ]
+    },
+    "kispiri" :
+    {
+      "scalex" : 1.5,
+      "scaley" : 1.5,
+      "zone" : "Stick Portal",
+      "position" : [
+        {
+          "x" : -92.74,
+          "y" : 41,
+          "z" : -47.1
+        }
+      ]
+    },
+    "towerF" :
+    {
+      "scalex" : 2.5,
+      "scaley" : 2.5,
+      "zone" : "Fantasy Tower",
+      "position" : [
+        {
+          "x" : -481.19,
+          "y" : 22.01,
+          "z" : -45.27
+        }
+      ]
+    },
+    "techkomplex" :
+    {
+      "scalex" : 1,
+      "scaley" : 1,
+      "zone" : "Delta Complex",
+      "position" : [
+        {
+          "x" : -406.07,
+          "y" : 25.24,
+          "z" : 51.29
+        }
+      ]
+    },
+    "towerV" :
+    {
+      "scalex" : 3,
+      "scaley" : 3,
+      "zone" : "Lighthouse",
+      "position" : [
+        {
+          "x" : -216.38,
+          "y" : 24.97,
+          "z" : -49.15
+        }
+      ]
+    },
+    "kbsz" :
+    {
+      "scalex" : 3,
+      "scaley" : 3,
+      "zone" : "Klanbazis Island",
+      "position" : [
+        {
+          "x" : -800,
+          "y" : 17,
+          "z" : -800
+        }
+      ]
+    },
+    "out" :
+    {
+      "position" : [
+        {
+          "x" : 946.667,
+          "y" : 100,
+          "z" : -936.667
+        }
+      ],
+      "scalex" : 3,
+      "scaley" : 3,
+      "zone" : "Outland",
+      "special" : [
+        "dontflattenterrain"
+      ]
+    },
+    "1v1map" :
+    {
+      "position" : [
+        {
+          "x" : -86.667,
+          "y" : 2,
+          "z" : -306.667
+        }
+      ],
+      "zone" : "Castle",
+      "scalex" : 1,
+      "scaley" : 1
+    },
+    "facinhuses" :
+    {
+      "position" : [
+        {
+          "x" : 943.333,
+          "y" : 100,
+          "z" : 896.667
+        }
+      ],
+      "zone" : "Facing Houses",
+      "special" : [
+        "dontflattenterrain"
+      ],
+      "scalex" : 4,
+      "scaley" : 4
+    },
+    "portal_inst" :
+    {
+      "position" : [
+        {
+          "x" : -157.191,
+          "y" : 19.45,
+          "z" : 169.497
+        }
+      ],
+      "zone" : "Portal Institution",
+      "special" : [
+        "dontflattenterrain"
+      ],
+      "scalex" : 2,
+      "scaley" : 2
+    },
+    "atlantis_a" :
+    {
+      "position" : [
+        {
+          "x" : -783.333,
+          "y" : -120,
+          "z" : 746.667
+        }
+      ],
+      "zone" : "Atlantis",
+      "scalex" : 3.3,
+      "scaley" : 3.3
+    },
+    "atlantis_b" :
+    {
+      "position" : [
+        {
+          "x" : -783.333,
+          "y" : -120,
+          "z" : 746.667
+        }
+      ],
+      "zone" : "Atlantis",
+      "scalex" : 3.3,
+      "scaley" : 3.3
+    },
+    "solarcomp" :
+    {
+      "scalex" : 3.1,
+      "scaley" : 3.1,
+      "zone" : "Delta Base",
+      "position" : [
+        {
+          "x" : -442.26,
+          "y" : 25.24,
+          "z" : 94.14
+        }
+      ]
+    },
+    "autohid" :
+    {
+      "position" : [
+        {
+          "x" : -235.553,
+          "y" : 16,
+          "z" : 166.273
+        }
+      ],
+      "scalex" : 13,
+      "scaley" : 13,
+      "special" : [
+        "dontflattenterrain"
+      ],
+      "zone" : "Highway"
+    },
+    "apartment" :
+    {
+      "position" : [
+        {
+          "x" : -427.417,
+          "y" : 24,
+          "z" : -9.172
+        }
+      ],
+      "zone" : "Apartment",
+      "scalex" : 1,
+      "scaley" : 1,
+      "special" : [
+        "dontflattenterrain"
+      ]
+    },
+    "palmalittle" :
+    {
+      "position" : [
+        {
+          "x" : 185.44,
+          "y" : 10.8,
+          "z" : 312.17
+        }
+      ],
+      "zone" : "Oasis",
+      "special" : [
+        "dontflattenterrain"
+      ],
+      "scalex" : 2,
+      "scaley" : 2
+    }
+  },
+  "materials" :
+  {
+    "acel_01.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "acel_01_NRM.jpg",
+      "specHardness" : 10,
+      "specIntensity" : 1.3
+    },
+    "acel_02.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "acel_02_NRM.jpg",
+      "specHardness" : 12.2,
+      "specIntensity" : 1.3
+    },
+    "acel_03.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "acel_03_NRM.jpg",
+      "specHardness" : 20.2,
+      "specIntensity" : 0.6
+    },
+    "acel_04.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "acel_04_NRM.jpg",
+      "specHardness" : 26.9,
+      "specIntensity" : 1.3
+    },
+    "acel_05.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "acel_05_NRM.jpg",
+      "specHardness" : 13.7,
+      "specIntensity" : 0.9
+    },
+    "alumetal.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "alumetal_NRM.jpg",
+      "specHardness" : 15.9,
+      "specIntensity" : 0.9
+    },
+    "barrel.jpg" :
+    {
+      "type" : "metal",
+      "specHardness" : 8.7,
+      "specIntensity" : 3.2
+    },
+    "beton_01.jpg" :
+    {
+      "normalmap" : "beton_01_NRM.jpg",
+      "specHardness" : 7.8,
+      "specIntensity" : 0.3
+    },
+    "beton_02.jpg" :
+    {
+      "normalmap" : "beton_02_NRM.jpg",
+      "specHardness" : 5,
+      "specIntensity" : 1
+    },
+    "beton_03.jpg" :
+    {
+      "normalmap" : "beton_03_NRM.jpg",
+      "specHardness" : 14.3,
+      "specIntensity" : 0.8
+    },
+    "beton_04.jpg" :
+    {
+      "normalmap" : "beton_04_NRM.jpg",
+      "specHardness" : 1.5,
+      "specIntensity" : 0.7
+    },
+    "beton_05.jpg" :
+    {
+      "normalmap" : "beton_05_NRM.jpg",
+      "specHardness" : 7.7,
+      "specIntensity" : 0.3
+    },
+    "beton_06.jpg" :
+    {
+      "normalmap" : "beton_06_NRM.jpg",
+      "specHardness" : 2,
+      "specIntensity" : 0.3
+    },
+    "beton_07.jpg" :
+    {
+      "normalmap" : "beton_07_NRM.jpg",
+      "specHardness" : 3.7,
+      "specIntensity" : 0.2
+    },
+    "box_01.jpg" :
+    {
+      "type" : "wood",
+      "normalmap" : "box_01_NRM.jpg",
+      "specHardness" : 3,
+      "specIntensity" : 0.5
+    },
+    "box_02.jpg" :
+    {
+      "type" : "wood",
+      "normalmap" : "box_02_NRM.jpg",
+      "specHardness" : 2.2,
+      "specIntensity" : 0.4
+    },
+    "contain1.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "contain1_NRM.jpg",
+      "specHardness" : 16.1,
+      "specIntensity" : 1.1
+    },
+    "contain2.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "contain2_NRM.jpg",
+      "specHardness" : 25.4,
+      "specIntensity" : 1.4
+    },
+    "fa_01.jpg" :
+    {
+      "type" : "wood",
+      "normalmap" : "fa_01_NRM.jpg",
+      "specHardness" : 3,
+      "specIntensity" : 0.6
+    },
+    "fa_02.jpg" :
+    {
+      "type" : "wood",
+      "normalmap" : "fa_02_NRM.jpg",
+      "specHardness" : 5.5,
+      "specIntensity" : 0.5
+    },
+    "fa_03.jpg" :
+    {
+      "type" : "wood",
+      "normalmap" : "fa_03_NRM.jpg",
+      "specHardness" : 3.5,
+      "specIntensity" : 0.8
+    },
+    "fa_04.jpg" :
+    {
+      "type" : "wood",
+      "normalmap" : "fa_04_NRM.jpg",
+      "specHardness" : 5.6,
+      "specIntensity" : 0.4
+    },
+    "fa_05.jpg" :
+    {
+      "type" : "wood",
+      "normalmap" : "fa_05_NRM.jpg",
+      "specHardness" : 11.6,
+      "specIntensity" : 0.4
+    },
+    "floor_01.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "floor_01_NRM.jpg",
+      "specHardness" : 24,
+      "specIntensity" : 1
+    },
+    "floor_02.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "floor_02_NRM.jpg",
+      "specHardness" : 15.4,
+      "specIntensity" : 4
+    },
+    "floor_03.jpg" :
+    {
+      "normalmap" : "floor_03_NRM.jpg",
+      "specHardness" : 2.4,
+      "specIntensity" : 0.8
+    },
+    "floor_04.jpg" :
+    {
+      "normalmap" : "floor_04_NRM.jpg",
+      "specHardness" : 8.3,
+      "specIntensity" : 2
+    },
+    "gun_01.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "gun_01_NRM.jpg",
+      "specHardness" : 2.4,
+      "specIntensity" : 1.2
+    },
+    "window.jpg" :
+    {
+      "normalmap" : "litwndow_NRM.jpg",
+      "specHardness" : 4,
+      "specIntensity" : 0.5
+    },
+    "litwndow.jpg" :
+    {
+      "special" : [
+        "emitting"
+      ]
+    },
+    "mayan.jpg" :
+    {
+      "normalmap" : "mayan_NRM.jpg",
+      "specHardness" : 1.7,
+      "specIntensity" : 1.7
+    },
+    "metal_01.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "metal_01_NRM.jpg",
+      "specHardness" : 7.4,
+      "specIntensity" : 0.9
+    },
+    "metal_06.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "metal_06_NRM.jpg",
+      "specHardness" : 19,
+      "specIntensity" : 0.7
+    },
+    "panel_01.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "panel_01_NRM.jpg",
+      "specHardness" : 13.7,
+      "specIntensity" : 1.6
+    },
+    "parkany.png" :
+    {
+      "normalmap" : "parkany_NRM.jpg",
+      "specHardness" : 4,
+      "specIntensity" : 0.4
+    },
+    "rock_03.jpg" :
+    {
+      "normalmap" : "rock_03_NRM.jpg",
+      "specHardness" : 3.5,
+      "specIntensity" : 0.4
+    },
+    "rock_04.jpg" :
+    {
+      "normalmap" : "rock_04_NRM.jpg",
+      "specHardness" : 2.1,
+      "specIntensity" : 0.7
+    },
+    "rock_05.jpg" :
+    {
+      "normalmap" : "rock_05_NRM.jpg",
+      "specHardness" : 4.9,
+      "specIntensity" : 0.4
+    },
+    "rock_06.jpg" :
+    {
+      "normalmap" : "rock_06_NRM.jpg",
+      "specHardness" : 3.2,
+      "specIntensity" : 1.1
+    },
+    "rock_07.jpg" :
+    {
+      "normalmap" : "rock_07_NRM.jpg",
+      "specHardness" : 6.1,
+      "specIntensity" : 0.4
+    },
+    "rock_08.jpg" :
+    {
+      "normalmap" : "rock_08_NRM.jpg",
+      "specHardness" : 12.3,
+      "specIntensity" : 0.6
+    },
+    "rock_09.jpg" :
+    {
+      "normalmap" : "rock_09_NRM.jpg",
+      "specHardness" : 13,
+      "specIntensity" : 1.6
+    },
+    "rock_10.jpg" :
+    {
+      "specHardness" : 5,
+      "specIntensity" : 0.5
+    },
+    "rock_11.jpg" :
+    {
+      "normalmap" : "rock_11_NRM.jpg",
+      "specHardness" : 3.3,
+      "specIntensity" : 0.65
+    },
+    "roof_01.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "roof_01_NRM.jpg",
+      "specHardness" : 9.3,
+      "specIntensity" : 1.5
+    },
+    "roof_02.jpg" :
+    {
+      "normalmap" : "roof_02_NRM.jpg",
+      "specHardness" : 6.6,
+      "specIntensity" : 1.1
+    },
+    "roof_03.jpg" :
+    {
+      "normalmap" : "roof_03_NRM.jpg",
+      "specHardness" : 4.2,
+      "specIntensity" : 0.5
+    },
+    "roof_04.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "roof_04_NRM.jpg",
+      "specHardness" : 10.8,
+      "specIntensity" : 0.7
+    },
+    "roof_05.jpg" :
+    {
+      "type" : "wood",
+      "normalmap" : "roof_05_NRM.jpg",
+      "specHardness" : 1.9,
+      "specIntensity" : 1.3
+    },
+    "rozsd_01.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "rozsd_01_NRM.jpg",
+      "specHardness" : 8.1,
+      "specIntensity" : 1.1
+    },
+    "rusconcr.jpg" :
+    {
+      "normalmap" : "rusconcr_NRM.jpg",
+      "specHardness" : 0.5,
+      "specIntensity" : 0.6
+    },
+    "suncell.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "suncell_NRM.jpg",
+      "specHardness" : 37.2,
+      "specIntensity" : 1.9
+    },
+    "tegla_01.jpg" :
+    {
+      "normalmap" : "tegla_01_NRM.jpg",
+      "specHardness" : 7.7,
+      "specIntensity" : 0.7
+    },
+    "tegla_02.jpg" :
+    {
+      "normalmap" : "tegla_02_NRM.jpg",
+      "specHardness" : 1.9,
+      "specIntensity" : 0.85
+    },
+    "tegla_03.jpg" :
+    {
+      "normalmap" : "tegla_03_NRM.jpg",
+      "specHardness" : 2.5,
+      "specIntensity" : 0.3
+    },
+    "tegla_04.jpg" :
+    {
+      "normalmap" : "tegla_04_NRM.jpg",
+      "specHardness" : 5,
+      "specIntensity" : 0.7
+    },
+    "xyz.jpg" :
+    {
+      "type" : "metal",
+      "normalmap" : "xyz_NRM.jpg",
+      "specHardness" : 4,
+      "specIntensity" : 0.5
+    },
+    "grill_01.png" :
+    {
+      "type" : "metal",
+      "special" : [
+        "alphatest",
+        "notbulletproof",
+        "grill"
+      ],
+      "specHardness" : 8.6,
+      "specIntensity" : 1.1
+    },
+    "palmleaf.png" :
+    {
+      "special" : [
+        "alphatest",
+        "notbulletproof"
+      ],
+      "type" : "metal",
+      "specHardness" : 8.6,
+      "specIntensity" : 1.1
+    },
+    "grill_02.png" :
+    {
+      "type" : "metal",
+      "special" : [
+        "alphatest",
+        "notbulletproof",
+        "grill"
+      ],
+      "specHardness" : 8.6,
+      "specIntensity" : 1.1
+    },
+    "kispiri.jpg" :
+    {
+      "special" : [
+        "emitting"
+      ]
+    },
+    "lght.jpg" :
+    {
+      "special" : [
+        "disabled"
+      ]
+    },
+    "lght.bmp" :
+    {
+      "special" : [
+        "disabled"
+      ]
+    },
+    "wwindow.png" :
+    {
+      "special" : [
+        "alphatest",
+        "notbulletproof",
+        "grill"
+      ],
+      "type" : "wood"
+    },
+    "decals1.png" :
+    {
+      "special" : [
+        "alphatest"
+      ],
+      "type" : "wood"
+    },
+    "reddy.png" :
+    {
+      "type" : "metal",
+      "specHardness" : 60,
+      "specIntensity" : 2
+    },
+    "metal003.bmp" :
+    {
+      "heightmap" : "metal003_hm.jpg"
+    },
+    "marble1.jpg" :
+    {
+      "specHardness" : 21.6,
+      "specIntensity" : 0.7
+    },
+    "marble2.jpg" :
+    {
+      "specHardness" : 21.6,
+      "specIntensity" : 0.7
+    },
+    "marble3.jpg" :
+    {
+      "specHardness" : 21.6,
+      "specIntensity" : 0.7
+    },
+    "uveg.jpg" :
+    {
+      "specHardness" : 11.9,
+      "specIntensity" : 2.7
+    },
+    "jpgfal8.jpg" :
+    {
+      "specHardness" : 11.9,
+      "specIntensity" : 2.7
+    },
+    "steel_x.png" :
+    {
+      "type" : "metal",
+      "special" : [
+        "alphatest",
+        "notbulletproof"
+      ]
+    },
+    "screen.png" :
+    {
+      "special" : [
+        "emitting"
+      ]
+    },
+    "golden.bmp" :
+    {
+      "special" : [
+        "emitting"
+      ]
+    }
+  },
+  "particle_systems" : [
+    {
+      "name" : "smallfire",
+      "speed" :
+      {
+        "x" : 0,
+        "y" : 0.009,
+        "z" : 0
+      },
+      "random_speed" : 1.1,
+      "random_tangent" : 0.007,
+      "start_color" : "0x55F45C0B",
+      "end_color" : "0x55ECBB13",
+      "rnd_color" : "0x00000000",
+      "visible_range" : 20,
+      "start_size" : 0.23,
+      "end_size" : 0.04,
+      "amount" : 1,
+      "period" : 10,
+      "lifetime" : 43,
+      "texture" : "fire",
+      "type" : "simple"
+    },
+    {
+      "name" : "kiskemenyfust",
+      "speed" :
+      {
+        "x" : 0,
+        "y" : 0.04,
+        "z" : 0
+      },
+      "random_speed" : 1.1,
+      "random_tangent" : 0.02,
+      "start_color" : "0xFF808080",
+      "end_color" : "0x00000000",
+      "rnd_color" : "0x00010101",
+      "visible_range" : 150,
+      "start_size" : 0.8,
+      "end_size" : 10.00,
+      "factor" : 0.12,
+      "amount" : 1,
+      "period" : 10,
+      "lifetime" : 400,
+      "random_lifetime" : 500,
+      "texture" : "smoke",
+      "type" : "cooling"
+    },
+    {
+      "name" : "kemenyfust",
+      "speed" :
+      {
+        "x" : 0,
+        "y" : 0.03,
+        "z" : 0
+      },
+      "random_speed" : 1.1,
+      "random_tangent" : 0.1,
+      "start_color" : "0xFFAAAAAA",
+      "end_color" : "0x00000000",
+      "rnd_color" : "0x00030303",
+      "visible_range" : 150,
+      "start_size" : 1.5,
+      "end_size" : 13.25,
+      "factor" : 0.15,
+      "amount" : 1,
+      "period" : 10,
+      "lifetime" : 500,
+      "random_lifetime" : 1000,
+      "texture" : "smoke",
+      "type" : "cooling"
+    },
+    {
+      "name" : "szikra",
+      "speed" :
+      {
+        "x" : -0.011,
+        "y" : 0,
+        "z" : -0.023
+      },
+      "random_speed" : 1.1,
+      "random_tangent" : 0.03,
+      "start_color" : "0xFFFFFF00",
+      "end_color" : "0xFFFFFF00",
+      "rnd_color" : "0x00000000",
+      "visible_range" : 20,
+      "start_size" : 0.04,
+      "end_size" : 0.01,
+      "factor" : 0.15,
+      "amount" : 11,
+      "period" : 400,
+      "lifetime" : 100,
+      "type" : "gravity"
+    },
+    {
+      "name" : "kislang",
+      "speed" :
+      {
+        "x" : 0,
+        "y" : 0.001,
+        "z" : 0
+      },
+      "random_speed" : 0,
+      "random_tangent" : 0,
+      "start_color" : "0x55F45C0B",
+      "end_color" : "0x55ECBB13",
+      "rnd_color" : "0x00000000",
+      "visible_range" : 10,
+      "start_size" : 0.02,
+      "end_size" : 0.026,
+      "amount" : 1,
+      "period" : 20,
+      "lifetime" : 30,
+      "texture" : "fire",
+      "type" : "simple"
+    }
+  ],
+  "emitters" :
+  {
+    "1v1map1" :
+    {
+      "x" : -81,
+      "y" : 14.56,
+      "z" : -314,
+      "type" : "smallfire"
+    },
+    "1v1map2" :
+    {
+      "x" : -95.68,
+      "y" : 14.56,
+      "z" : -299.35,
+      "type" : "smallfire"
+    },
+    "1v1map3" :
+    {
+      "x" : -91.9,
+      "y" : 14.56,
+      "z" : -310.4,
+      "type" : "smallfire"
+    },
+    "1v1map4" :
+    {
+      "x" : -84.52,
+      "y" : 14.56,
+      "z" : -302.99,
+      "type" : "smallfire"
+    },
+    "f4" :
+    {
+      "x" : -141.44,
+      "y" : 68.94,
+      "z" : 63.1,
+      "type" : "smallfire"
+    },
+    "f5" :
+    {
+      "x" : -135.24,
+      "y" : 68.94,
+      "z" : 67.96,
+      "type" : "smallfire"
+    },
+    "f6" :
+    {
+      "x" : -111.64,
+      "y" : 68.94,
+      "z" : 25.6,
+      "type" : "smallfire"
+    },
+    "f7" :
+    {
+      "x" : -108.31,
+      "y" : 68.94,
+      "z" : 28.36,
+      "type" : "smallfire"
+    },
+    "f8" :
+    {
+      "x" : -104.88,
+      "y" : 68.94,
+      "z" : 31.15,
+      "type" : "smallfire"
+    },
+    "kemeny1" :
+    {
+      "x" : -284,
+      "y" : 57.4,
+      "z" : 155,
+      "type" : "kemenyfust"
+    },
+    "kemeny2" :
+    {
+      "x" : -273.5,
+      "y" : 51.5,
+      "z" : 179.65,
+      "type" : "kemenyfust"
+    },
+    "kiskemeny1" :
+    {
+      "x" : -336.55,
+      "y" : 41.81,
+      "z" : 161.00,
+      "type" : "kiskemenyfust"
+    },
+    "kiskemeny2" :
+    {
+      "x" : -340.07,
+      "y" : 41.81,
+      "z" : 161.05,
+      "type" : "kiskemenyfust"
+    },
+    "szikra" :
+    {
+      "x" : -417.28,
+      "y" : 46.78,
+      "z" : 60.58,
+      "type" : "szikra"
+    },
+    "kislang1" :
+    {
+      "x" : -116.4,
+      "y" : 46.035,
+      "z" : -103.77,
+      "type" : "kislang"
+    },
+    "kislang2" :
+    {
+      "x" : -117.62,
+      "y" : 50.675,
+      "z" : -102.67,
+      "type" : "kislang"
+    },
+    "kislang3" :
+    {
+      "x" : -129.27,
+      "y" : 54.125,
+      "z" : -92.78,
+      "type" : "kislang"
+    },
+    "kislang4" :
+    {
+      "x" : -125.81,
+      "y" : 46.035,
+      "z" : -88.97,
+      "type" : "kislang"
+    }
+  },
+  "teleports" : [
+    {
+      "from" :
+      {
+        "x" : -123,
+        "y" : 43.22,
+        "z" : -95.72
+      },
+      "to" :
+      {
+        "x" : -777.6,
+        "y" : 17.1,
+        "z" : -780.18
+      },
+      "radius" : 1,
+      "visible_range" : 20,
+      "name" : "techkb",
+      "type" : 1
+    },
+    {
+      "from" :
+      {
+        "x" : -123,
+        "y" : 43.22,
+        "z" : -95.72
+      },
+      "to" :
+      {
+        "x" : -836.49,
+        "y" : 17.1,
+        "z" : -799.52
+      },
+      "radius" : 1,
+      "visible_range" : 20,
+      "name" : "gunkb",
+      "type" : 2
+    },
+    {
+      "radius" : 1,
+      "visible_range" : 20,
+      "from" :
+      {
+        "x" : -85.1,
+        "y" : 41.89,
+        "z" : -45.36
+      },
+      "to" :
+      {
+        "x" : 936.08,
+        "y" : 111.3,
+        "z" : -955.16
+      },
+      "name" : "techout",
+      "type" : 1
+    },
+    {
+      "radius" : 1,
+      "visible_range" : 20,
+      "from" :
+      {
+        "x" : -93.12,
+        "y" : 41.89,
+        "z" : -53.36
+      },
+      "to" :
+      {
+        "x" : 927.14,
+        "y" : 104.1,
+        "z" : 888.25
+      },
+      "name" : "techfw",
+      "type" : 1
+    },
+    {
+      "radius" : 1,
+      "visible_range" : 20,
+      "from" :
+      {
+        "x" : -93.12,
+        "y" : 41.89,
+        "z" : -40.71
+      },
+      "to" :
+      {
+        "x" : -72.73,
+        "y" : 11.8,
+        "z" : -291.2
+      },
+      "name" : "tech1v1",
+      "type" : 1
+    },
+    {
+      "radius" : 1,
+      "visible_range" : 20,
+      "from" :
+      {
+        "x" : -85.57,
+        "y" : 41.89,
+        "z" : -49.1
+      },
+      "to" :
+      {
+        "x" : 955.05,
+        "y" : 110.91,
+        "z" : -919.17
+      },
+      "name" : "gunout",
+      "type" : 2
+    },
+    {
+      "radius" : 1,
+      "visible_range" : 20,
+      "from" :
+      {
+        "x" : -89.72,
+        "y" : 41.89,
+        "z" : -40.71
+      },
+      "to" :
+      {
+        "x" : -99.124,
+        "y" : 11.8,
+        "z" : -323.16
+      },
+      "name" : "gun1v1",
+      "type" : 2
+    },
+    {
+      "radius" : 1,
+      "visible_range" : 20,
+      "from" :
+      {
+        "x" : -89.78,
+        "y" : 41.89,
+        "z" : -53.17
+      },
+      "to" :
+      {
+        "x" : 952.47,
+        "y" : 104.1,
+        "z" : 901.97
+      },
+      "name" : "gunfw",
+      "type" : 2
+    },
+    {
+      "radius" : 2.5,
+      "visible_range" : 0,
+      "from" :
+      {
+        "x" : -166.79,
+        "y" : 35.43,
+        "z" : 176.48
+      },
+      "to" :
+      {
+        "x" : -812.23,
+        "y" : -111.38,
+        "z" : 721.63
+      },
+      "type" : 0
+    }
+  ],
+  "terrain_modifiers" : [
+    {
+      "x" : -309.38,
+      "y" : 11.75,
+      "z" : 25.25,
+      "radius" : 7,
+      "offset" : 12,
+      "name" : "port1"
+    },
+    {
+      "x" : -333.536,
+      "y" : 5.6,
+      "z" : -57.331,
+      "radius" : 15,
+      "offset" : 20,
+      "name" : "f4"
+    },
+    {
+      "x" : -353.11,
+      "y" : 5.4,
+      "z" : -67.05,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f5"
+    },
+    {
+      "x" : -367.5,
+      "y" : 5,
+      "z" : -70.03,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f6"
+    },
+    {
+      "x" : -376.98,
+      "y" : 5,
+      "z" : -83.53,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f7"
+    },
+    {
+      "x" : -388.93,
+      "y" : 5,
+      "z" : -93.24,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f8"
+    },
+    {
+      "x" : -404.9,
+      "y" : 5,
+      "z" : -103.4,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f9"
+    },
+    {
+      "x" : -418.74,
+      "y" : 5,
+      "z" : -101.44,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f10"
+    },
+    {
+      "x" : -417.54,
+      "y" : 5,
+      "z" : -111.13,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f11"
+    },
+    {
+      "x" : -448.17,
+      "y" : 5,
+      "z" : -111.48,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f12"
+    },
+    {
+      "x" : -467.67,
+      "y" : 5.1,
+      "z" : -124.46,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f13"
+    },
+    {
+      "x" : -486.18,
+      "y" : 5.2,
+      "z" : -133.55,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f14"
+    },
+    {
+      "x" : -515.89,
+      "y" : 5.3,
+      "z" : -125.13,
+      "radius" : 13,
+      "offset" : 20,
+      "name" : "f15"
+    },
+    {
+      "x" : -554.15,
+      "y" : 5.2,
+      "z" : -113.87,
+      "radius" : 17,
+      "offset" : 25,
+      "name" : "f16"
+    },
+    {
+      "x" : -591.9,
+      "y" : 5.1,
+      "z" : -106.638,
+      "radius" : 14,
+      "offset" : 22,
+      "name" : "f17"
+    },
+    {
+      "x" : -626.853,
+      "y" : 5,
+      "z" : -121.569,
+      "radius" : 16,
+      "offset" : 25,
+      "name" : "f18"
+    },
+    {
+      "x" : -169.354,
+      "y" : 19,
+      "z" : 178.831,
+      "radius" : 29,
+      "offset" : 55,
+      "name" : "porti"
+    },
+    {
+      "x" : -355.25,
+      "y" : 15.5,
+      "z" : -125.75,
+      "radius" : 2,
+      "offset" : 14,
+      "name" : "alcomp"
+    },
+    {
+      "x" : -321.82,
+      "y" : 14.76,
+      "z" : -133.39,
+      "radius" : 6.3,
+      "offset" : 8,
+      "name" : "alcomp"
+    },
+    {
+      "x" : -227.051,
+      "y" : 21,
+      "z" : 137.13,
+      "radius" : 22
+    },
+    {
+      "x" : -241.372,
+      "y" : 21,
+      "z" : 103.445,
+      "radius" : 14,
+      "offset" : 27,
       "name" : "factory helyén"
-		},
-		{
-			"x" : -780,
-			"y" : -120,
-			"z" : 746.667,
-			"radius" : 100,
-			"offset" : 200,
-			"name" : "bubi"
-		},
-		{
-			"x" : -178.74,
-			"y" : 52.7,
-			"z" : 10.58,
-			"offset" : 13,
-			"radius" : 3,
-			"name" : "panthifeljárat"
-		},
-		{
-			"x" : -181.27,
-			"y" : 53.8,
-			"z" : 4.05,
-			"radius" : 1.5,
-			"offset" : 7,
-			"name" : "panthifeljárat"
-		},
-		{
-			"x" : -174.92,
-			"y" : 55.7,
-			"z" : -0.68,
-			"radius" : 1.5,
-			"offset" : 7,
-			"name" : "panthifeljárat"
-		},
-		{
-			"x" : -165.17,
-			"y" : 58.3,
-			"z" : 7.98,
-			"radius" : 3,
-			"offset" : 14,
-			"name" : "panthifeljárat"
-		},
-		{
-			"x" : -187.82,
-			"y" : 49.86,
-			"z" : 17.95,
-			"offset" : 13,
-			"radius" : 3,
-			"name" : "panthifeljárat"
-		},
-		{
-			"x" : -420.565,
-			"y" : 23.5,
-			"z" : -15.217,
-			"radius" : 11,
-			"offset" : 28,
-			"name" : "apartment"
-		},
-		{
-			"x" : -419.4,
-			"y" : 25.37,
-			"z" : 11.93,
-			"radius" : 6.3,
-			"offset" : 13,
-			"name" : "apartment"
-		},
-		{
-			"x" : -255.66,
-			"y" : 20.5,
-			"z" : 115.32,
-			"radius" : 5,
-			"offset" : 5,
-			"name" : "highway vége"
-		},
-		{
-			"x" : -311.4,
-			"y" : 14.62,
-			"z" : -118,
-			"radius" : 21,
-			"name" : "alcomp1"
-		},
-		{
-			"x" : -332.37,
-			"y" : 14.62,
-			"z" : -117.98,
-			"radius" : 19,
-			"name" : "alcomp2"
-		},
-		{
-			"x" : -377.9,
-			"y" : 16.4,
-			"z" : -153.86,
-			"radius" : 7,
-			"offset" : 20,
-			"name" : "híd1fel"
-		},
-		{
-			"x" : -366.54,
-			"y" : 16.3,
-			"z" : -140.26,
-			"radius" : 4,
-			"offset" : 16,
-			"name" : "híd2le"
-		},
-		{
-			"x" : -102.67,
-			"y" : 42.66,
-			"z" : -74.31,
-			"radius" : 3,
-			"offset" : 12,
-			"name" : "piri lebegett",
+    },
+    {
+      "x" : -780,
+      "y" : -120,
+      "z" : 746.667,
+      "radius" : 100,
+      "offset" : 200,
+      "name" : "bubi"
+    },
+    {
+      "x" : -178.74,
+      "y" : 52.7,
+      "z" : 10.58,
+      "offset" : 13,
+      "radius" : 3,
+      "name" : "panthifeljárat"
+    },
+    {
+      "x" : -181.27,
+      "y" : 53.8,
+      "z" : 4.05,
+      "radius" : 1.5,
+      "offset" : 7,
+      "name" : "panthifeljárat"
+    },
+    {
+      "x" : -174.92,
+      "y" : 55.7,
+      "z" : -0.68,
+      "radius" : 1.5,
+      "offset" : 7,
+      "name" : "panthifeljárat"
+    },
+    {
+      "x" : -165.17,
+      "y" : 58.3,
+      "z" : 7.98,
+      "radius" : 3,
+      "offset" : 14,
+      "name" : "panthifeljárat"
+    },
+    {
+      "x" : -187.82,
+      "y" : 49.86,
+      "z" : 17.95,
+      "offset" : 13,
+      "radius" : 3,
+      "name" : "panthifeljárat"
+    },
+    {
+      "x" : -420.565,
+      "y" : 23.5,
+      "z" : -15.217,
+      "radius" : 11,
+      "offset" : 28,
+      "name" : "apartment"
+    },
+    {
+      "x" : -419.4,
+      "y" : 25.37,
+      "z" : 11.93,
+      "radius" : 6.3,
+      "offset" : 13,
+      "name" : "apartment"
+    },
+    {
+      "x" : -255.66,
+      "y" : 20.5,
+      "z" : 115.32,
+      "radius" : 5,
+      "offset" : 5,
+      "name" : "highway vége"
+    },
+    {
+      "x" : -311.4,
+      "y" : 14.62,
+      "z" : -118,
+      "radius" : 21,
+      "name" : "alcomp1"
+    },
+    {
+      "x" : -332.37,
+      "y" : 14.62,
+      "z" : -117.98,
+      "radius" : 19,
+      "name" : "alcomp2"
+    },
+    {
+      "x" : -377.9,
+      "y" : 16.4,
+      "z" : -153.86,
+      "radius" : 7,
+      "offset" : 20,
+      "name" : "híd1fel"
+    },
+    {
+      "x" : -366.54,
+      "y" : 16.3,
+      "z" : -140.26,
+      "radius" : 4,
+      "offset" : 16,
+      "name" : "híd2le"
+    },
+    {
+      "x" : -102.67,
+      "y" : 42.66,
+      "z" : -74.31,
+      "radius" : 3,
+      "offset" : 12,
+      "name" : "piri lebegett",
       "agressive" : true
-		},
-		{
-			"x" : -348.01,
-			"y" : 9.98,
-			"z" : 7.23,
-			"radius" : 6,
-			"offset" : 9.5,
-			"name" : "port2"
-		}
-	],
-	"bubbles" : [
-		{
-			"x" : -780,
-			"y" : -120,
-			"z" : 746.667,
-			"radius" : 75
-		}
-	],
-	"menubackgrounds" : [
-		{
-			"x" : -460.11,
-			"y" : 49.9,
-			"z" : -128.67,
-			"angleH" : 1.14,
-			"angleV" : -0.37
-		},
-		{
-			"x" : -368.52,
-			"y" : 24.52,
-			"z" : 49.5,
-			"angleH" : -1.78,
-			"angleV" : 0.37
-		},
-		{
-			"x" : -314.41,
-			"y" : 40.95,
-			"z" : 104.83,
-			"angleH" : 2.23,
-			"angleV" : -0.46
-		},
-		{
-			"x" : -281.39,
-			"y" : 10.8,
-			"z" : -51.03,
-			"angleH" : -0.42,
-			"angleV" : 0.4
-		},
-		{
-			"x" : -152.68,
-			"y" : 65.11,
-			"z" : -17.9,
-			"angleH" : 2.49,
-			"angleV" : -0.36
-		},
-		{
-			"x" : -138.2,
-			"y" : 68.51,
-			"z" : 39.94,
-			"angleH" : 1.04,
-			"angleV" : 0.31
-		},
-		{
-			"x" : -166.48,
-			"y" : 42.02,
-			"z" : -132.16,
-			"angleH" : -0.31,
-			"angleV" : -0.18
-		},
-		{
-			"x" : -389.38,
-			"y" : 33.55,
-			"z" : 68.54,
-			"angleH" : 1.1,
-			"angleV" : -0.26
-		}
-	],
-	"hats" : [
-		"bajusz",
-		"bandit",
-		"blue",
-		"CN",
-		"flash",
-		"hosszu1",
-		"hosszu2",
-		"hszg",
-		"indy",
-		"kanye1",
-		"kanye2",
-		"korona",
-		"mikrofon",
-		"Morpheus",
-		"napgepF",
-		"napgepK",
-		"napgepP",
-		"nvision",
-		"orosz",
-		"punk_blue",
-		"punk_red",
-		"rohbil",
-		"sparta",
-		"szivar",
-		"tech1",
-		"telapo",
-		"ultimate",
-		"fejes",
-		"baseballhat",
-		"wizard"
-	],
-	"props" : {
-		"shell" : {
-			"model" : "shell.x",
-			"materials" : [
-				{
-					"diffuse" : "shell.jpg",
-					"specHardness" : 26.9,
-					"specIntensity" : 0
-				}
-			],
-			"position" : [
-				{
-					"x" : 182.39,
-					"y" : 10.57,
-					"z" : 308.31,
-					"rot" : 0,
-					"scale" : 1.5,
-					"light" : 1,
-					"name" : "shell1"
-				},
-				{
-					"x" : 181.63,
-					"y" : 10.17,
-					"z" : 318.34,
-					"rot" : 177,
-					"scale" : 1.7,
-					"light" : 1,
-					"name" : "shell2",
-					"invisible" : 1
-				},
-				{
-					"x" : 176.37,
-					"y" : 9.7,
-					"z" : 305,
-					"rot" : 79,
-					"scale" : 1.35,
-					"light" : 1
-				}
-			]
-		},
-		"lantern" : {
-			"model" : "lantern.x",
-			"materials" : [
-				{
-					"diffuse" : "lantern.jpg",
-					"specHardness" : 26.9,
-					"specIntensity" : 0
-				}
-			],
-			"position" : [
-				{
-					"x" : -117.62,
-					"y" : 50.58,
-					"z" : -102.67,
-					"rot" : 13,
-					"scale" : 0.08,
-					"light" : 1
-				},
-				{
-					"x" : -129.27,
-					"y" : 54.03,
-					"z" : -92.78,
-					"rot" : 70,
-					"scale" : 0.08,
-					"light" : 1
-				},
-				{
-					"x" : -116.4,
-					"y" : 45.94,
-					"z" : -103.77,
-					"rot" : 119,
-					"scale" : 0.08,
-					"light" : 1
-				},
-				{
-					"x" : -125.81,
-					"y" : 45.94,
-					"z" : -88.97,
-					"rot" : 70,
-					"scale" : 0.08,
-					"light" : 1
-				}
-			]
-		},
-		"lamp" : {
-			"model" : "lamp.x",
-			"materials" : [
-				{
-					"diffuse" : "..\/textures\/beton_07.jpg",
-					"specHardness" : 26.9,
-					"specIntensity" : 0,
-					"emission" : 0
-				},
-				{
-					"diffuse" : "..\/textures\/feh.bmp",
-					"specHardness" : 26.9,
-					"specIntensity" : 0,
-					"emission" : 1
-				}
-			],
-			"position" : [
-				{
-					"x" : -422.42,
-					"y" : 32,
-					"z" : -17.12,
-					"rot" : 0,
-					"scale" : 0.35,
-					"light" : 0.4
-				},
-				{
-					"x" : -337.47,
-					"y" : 19.68,
-					"z" : -116.75,
-					"rot" : 0,
-					"scale" : 0.35,
-					"light" : 0.4
-				},
-				{
-					"x" : -332.02,
-					"y" : 18.41,
-					"z" : -116.59,
-					"rot" : 0,
-					"scale" : 0.35,
-					"light" : 0.4
-				}
-			]
-		}
-	},
-	"labels" : [
-		{
-			"x" : -126.78,
-			"y" : 67.84,
-			"z" : 44.39,
-			"radius" : 2,
-			"text" : "Admin\r\n\t\t\r\n\t\tA játék kitalálója, és fõ fejlesztõje, neki köszönhetitek a legtöbbet. Pár éve átadta a fejlesztést Hectornak."
-		},
-		{
-			"x" : -130.07,
-			"y" : 67.84,
-			"z" : 18.9,
-			"radius" : 2,
-			"text" : "Almabali\r\n\t\t\r\n\t\tAdmin haverja, a legelsõ verziókat még vele tesztelte. Alcompot és a rádiótornyot õ modellezte."
-		},
-		{
-			"x" : -108.43,
-			"y" : 67.84,
-			"z" : 63.27,
-			"radius" : 2,
-			"text" : "Sadypisten\r\n\t\t\r\n\t\tModerátor és modellezõ, õ készítette a hidat, a kikötõt és a világítótornyot."
-		},
-		{
-			"x" : -104.01,
-			"y" : 67.84,
-			"z" : 58.36,
-			"radius" : 2,
-			"text" : "Banán\r\n\t\t\r\n\t\tKorai modellezõ, aki tevékenyen segítette a játék fejlõdését - ma már csak pofánbasznánk."
-		},
-		{
-			"x" : -108.63,
-			"y" : 67.84,
-			"z" : 31.4,
-			"radius" : 2,
-			"text" : "Foxy\r\n\t\t\r\n\t\tRégen moderátor volt, már rég nem aktív."
-		},
-		{
-			"x" : -111.41,
-			"y" : 67.84,
-			"z" : 28.99,
-			"radius" : 2,
-			"text" : "Pityuli\r\n\t\t\r\n\t\tSzervert futtatott sok évvel ezelött."
-		},
-		{
-			"x" : -123.66,
-			"y" : 67.84,
-			"z" : 18.69,
-			"radius" : 2,
-			"text" : "Bolint99\r\n\t\t\r\n\t\tA honlapot és a szervert biztosítja, régóta."
-		},
-		{
-			"x" : -96.08,
-			"y" : 67.84,
-			"z" : 40.96,
-			"radius" : 2,
-			"text" : "Fradi\r\n\t\t\r\n\t\tA 2012-es Nagy nullázás elött vezette az összesített toplistát 271.468 ponttal. Még ma is aktív és jó helyezése van, most az ELIT klán tagja."
-		},
-		{
-			"x" : -117.32,
-			"y" : 67.84,
-			"z" : 74.68,
-			"radius" : 2,
-			"text" : "Damisz\r\n\t\t\r\n\t\tA 2012-es Nagy nullázás elött 2. helyen volt az összesített toplistán. A mostani damisz már egy másik ember."
-		},
-		{
-			"x" : -94.91,
-			"y" : 67.84,
-			"z" : 47.24,
-			"radius" : 2,
-			"text" : "Csiga\r\n\t\t\r\n\t\tA 2012-es Nagy nullázás elött 3. helyen volt az összesített toplistán."
-		},
-		{
-			"x" : -123.4,
-			"y" : 67.84,
-			"z" : 75.4,
-			"radius" : 2,
-			"text" : "Béjbi - ma Lejla\r\n\t\t\r\n\t\tA 2012-es Nagy nullázás elött 4. helyen volt az összesített toplistán."
-		},
-		{
-			"x" : -114.77,
-			"y" : 67.84,
-			"z" : 46.13,
-			"radius" : 2,
-			"text" : "Hector\r\n\t\t\r\n\t\tJelenlegi admin, neki köszönhetjük az 1v1-et és a portál eventet. Régebb óta modellezett, õ készítette a steelworksöt, atlantist, apartment, és az új mpgt, quadot, x72-t. A modjait is érdemes megnézni."
-		},
-		{
-			"x" : -151.35,
-			"y" : 67.84,
-			"z" : 53.07,
-			"radius" : 2,
-			"text" : "Goulash\r\n\t\t\r\n\t\tModellezõ, õ készítette az eredeti Delta komplexet és a Modern ruinst."
-		},
-		{
-			"x" : -124.43,
-			"y" : 67.84,
-			"z" : 37.87,
-			"radius" : 2,
-			"text" : "HelloTibi\r\n\t\t\r\n\t\tA sticktool készítõje, ami a mai napig nagy segítség a moddereknek."
-		},
-		{
-			"x" : -122.48,
-			"y" : 67.84,
-			"z" : 55.64,
-			"radius" : 2,
-			"text" : "Oli és Kléni\r\n\t\t\r\n\t\tAz új honlapot készítették. Kléni készítette a rendszert, és mai napig felügyeli. Oli a designért volt fõképp felelõs. Természetesen moderátorok is. Oli készítette annó az Omodot."
-		},
-		{
-			"x" : -132.03,
-			"y" : 67.84,
-			"z" : 48.1,
-			"radius" : 2,
-			"text" : "Mark575 - ma simán Mark\r\n\t\t\r\n\t\tHosszú ideje, még ma is aktív moderátor. Ezen kívül szép fragvideókat készített."
-		},
-		{
-			"x" : -152.2,
-			"y" : 67.84,
-			"z" : 46.61,
-			"radius" : 2,
-			"text" : "Szõke\r\n\t\t\r\n\t\tA 2010-es bajnokság gyõztese."
-		},
-		{
-			"x" : -106.17,
-			"y" : 67.84,
-			"z" : 60.87,
-			"radius" : 2,
-			"text" : "Calmarius\r\n\t\t\r\n\t\t2007-ben regisztrált, a régi toplistát nagyon sokáig vezette. Kedvenc fegyvere a NOOB. A Nagy nullázás óta nem aktív, csak a versenyeken indul, és ér el szép eredményeket."
-		}
-	],
-	"splashes" : [
-		"splash1.jpg",
-		"splash2.jpg",
-		"splash3.jpg",
-		"splash4.jpg",
-		"splash5.jpg",
-		"splash6.jpg",
-		"splash7.jpg",
-		"splash8.jpg"
-	],
-	"foliages" : [
-		{
-			"texture" : "bush256.png",
-			"shape" : "bush",
-			"width" : 0.85,
-			"height" : 1.1,
-			"offset" : 0,
-			"level" : 4
-		},
-		{
-			"texture" : "pimpo.png",
-			"shape" : "grass",
-			"width" : 0.53,
-			"height" : 0.9,
-			"offset" : -0.3,
-			"level" : 3
-		},
-		{
-			"texture" : "tallgrass.png",
-			"shape" : "grass",
-			"width" : 1,
-			"height" : 0.8,
-			"offset" : -0.3,
-			"level" : 1
-		},
-		{
-			"texture" : "tallgrass.png",
-			"shape" : "grass",
-			"width" : 1,
-			"height" : 0.8,
-			"offset" : -0.3,
-			"level" : 0
-		}
-	],
-	"sounds" : [
-		{
-			"filename" : "gunshot",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 3
-		},
-		{
-			"filename" : "walkground",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "rocks",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "walkwater",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "plasmashot2",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "m82shot",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 7
-		},
-		{
-			"filename" : "4shot",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 4
-		},
-		{
-			"filename" : "antigrav",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "hummer",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 10
-		},
-		{
-			"filename" : "death1",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "death2",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "death3",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "rain",
-			"haromd" : false,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "thd",
-			"haromd" : false,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "whoosh",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 0.1
-		},
-		{
-			"filename" : "charge",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "rocket",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "niceexp",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 6
-		},
-		{
-			"filename" : "noobshot",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "noobexp",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 7
-		},
-		{
-			"filename" : "rocketshot",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "x72exp",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "mp5",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "x72shot",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 3
-		},
-		{
-			"filename" : "pajzs",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "teleport",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "mechanic",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "lwhoosh",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 0.1
-		},
-		{
-			"filename" : "creak",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 20
-		},
-		{
-			"filename" : "lasertiu",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 20
-		},
-		{
-			"filename" : "lownoise",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 15
-		},
-		{
-			"filename" : "biglas",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 10
-		},
-		{
-			"filename" : "uberexp",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 100
-		},
-		{
-			"filename" : "mechahuge",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 30
-		},
-		{
-			"filename" : "largeser",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "knock",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 20
-		},
-		{
-			"filename" : "openedportal",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 10
-		},
-		{
-			"filename" : "walkmetal",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "walkwood",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "snowfire",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 1
-		},
-		{
-			"filename" : "suck",
-			"haromd" : true,
-			"freq" : true,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "techsniper",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 3
-		},
-		{
-			"filename" : "shotgun",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 3
-		},
-		{
-			"filename" : "impact\/dirt1",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/dirt2",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/dirt3",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/simple1",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/simple2",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/simple3",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/metal1",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/metal2",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/metal3",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/wood1",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/wood2",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		},
-		{
-			"filename" : "impact\/wood3",
-			"haromd" : true,
-			"freq" : false,
-			"effects" : true,
-			"mindistance" : 2
-		}
-	],
-	"scripts" : {
-	},
-	"triggers" : {
-	},
-	"bullethole_textures" : {
-		"default" : [
-			"textures\/hole_01.png",
-			"textures\/hole_02.png",
-			"textures\/hole_03.png",
-			"textures\/hole_04.png"
-		],
-		"metal" : [
-			"textures\/holem_01.png",
-			"textures\/holem_02.png"
-		],
-		"wood" : [
-			"textures\/holew_01.png",
-			"textures\/holew_02.png"
-		]
-	}
+    },
+    {
+      "x" : -348.01,
+      "y" : 9.98,
+      "z" : 7.23,
+      "radius" : 6,
+      "offset" : 9.5,
+      "name" : "port2"
+    }
+  ],
+  "bubbles" : [
+    {
+      "x" : -780,
+      "y" : -120,
+      "z" : 746.667,
+      "radius" : 75
+    }
+  ],
+  "menubackgrounds" : [
+    {
+      "x" : -460.11,
+      "y" : 49.9,
+      "z" : -128.67,
+      "angleH" : 1.14,
+      "angleV" : -0.37
+    },
+    {
+      "x" : -368.52,
+      "y" : 24.52,
+      "z" : 49.5,
+      "angleH" : -1.78,
+      "angleV" : 0.37
+    },
+    {
+      "x" : -314.41,
+      "y" : 40.95,
+      "z" : 104.83,
+      "angleH" : 2.23,
+      "angleV" : -0.46
+    },
+    {
+      "x" : -281.39,
+      "y" : 10.8,
+      "z" : -51.03,
+      "angleH" : -0.42,
+      "angleV" : 0.4
+    },
+    {
+      "x" : -152.68,
+      "y" : 65.11,
+      "z" : -17.9,
+      "angleH" : 2.49,
+      "angleV" : -0.36
+    },
+    {
+      "x" : -138.2,
+      "y" : 68.51,
+      "z" : 39.94,
+      "angleH" : 1.04,
+      "angleV" : 0.31
+    },
+    {
+      "x" : -166.48,
+      "y" : 42.02,
+      "z" : -132.16,
+      "angleH" : -0.31,
+      "angleV" : -0.18
+    },
+    {
+      "x" : -389.38,
+      "y" : 33.55,
+      "z" : 68.54,
+      "angleH" : 1.1,
+      "angleV" : -0.26
+    }
+  ],
+  "hats" : [
+    "bajusz",
+    "bandit",
+    "blue",
+    "CN",
+    "flash",
+    "hosszu1",
+    "hosszu2",
+    "hszg",
+    "indy",
+    "kanye1",
+    "kanye2",
+    "korona",
+    "mikrofon",
+    "Morpheus",
+    "napgepF",
+    "napgepK",
+    "napgepP",
+    "nvision",
+    "orosz",
+    "punk_blue",
+    "punk_red",
+    "rohbil",
+    "sparta",
+    "szivar",
+    "tech1",
+    "telapo",
+    "ultimate",
+    "fejes",
+    "baseballhat",
+    "wizard"
+  ],
+  "props" :
+  {
+    "shell" :
+    {
+      "model" : "shell.x",
+      "materials" : [
+        {
+          "diffuse" : "shell.jpg",
+          "specHardness" : 26.9,
+          "specIntensity" : 0
+        }
+      ],
+      "position" : [
+        {
+          "x" : 182.39,
+          "y" : 10.57,
+          "z" : 308.31,
+          "rot" : 0,
+          "scale" : 1.5,
+          "light" : 1,
+          "name" : "shell1"
+        },
+        {
+          "x" : 181.63,
+          "y" : 10.17,
+          "z" : 318.34,
+          "rot" : 177,
+          "scale" : 1.7,
+          "light" : 1,
+          "name" : "shell2",
+          "invisible" : 1
+        },
+        {
+          "x" : 176.37,
+          "y" : 9.7,
+          "z" : 305,
+          "rot" : 79,
+          "scale" : 1.35,
+          "light" : 1
+        }
+      ]
+    },
+    "lantern" :
+    {
+      "model" : "lantern.x",
+      "materials" : [
+        {
+          "diffuse" : "lantern.jpg",
+          "specHardness" : 26.9,
+          "specIntensity" : 0
+        }
+      ],
+      "position" : [
+        {
+          "x" : -117.62,
+          "y" : 50.58,
+          "z" : -102.67,
+          "rot" : 13,
+          "scale" : 0.08,
+          "light" : 1
+        },
+        {
+          "x" : -129.27,
+          "y" : 54.03,
+          "z" : -92.78,
+          "rot" : 70,
+          "scale" : 0.08,
+          "light" : 1
+        },
+        {
+          "x" : -116.4,
+          "y" : 45.94,
+          "z" : -103.77,
+          "rot" : 119,
+          "scale" : 0.08,
+          "light" : 1
+        },
+        {
+          "x" : -125.81,
+          "y" : 45.94,
+          "z" : -88.97,
+          "rot" : 70,
+          "scale" : 0.08,
+          "light" : 1
+        }
+      ]
+    },
+    "lamp" :
+    {
+      "model" : "lamp.x",
+      "materials" : [
+        {
+          "diffuse" : "..\/textures\/beton_07.jpg",
+          "specHardness" : 26.9,
+          "specIntensity" : 0,
+          "emission" : 0
+        },
+        {
+          "diffuse" : "..\/textures\/feh.bmp",
+          "specHardness" : 26.9,
+          "specIntensity" : 0,
+          "emission" : 1
+        }
+      ],
+      "position" : [
+        {
+          "x" : -422.42,
+          "y" : 32,
+          "z" : -17.12,
+          "rot" : 0,
+          "scale" : 0.35,
+          "light" : 0.4
+        },
+        {
+          "x" : -337.47,
+          "y" : 19.68,
+          "z" : -116.75,
+          "rot" : 0,
+          "scale" : 0.35,
+          "light" : 0.4
+        },
+        {
+          "x" : -332.02,
+          "y" : 18.41,
+          "z" : -116.59,
+          "rot" : 0,
+          "scale" : 0.35,
+          "light" : 0.4
+        }
+      ]
+    }
+  },
+  "labels" : [
+    {
+      "x" : -126.78,
+      "y" : 67.84,
+      "z" : 44.39,
+      "radius" : 2,
+      "text" : "Admin\r\n\t\t\r\n\t\tA játék kitalálója, és fõ fejlesztõje, neki köszönhetitek a legtöbbet. Pár éve átadta a fejlesztést Hectornak."
+    },
+    {
+      "x" : -130.07,
+      "y" : 67.84,
+      "z" : 18.9,
+      "radius" : 2,
+      "text" : "Almabali\r\n\t\t\r\n\t\tAdmin haverja, a legelsõ verziókat még vele tesztelte. Alcompot és a rádiótornyot õ modellezte."
+    },
+    {
+      "x" : -108.43,
+      "y" : 67.84,
+      "z" : 63.27,
+      "radius" : 2,
+      "text" : "Sadypisten\r\n\t\t\r\n\t\tModerátor és modellezõ, õ készítette a hidat, a kikötõt és a világítótornyot."
+    },
+    {
+      "x" : -104.01,
+      "y" : 67.84,
+      "z" : 58.36,
+      "radius" : 2,
+      "text" : "Banán\r\n\t\t\r\n\t\tKorai modellezõ, aki tevékenyen segítette a játék fejlõdését - ma már csak pofánbasznánk."
+    },
+    {
+      "x" : -108.63,
+      "y" : 67.84,
+      "z" : 31.4,
+      "radius" : 2,
+      "text" : "Foxy\r\n\t\t\r\n\t\tRégen moderátor volt, már rég nem aktív."
+    },
+    {
+      "x" : -111.41,
+      "y" : 67.84,
+      "z" : 28.99,
+      "radius" : 2,
+      "text" : "Pityuli\r\n\t\t\r\n\t\tSzervert futtatott sok évvel ezelött."
+    },
+    {
+      "x" : -123.66,
+      "y" : 67.84,
+      "z" : 18.69,
+      "radius" : 2,
+      "text" : "Bolint99\r\n\t\t\r\n\t\tA honlapot és a szervert biztosítja, régóta."
+    },
+    {
+      "x" : -96.08,
+      "y" : 67.84,
+      "z" : 40.96,
+      "radius" : 2,
+      "text" : "Fradi\r\n\t\t\r\n\t\tA 2012-es Nagy nullázás elött vezette az összesített toplistát 271.468 ponttal. Még ma is aktív és jó helyezése van, most az ELIT klán tagja."
+    },
+    {
+      "x" : -117.32,
+      "y" : 67.84,
+      "z" : 74.68,
+      "radius" : 2,
+      "text" : "Damisz\r\n\t\t\r\n\t\tA 2012-es Nagy nullázás elött 2. helyen volt az összesített toplistán. A mostani damisz már egy másik ember."
+    },
+    {
+      "x" : -94.91,
+      "y" : 67.84,
+      "z" : 47.24,
+      "radius" : 2,
+      "text" : "Csiga\r\n\t\t\r\n\t\tA 2012-es Nagy nullázás elött 3. helyen volt az összesített toplistán."
+    },
+    {
+      "x" : -123.4,
+      "y" : 67.84,
+      "z" : 75.4,
+      "radius" : 2,
+      "text" : "Béjbi - ma Lejla\r\n\t\t\r\n\t\tA 2012-es Nagy nullázás elött 4. helyen volt az összesített toplistán."
+    },
+    {
+      "x" : -114.77,
+      "y" : 67.84,
+      "z" : 46.13,
+      "radius" : 2,
+      "text" : "Hector\r\n\t\t\r\n\t\tJelenlegi admin, neki köszönhetjük az 1v1-et és a portál eventet. Régebb óta modellezett, õ készítette a steelworksöt, atlantist, apartment, és az új mpgt, quadot, x72-t. A modjait is érdemes megnézni."
+    },
+    {
+      "x" : -151.35,
+      "y" : 67.84,
+      "z" : 53.07,
+      "radius" : 2,
+      "text" : "Goulash\r\n\t\t\r\n\t\tModellezõ, õ készítette az eredeti Delta komplexet és a Modern ruinst."
+    },
+    {
+      "x" : -124.43,
+      "y" : 67.84,
+      "z" : 37.87,
+      "radius" : 2,
+      "text" : "HelloTibi\r\n\t\t\r\n\t\tA sticktool készítõje, ami a mai napig nagy segítség a moddereknek."
+    },
+    {
+      "x" : -122.48,
+      "y" : 67.84,
+      "z" : 55.64,
+      "radius" : 2,
+      "text" : "Oli és Kléni\r\n\t\t\r\n\t\tAz új honlapot készítették. Kléni készítette a rendszert, és mai napig felügyeli. Oli a designért volt fõképp felelõs. Természetesen moderátorok is. Oli készítette annó az Omodot."
+    },
+    {
+      "x" : -132.03,
+      "y" : 67.84,
+      "z" : 48.1,
+      "radius" : 2,
+      "text" : "Mark575 - ma simán Mark\r\n\t\t\r\n\t\tHosszú ideje, még ma is aktív moderátor. Ezen kívül szép fragvideókat készített."
+    },
+    {
+      "x" : -152.2,
+      "y" : 67.84,
+      "z" : 46.61,
+      "radius" : 2,
+      "text" : "Szõke\r\n\t\t\r\n\t\tA 2010-es bajnokság gyõztese."
+    },
+    {
+      "x" : -106.17,
+      "y" : 67.84,
+      "z" : 60.87,
+      "radius" : 2,
+      "text" : "Calmarius\r\n\t\t\r\n\t\t2007-ben regisztrált, a régi toplistát nagyon sokáig vezette. Kedvenc fegyvere a NOOB. A Nagy nullázás óta nem aktív, csak a versenyeken indul, és ér el szép eredményeket."
+    }
+  ],
+  "sounds" : [
+    {
+      "filename" : "gunshot",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 3
+    },
+    {
+      "filename" : "walkground",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "rocks",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "walkwater",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "plasmashot2",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "m82shot",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 7
+    },
+    {
+      "filename" : "4shot",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 4
+    },
+    {
+      "filename" : "antigrav",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "hummer",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 10
+    },
+    {
+      "filename" : "death1",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "death2",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "death3",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "rain",
+      "haromd" : false,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "thd",
+      "haromd" : false,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "whoosh",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 0.1
+    },
+    {
+      "filename" : "charge",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "rocket",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "niceexp",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 6
+    },
+    {
+      "filename" : "noobshot",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "noobexp",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 7
+    },
+    {
+      "filename" : "rocketshot",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "x72exp",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "mp5",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "x72shot",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 3
+    },
+    {
+      "filename" : "pajzs",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "teleport",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "mechanic",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "lwhoosh",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 0.1
+    },
+    {
+      "filename" : "creak",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 20
+    },
+    {
+      "filename" : "lasertiu",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 20
+    },
+    {
+      "filename" : "lownoise",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 15
+    },
+    {
+      "filename" : "biglas",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 10
+    },
+    {
+      "filename" : "uberexp",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 100
+    },
+    {
+      "filename" : "mechahuge",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 30
+    },
+    {
+      "filename" : "largeser",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "knock",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 20
+    },
+    {
+      "filename" : "openedportal",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 10
+    },
+    {
+      "filename" : "walkmetal",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "walkwood",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "snowfire",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 1
+    },
+    {
+      "filename" : "suck",
+      "haromd" : true,
+      "freq" : true,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "techsniper",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 3
+    },
+    {
+      "filename" : "shotgun",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 3
+    },
+    {
+      "filename" : "impact\/dirt1",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/dirt2",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/dirt3",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/simple1",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/simple2",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/simple3",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/metal1",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/metal2",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/metal3",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/wood1",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/wood2",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    },
+    {
+      "filename" : "impact\/wood3",
+      "haromd" : true,
+      "freq" : false,
+      "effects" : true,
+      "mindistance" : 2
+    }
+  ],
+  "scripts" : {},
+  "triggers" : {},
+  "foliages" : [
+    {
+      "texture" : "bush256.png",
+      "shape" : "bush",
+      "width" : 0.85,
+      "height" : 1.1,
+      "offset" : 0,
+      "level" : 4
+    },
+    {
+      "texture" : "pimpo.png",
+      "shape" : "grass",
+      "width" : 0.53,
+      "height" : 0.9,
+      "offset" : -0.3,
+      "level" : 3
+    },
+    {
+      "texture" : "tallgrass.png",
+      "shape" : "grass",
+      "width" : 1,
+      "height" : 0.8,
+      "offset" : -0.3,
+      "level" : 1
+    },
+    {
+      "texture" : "tallgrass.png",
+      "shape" : "grass",
+      "width" : 1,
+      "height" : 0.8,
+      "offset" : -0.3,
+      "level" : 0
+    }
+  ],
+  "splashes" : [
+    "splash1.jpg",
+    "splash2.jpg",
+    "splash3.jpg",
+    "splash4.jpg",
+    "splash5.jpg",
+    "splash6.jpg",
+    "splash7.jpg",
+    "splash8.jpg",
+    "splash9.jpg",
+    "splash10.jpg"
+  ],
+  "bullethole_textures" :
+  {
+    "default" : [
+      "textures\/hole_01.png",
+      "textures\/hole_02.png",
+      "textures\/hole_03.png",
+      "textures\/hole_04.png"
+    ],
+    "metal" : [
+      "textures\/holem_01.png",
+      "textures\/holem_02.png"
+    ],
+    "wood" : [
+      "textures\/holew_01.png",
+      "textures\/holew_02.png"
+    ]
+  }
 }
